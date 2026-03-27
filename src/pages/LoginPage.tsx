@@ -28,7 +28,7 @@ function LoginPage(): JSX.Element {
   const startGoogleSignIn = (): void => {
     const params = new URLSearchParams();
     params.set('redirect', nextPath);
-    window.location.assign(`${apiBase}/auth/google?${params.toString()}`);
+    window.location.assign(`${apiBase}/api/auth/google?${params.toString()}`);
   };
 
   return (

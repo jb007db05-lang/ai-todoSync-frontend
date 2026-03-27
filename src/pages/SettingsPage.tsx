@@ -93,7 +93,7 @@ info:
   version: 1.0.0
 
 servers:
-  - url: https://leena-frothier-kamala.ngrok-free.dev
+  - url: https://ai-todosync-backend.onrender.com
 
 paths:
 
