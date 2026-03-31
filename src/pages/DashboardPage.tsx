@@ -5,13 +5,17 @@ import DateNavigator from '@/components/DateNavigator';
 import DaySummary from '@/components/DaySummary';
 import Modal from '@/components/Modal';
 import Navbar from '@/components/Navbar';
+import NoteModal from '@/components/NoteModal';
 import ProjectForm from '@/components/ProjectForm';
+import ProjectNotes from '@/components/ProjectNotes';
 import ProjectPanel from '@/components/ProjectPanel';
 import SectionCard from '@/components/SectionCard';
 import SubtaskForm from '@/components/SubtaskForm';
 import TaskList from '@/components/TaskList';
+import { createNote, deleteNote, getNote, getProjectNotes, updateNote } from '@/services/notes';
 import { createProject, deleteProject, getProjects } from '@/services/projects';
 import { createTask, deleteTask, getTaskSummary, getTasks, updateTask } from '@/services/tasks';
+import type { Note } from '@/types/note';
 import type { Project } from '@/types/project';
 import type { Task, TaskSummary, TaskWorkflowStatus } from '@/types/task';
 import { findProjectByName } from '@/utils/projectTree';
@@ -34,15 +38,22 @@ function DashboardPage(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [actionTaskId, setActionTaskId] = useState<string | null>(null);
   const [actionProjectId, setActionProjectId] = useState<string | null>(null);
+  const [actionNoteId, setActionNoteId] = useState<string | null>(null);
   const [taskMutationError, setTaskMutationError] = useState<string | null>(null);
   const [taskMutationSuccess, setTaskMutationSuccess] = useState<string | null>(null);
   const [projectMutationError, setProjectMutationError] = useState<string | null>(null);
   const [projectMutationSuccess, setProjectMutationSuccess] = useState<string | null>(null);
+  const [noteMutationError, setNoteMutationError] = useState<string | null>(null);
+  const [noteMutationSuccess, setNoteMutationSuccess] = useState<string | null>(null);
   const [isProjectCreateModalOpen, setIsProjectCreateModalOpen] = useState(false);
   const [isTaskCreateModalOpen, setIsTaskCreateModalOpen] = useState(false);
   const [activeProjectViewId, setActiveProjectViewId] = useState<string | null | undefined>(undefined);
   const [taskModalProjectId, setTaskModalProjectId] = useState<string | null>(null);
   const [subtaskModalTask, setSubtaskModalTask] = useState<Task | null>(null);
+  const [projectNotes, setProjectNotes] = useState<Record<string, Note[]>>({});
+  const [notesLoadingProjectId, setNotesLoadingProjectId] = useState<string | null>(null);
+  const [noteEditorProjectId, setNoteEditorProjectId] = useState<string | null>(null);
+  const [editingNote, setEditingNote] = useState<Note | null>(null);
 
   const loadDashboard = useCallback(async (): Promise<void> => {
     setLoading(true);
@@ -120,10 +131,22 @@ function DashboardPage(): JSX.Element {
     setActionProjectId(projectId);
     setProjectMutationError(null);
     setProjectMutationSuccess(null);
+    setNoteMutationError(null);
+    setNoteMutationSuccess(null);
 
     try {
       await deleteProject(projectId);
       await loadDashboard();
+      setProjectNotes((current) => {
+        const next = { ...current };
+        delete next[projectId];
+        return next;
+      });
+
+      if (activeProjectViewId === projectId) {
+        setActiveProjectViewId(undefined);
+      }
+
       setProjectMutationSuccess('Project deleted. Related tasks were kept and detached.');
     } catch {
       setProjectMutationError('Unable to delete the project.');
@@ -249,6 +272,128 @@ function DashboardPage(): JSX.Element {
     }
   };
 
+  const loadNotesForProject = useCallback(async (projectId: string): Promise<void> => {
+    setNotesLoadingProjectId(projectId);
+
+    try {
+      const notes = await getProjectNotes(projectId);
+      setProjectNotes((current) => ({
+        ...current,
+        [projectId]: notes
+      }));
+    } catch {
+      setNoteMutationError('Unable to load notes for this project.');
+    } finally {
+      setNotesLoadingProjectId((current) => (current === projectId ? null : current));
+    }
+  }, []);
+
+  const handleOpenProject = (projectId: string | null): void => {
+    setActiveProjectViewId(projectId);
+    setNoteMutationError(null);
+    setNoteMutationSuccess(null);
+
+    if (projectId && projectNotes[projectId] == null) {
+      void loadNotesForProject(projectId);
+    }
+  };
+
+  const handleOpenCreateNote = (): void => {
+    if (activeProjectViewId == null) {
+      return;
+    }
+
+    setNoteMutationError(null);
+    setNoteMutationSuccess(null);
+    setEditingNote(null);
+    setNoteEditorProjectId(activeProjectViewId);
+  };
+
+  const handleOpenExistingNote = async (note: Note): Promise<void> => {
+    setActionNoteId(note.id);
+    setNoteMutationError(null);
+    setNoteMutationSuccess(null);
+
+    try {
+      const latestNote = await getNote(note.id);
+      setEditingNote(latestNote);
+      setNoteEditorProjectId(latestNote.projectId);
+    } catch {
+      setNoteMutationError('Unable to open the note.');
+    } finally {
+      setActionNoteId(null);
+    }
+  };
+
+  const handleSaveNote = async (payload: {
+    appendContent?: boolean;
+    title: string;
+    content: string;
+  }): Promise<void> => {
+    const targetProjectId = noteEditorProjectId;
+
+    if (!targetProjectId) {
+      return;
+    }
+
+    setActionNoteId(editingNote?.id ?? 'new');
+    setNoteMutationError(null);
+    setNoteMutationSuccess(null);
+
+    try {
+      if (editingNote) {
+        const updated = await updateNote(editingNote.id, payload);
+        setProjectNotes((current) => ({
+          ...current,
+          [targetProjectId]: (current[targetProjectId] ?? []).map((note) =>
+            note.id === updated.id ? updated : note
+          )
+        }));
+        setNoteMutationSuccess(payload.appendContent ? 'Content appended to note.' : 'Note updated.');
+      } else {
+        const created = await createNote(targetProjectId, payload);
+        setProjectNotes((current) => ({
+          ...current,
+          [targetProjectId]: [created, ...(current[targetProjectId] ?? [])]
+        }));
+        setNoteMutationSuccess('Note created.');
+      }
+
+      setEditingNote(null);
+      setNoteEditorProjectId(null);
+    } catch {
+      setNoteMutationError('Unable to save the note.');
+      throw new Error('Unable to save note');
+    } finally {
+      setActionNoteId(null);
+    }
+  };
+
+  const handleDeleteNote = async (note: Note): Promise<void> => {
+    setActionNoteId(note.id);
+    setNoteMutationError(null);
+    setNoteMutationSuccess(null);
+
+    try {
+      await deleteNote(note.id);
+      setProjectNotes((current) => ({
+        ...current,
+        [note.projectId]: (current[note.projectId] ?? []).filter((currentNote) => currentNote.id !== note.id)
+      }));
+
+      if (editingNote?.id === note.id) {
+        setEditingNote(null);
+        setNoteEditorProjectId(null);
+      }
+
+      setNoteMutationSuccess('Note deleted.');
+    } catch {
+      setNoteMutationError('Unable to delete the note.');
+    } finally {
+      setActionNoteId(null);
+    }
+  };
+
   const hasTasks = tasks.length > 0;
   const tasksHeading = useMemo(() => `Tasks for ${selectedDate}`, [selectedDate]);
   const tasksByProject = useMemo(() => {
@@ -274,6 +419,7 @@ function DashboardPage(): JSX.Element {
   );
   const activeProjectModalTitle =
     activeProjectViewId == null ? 'Inbox Tasks' : activeProject?.name ?? 'Project Tasks';
+  const activeProjectNotes = activeProjectViewId ? projectNotes[activeProjectViewId] ?? [] : [];
 
   return (
     <main className="stack">
@@ -297,7 +443,7 @@ function DashboardPage(): JSX.Element {
             actionProjectId={actionProjectId}
             loading={loading}
             onOpenCreateProject={() => setIsProjectCreateModalOpen(true)}
-            onOpenProject={(projectId) => setActiveProjectViewId(projectId)}
+            onOpenProject={handleOpenProject}
             onDeleteProject={handleDeleteProject}
             projects={projects}
             tasksByProject={tasksByProject}
@@ -323,6 +469,8 @@ function DashboardPage(): JSX.Element {
             {projectMutationError ? <p className="error-text">{projectMutationError}</p> : null}
             {taskMutationSuccess ? <p className="success-text">{taskMutationSuccess}</p> : null}
             {taskMutationError ? <p className="error-text">{taskMutationError}</p> : null}
+            {noteMutationSuccess ? <p className="success-text">{noteMutationSuccess}</p> : null}
+            {noteMutationError ? <p className="error-text">{noteMutationError}</p> : null}
             {loading ? <p className="muted-text">Refreshing tasks for {selectedDate}...</p> : null}
           </div>
           {!loading && !hasTasks ? (
@@ -345,32 +493,46 @@ function DashboardPage(): JSX.Element {
       {activeProjectViewId !== undefined ? (
         <Modal onClose={() => setActiveProjectViewId(undefined)} title={activeProjectModalTitle}>
           <div className="project-task-modal">
-            <div className="modal-inline-actions">
-              <button
-                onClick={() => {
-                  setTaskModalProjectId(activeProjectViewId ?? null);
-                  setIsTaskCreateModalOpen(true);
-                }}
-                type="button"
-              >
-                {activeProjectViewId == null ? 'New inbox task' : 'New task for this project'}
-              </button>
+            <div className="project-view-grid">
+              {activeProject ? (
+                <ProjectNotes
+                  actionNoteId={actionNoteId}
+                  loading={notesLoadingProjectId === activeProject.id}
+                  notes={activeProjectNotes}
+                  onCreateNote={handleOpenCreateNote}
+                  onDeleteNote={(note) => void handleDeleteNote(note)}
+                  onOpenNote={(note) => void handleOpenExistingNote(note)}
+                />
+              ) : null}
+              <div className="project-view-tasks">
+                <div className="modal-inline-actions">
+                  <button
+                    onClick={() => {
+                      setTaskModalProjectId(activeProjectViewId ?? null);
+                      setIsTaskCreateModalOpen(true);
+                    }}
+                    type="button"
+                  >
+                    {activeProjectViewId == null ? 'New inbox task' : 'New task for this project'}
+                  </button>
+                </div>
+                {activeProjectTasks.length ? (
+                  <TaskList
+                    actionTaskId={actionTaskId}
+                    onCreateSubtask={(task) => setSubtaskModalTask(task)}
+                    onDelete={(taskId) => void handleDeleteTask(taskId)}
+                    onUpdateStatus={(task, status) => void handleUpdateTaskStatus(task, status)}
+                    onUpdateSubtaskStatus={(task, subtask, status) =>
+                      void handleUpdateSubtaskStatus(task, subtask, status)
+                    }
+                    projects={projects}
+                    tasks={activeProjectTasks}
+                  />
+                ) : (
+                  <p className="empty-state">No tasks in this view yet. Create one from this modal.</p>
+                )}
+              </div>
             </div>
-            {activeProjectTasks.length ? (
-              <TaskList
-                actionTaskId={actionTaskId}
-                onCreateSubtask={(task) => setSubtaskModalTask(task)}
-                onDelete={(taskId) => void handleDeleteTask(taskId)}
-                onUpdateStatus={(task, status) => void handleUpdateTaskStatus(task, status)}
-                onUpdateSubtaskStatus={(task, subtask, status) =>
-                  void handleUpdateSubtaskStatus(task, subtask, status)
-                }
-                projects={projects}
-                tasks={activeProjectTasks}
-              />
-            ) : (
-              <p className="empty-state">No tasks in this view yet. Create one from this modal.</p>
-            )}
           </div>
         </Modal>
       ) : null}
@@ -378,6 +540,17 @@ function DashboardPage(): JSX.Element {
         <Modal onClose={() => setSubtaskModalTask(null)} title={`Create Subtask for ${subtaskModalTask.title}`}>
           <SubtaskForm onSubmit={handleCreateSubtask} />
         </Modal>
+      ) : null}
+      {noteEditorProjectId && activeProject ? (
+        <NoteModal
+          note={editingNote}
+          onClose={() => {
+            setEditingNote(null);
+            setNoteEditorProjectId(null);
+          }}
+          onSave={handleSaveNote}
+          projectName={activeProject.name}
+        />
       ) : null}
     </main>
   );

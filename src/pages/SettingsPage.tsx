@@ -84,6 +84,22 @@ TASK FLOW:
 - If the user asks to list or check projects:
   → call fetchProjects
 
+- If the user asks to list, review, or fetch notes for a project:
+  → call fetchProjectNotes
+
+- If the user asks to create a note for a project:
+  → call createProjectNote
+
+- If the user asks to open a single note:
+  → call fetchNote
+
+- If the user asks to edit or update an existing note:
+  → call updateNote
+
+- If the user asks to append more content to an existing note:
+  → call updateNote
+  → send appendContent: true so the new content is added without replacing the existing note
+
 - If the user asks for progress, counts, status breakdown, or daily overview:
   → call fetchTaskSummary
   → include date when the user asks for a specific day
@@ -97,7 +113,7 @@ RULES:
 - Behave consistently in both the portal and the integrated AI app
 - Keep task titles concise, meaningful, and action-oriented
 - Remove filler words and preserve only the actionable intent
-- Use only these available actions: syncSingleTask, syncTasks, fetchTasks, fetchProjects, fetchTaskSummary
+- Use only these available actions: syncSingleTask, syncTasks, fetchTasks, fetchProjects, fetchProjectNotes, createProjectNote, fetchNote, updateNote, fetchTaskSummary
 - If a request contains a date, include it in the API call when relevant
 - If the request is slightly ambiguous, infer the most reasonable action without unnecessary back-and-forth
     `,
@@ -153,6 +169,90 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FetchProjectsResponse'
+
+  /api/sync/projects/{projectId}/notes:
+    get:
+      operationId: fetchProjectNotes
+      summary: Fetch notes for a project
+      parameters:
+        - in: path
+          name: projectId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Project notes fetched
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FetchProjectNotesResponse'
+    post:
+      operationId: createProjectNote
+      summary: Create a note for a project
+      description: Creates a new note inside the specified project.
+      parameters:
+        - in: path
+          name: projectId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProjectNoteRequest'
+      responses:
+        "201":
+          description: Note created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteResponse'
+
+  /api/sync/notes/{id}:
+    get:
+      operationId: fetchNote
+      summary: Fetch a single note
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Note fetched
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteResponse'
+    put:
+      operationId: updateNote
+      summary: Update or append to a note
+      description: >
+        Updates an existing note. If appendContent is true, the incoming content
+        is added to the end of the existing note instead of replacing it.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateNoteRequest'
+      responses:
+        "200":
+          description: Note updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteResponse'
 
   /api/sync/summary:
     get:
@@ -493,6 +593,68 @@ components:
           type: string
           format: date-time
 
+    NoteItem:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - projectId
+        - title
+        - content
+      properties:
+        id:
+          type: string
+        projectId:
+          type: string
+        title:
+          type: string
+        content:
+          type: string
+          description: Rich text HTML content
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateProjectNoteRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - title
+      properties:
+        title:
+          type: string
+        content:
+          type: string
+          description: Rich text HTML content
+
+    UpdateNoteRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        title:
+          type: string
+        content:
+          type: string
+          description: Rich text HTML content
+        appendContent:
+          type: boolean
+          description: If true, append new content instead of replacing the note.
+
+    NoteResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - message
+        - note
+      properties:
+        message:
+          type: string
+        note:
+          $ref: '#/components/schemas/NoteItem'
+
     TaskSummaryResponseItem:
       type: object
       additionalProperties: false
@@ -551,6 +713,20 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ProjectResponseItem'
+
+    FetchProjectNotesResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - message
+        - notes
+      properties:
+        message:
+          type: string
+        notes:
+          type: array
+          items:
+            $ref: '#/components/schemas/NoteItem'
 
     FetchSummaryResponse:
       type: object

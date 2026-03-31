@@ -4,7 +4,7 @@ import type { CreateProjectInput, Project, UpdateProjectInput } from '@/types/pr
 interface ProjectListResponse {
   message: string;
   data: {
-    projects: ProjectTreeNode[];
+    projects: Project[];
   };
 }
 
