@@ -178,6 +178,10 @@ paths:
     post:
       operationId: syncSingleTask
       summary: Create a single task
+      description: >
+        Creates one task. If project is provided, the task is attached to that
+        project and the project is created automatically when needed. If
+        subtasks are provided, they are created under the new task.
       requestBody:
         required: true
         content:
@@ -196,6 +200,10 @@ paths:
     post:
       operationId: syncTasks
       summary: Create multiple tasks
+      description: >
+        Creates multiple tasks in one request. Each task may include project to
+        create or attach to a project, and may include subtasks to create under
+        that task.
       requestBody:
         required: true
         content:
@@ -217,6 +225,9 @@ components:
       additionalProperties: false
       required:
         - title
+      description: >
+        Request for creating one task. Use project to create or attach the task
+        to a project, and use subtasks to create subtasks under the task.
       properties:
         title:
           type: string
@@ -235,18 +246,36 @@ components:
           $ref: '#/components/schemas/SyncProjectInput'
         subtasks:
           type: array
+          description: Optional subtasks to create under this task.
           items:
             $ref: '#/components/schemas/SyncSubtaskInput'
+      example:
+        title: Implement auth refresh flow
+        description: Handle token refresh for expired sessions
+        status: in_progress
+        date: '2026-03-31'
+        project: Backend
+        subtasks:
+          - title: Update auth middleware
+            status: in_progress
+          - title: Add refresh token tests
+            status: pending
 
     SyncTasksRequest:
       type: object
       additionalProperties: false
       required:
         - tasks
+      description: >
+        Request for creating multiple tasks. Each task may include its own
+        project and subtasks.
       properties:
         tasks:
           type: array
           minItems: 1
+          description: >
+            Tasks to create for the authenticated user. A task can belong to a
+            project and can include subtasks.
           items:
             $ref: '#/components/schemas/SyncTaskInput'
         date:
@@ -255,12 +284,29 @@ components:
           description: YYYY-MM-DD
         source:
           type: string
+      example:
+        date: '2026-03-31'
+        tasks:
+          - title: Finalize dashboard layout
+            project: Frontend
+            subtasks:
+              - title: Tighten spacing
+                status: in_review
+              - title: Polish modal layout
+                status: pending
+          - title: Review sync endpoints
+            project:
+              name: Backend
+            status: pending
 
     SyncTaskInput:
       type: object
       additionalProperties: false
       required:
         - title
+      description: >
+        A task input for bulk sync. Include project to place the task inside a
+        project, and include subtasks to create subtasks under that task.
       properties:
         title:
           type: string
@@ -275,10 +321,15 @@ components:
           $ref: '#/components/schemas/SyncProjectInput'
         subtasks:
           type: array
+          description: Optional subtasks to create under this task.
           items:
             $ref: '#/components/schemas/SyncSubtaskInput'
 
     SyncProjectInput:
+      description: >
+        Project reference for a task. Passing a name attaches the task to that
+        project. If the project does not exist for the user, it is created
+        automatically. This is how project creation happens through the sync API.
       oneOf:
         - type: string
           description: Existing or new flat project name
@@ -296,6 +347,7 @@ components:
       additionalProperties: false
       required:
         - title
+      description: Subtask to create under a task during sync.
       properties:
         title:
           type: string
