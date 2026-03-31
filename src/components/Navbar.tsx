@@ -11,9 +11,8 @@ function Navbar(): JSX.Element {
     <header className="navbar">
       <div className="navbar-brand">
         <Link className="navbar-logo" to="/">
-          AI TodoSync
+          Task Manager
         </Link>
-        <p className="muted-text">{user?.email ?? 'Authenticated user'}</p>
       </div>
       <nav className="navbar-links">
         <NavLink className={({ isActive }) => (isActive ? 'nav-link nav-link-active' : 'nav-link')} to="/">
@@ -25,16 +24,6 @@ function Navbar(): JSX.Element {
         >
           Settings
         </NavLink>
-        <button
-          aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-          className="theme-toggle"
-          onClick={toggleTheme}
-          type="button"
-        >
-          <span className="theme-toggle-track">
-            <span className={`theme-toggle-thumb theme-toggle-thumb-${theme}`}>{theme === 'light' ? <Moon style={{ color: "black", height: "100%", width: "100%" }} /> : <Sun style={{ color: "white", height: "100%", width: "100%" }} />}</span>
-          </span>
-        </button>
         <button className="secondary-button" onClick={logout} type="button">
           Sign out
         </button>

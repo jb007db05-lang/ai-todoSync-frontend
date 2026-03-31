@@ -35,11 +35,6 @@ function ProjectPanel({
       ) : null}
       {projects.length || (tasksByProject.get(null) ?? 0) > 0 ? (
         <div className="project-grid">
-          <button className="project-list-card inbox-card" onClick={() => onOpenProject(null)} type="button">
-            <span className="project-list-kicker">Inbox</span>
-            <strong>Unassigned Tasks</strong>
-            <span>{tasksByProject.get(null) ?? 0} task(s)</span>
-          </button>
           {projects.map((project) => (
             <div className="project-list-card" key={project.id}>
               <button className="project-list-main" onClick={() => onOpenProject(project.id)} type="button">
