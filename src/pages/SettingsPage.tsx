@@ -58,22 +58,48 @@ const chatGptIntegrationSteps = [
     code: `
 You are a task assistant connected to Todo Sync API.
 
-Behavior:
+You must work the same way in both:
+- the integrated AI app inside Todo Sync
+- the external portal or custom GPT connected through actions
+
+BEHAVIOR:
 
 TASK FLOW:
-- If user says "add task", "create task", "remind me":
+- If the user wants to add one task, create one reminder, or save one action item:
   → call syncSingleTask
-  → extract a clean, short task title from the sentence
+  → extract a clean, short, actionable task title
+  → include date when the user provides one
+  → include project when the user specifies one
+  → include subtasks when the user specifies them
 
-- If user provides multiple tasks:
+- If the user provides multiple tasks in one request:
   → call syncTasks
-  → split and clean each task properly
+  → split them into clear individual tasks
+  → preserve any provided dates, projects, statuses, and subtasks
+
+- If the user asks to list, show, fetch, review, or check tasks:
+  → call fetchTasks
+  → include date when the user asks for a specific day
+
+- If the user asks to list or check projects:
+  → call fetchProjects
+
+- If the user asks for progress, counts, status breakdown, or daily overview:
+  → call fetchTaskSummary
+  → include date when the user asks for a specific day
+
+- If the user asks to create a project:
+  → do not invent a separate project-creation action
+  → create the project implicitly by creating a task with the project field, because the available schema only exposes project fetch plus task sync actions
 
 RULES:
-- Always trigger the sync API directly
-- Keep task titles concise and meaningful
-- Remove filler words and keep only actionable intent
-- If input is unclear, infer the most reasonable task without asking unnecessary questions
+- Always use the Todo Sync API for both creation and fetching
+- Behave consistently in both the portal and the integrated AI app
+- Keep task titles concise, meaningful, and action-oriented
+- Remove filler words and preserve only the actionable intent
+- Use only these available actions: syncSingleTask, syncTasks, fetchTasks, fetchProjects, fetchTaskSummary
+- If a request contains a date, include it in the API call when relevant
+- If the request is slightly ambiguous, infer the most reasonable action without unnecessary back-and-forth
     `,
     image: step3
   },
@@ -96,32 +122,75 @@ servers:
   - url: https://ai-todosync-backend.onrender.com
 
 paths:
+  /api/sync/tasks:
+    get:
+      operationId: fetchTasks
+      summary: Fetch tasks
+      parameters:
+        - in: query
+          name: date
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Optional YYYY-MM-DD filter
+      responses:
+        "200":
+          description: Task list fetched
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FetchTasksResponse'
+
+  /api/sync/projects:
+    get:
+      operationId: fetchProjects
+      summary: Fetch projects
+      responses:
+        "200":
+          description: Project list fetched
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FetchProjectsResponse'
+
+  /api/sync/summary:
+    get:
+      operationId: fetchTaskSummary
+      summary: Fetch task summary
+      parameters:
+        - in: query
+          name: date
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Optional YYYY-MM-DD filter
+      responses:
+        "200":
+          description: Task summary fetched
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FetchSummaryResponse'
 
   /api/sync/single:
     post:
       operationId: syncSingleTask
-      summary: Create single task
+      summary: Create a single task
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              additionalProperties: false
-              required:
-                - title
-              properties:
-                title:
-                  type: string
-                  description: Short task title
-                description:
-                  type: string
-                date:
-                  type: string
-                  format: date
+              $ref: '#/components/schemas/SyncSingleTaskRequest'
       responses:
-        "200":
-          description: Success
+        "201":
+          description: Task synced successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncSingleTaskResponse'
 
   /api/sync:
     post:
@@ -132,37 +201,320 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              additionalProperties: false
-              required:
-                - tasks
-              properties:
-                tasks:
-                  type: array
-                  minItems: 1             
-                  items:
-                    type: object
-                    additionalProperties: false
-                    required:
-                      - title
-                    properties:
-                      title:
-                        type: string
-                        description: Task title
-                      description:
-                        type: string
-                      status:
-                        type: string
-                        enum: [pending, done]
-                      source:
-                        type: string
-                date:
-                  type: string
-                  format: date
-                  description: YYYY-MM-DD
+              $ref: '#/components/schemas/SyncTasksRequest'
       responses:
-        "200":
-          description: Success`,
+        "201":
+          description: Tasks synced successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncTasksResponse'
+
+components:
+  schemas:
+    SyncSingleTaskRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          description: Short task title
+        description:
+          type: string
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        source:
+          type: string
+        date:
+          type: string
+          format: date
+          description: YYYY-MM-DD
+        project:
+          $ref: '#/components/schemas/SyncProjectInput'
+        subtasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncSubtaskInput'
+
+    SyncTasksRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - tasks
+      properties:
+        tasks:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/SyncTaskInput'
+        date:
+          type: string
+          format: date
+          description: YYYY-MM-DD
+        source:
+          type: string
+
+    SyncTaskInput:
+      type: object
+      additionalProperties: false
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          description: Task title
+        description:
+          type: string
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        source:
+          type: string
+        project:
+          $ref: '#/components/schemas/SyncProjectInput'
+        subtasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncSubtaskInput'
+
+    SyncProjectInput:
+      oneOf:
+        - type: string
+          description: Existing or new flat project name
+        - type: object
+          additionalProperties: false
+          required:
+            - name
+          properties:
+            name:
+              type: string
+              description: Existing or new flat project name
+
+    SyncSubtaskInput:
+      type: object
+      additionalProperties: false
+      required:
+        - title
+      properties:
+        title:
+          type: string
+        status:
+          $ref: '#/components/schemas/SubtaskStatus'
+        completed:
+          type: boolean
+        completedAt:
+          type: string
+          format: date-time
+
+    TaskStatus:
+      type: string
+      enum:
+        - pending
+        - in_progress
+        - in_review
+        - completed
+        - rolled_over
+        - done
+
+    SubtaskStatus:
+      type: string
+      enum:
+        - pending
+        - in_progress
+        - in_review
+        - completed
+        - done
+
+    SyncSubtaskResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - title
+        - status
+        - completed
+        - completedAt
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        status:
+          type: string
+          enum: [pending, in_progress, in_review, completed]
+        completed:
+          type: boolean
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    SyncTaskResponseItem:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - title
+        - date
+        - status
+        - projectId
+        - subtasks
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        date:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [pending, in_progress, in_review, completed, rolled_over]
+        source:
+          type: string
+        projectId:
+          type: string
+          nullable: true
+        subtasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncSubtaskResponse'
+
+    SyncSingleTaskResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - message
+        - date
+        - task
+      properties:
+        message:
+          type: string
+        date:
+          type: string
+          format: date
+        task:
+          $ref: '#/components/schemas/SyncTaskResponseItem'
+
+    SyncTasksResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - message
+        - date
+        - synced
+        - tasks
+      properties:
+        message:
+          type: string
+        date:
+          type: string
+          format: date
+        synced:
+          type: integer
+        tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncTaskResponseItem'
+
+    ProjectResponseItem:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+        - userId
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        userId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    TaskSummaryResponseItem:
+      type: object
+      additionalProperties: false
+      required:
+        - total
+        - pending
+        - inProgress
+        - inReview
+        - completed
+        - rolledOver
+      properties:
+        total:
+          type: integer
+        pending:
+          type: integer
+        inProgress:
+          type: integer
+        inReview:
+          type: integer
+        completed:
+          type: integer
+        rolledOver:
+          type: integer
+        date:
+          type: string
+          format: date
+
+    FetchTasksResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - message
+        - date
+        - tasks
+      properties:
+        message:
+          type: string
+        date:
+          type: string
+          format: date
+        tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncTaskResponseItem'
+
+    FetchProjectsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - message
+        - projects
+      properties:
+        message:
+          type: string
+        projects:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProjectResponseItem'
+
+    FetchSummaryResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - message
+        - date
+        - summary
+      properties:
+        message:
+          type: string
+        date:
+          type: string
+          format: date
+        summary:
+          $ref: '#/components/schemas/TaskSummaryResponseItem'`,
     image: step4
   },
   {

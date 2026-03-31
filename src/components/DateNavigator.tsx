@@ -24,14 +24,27 @@ function DateNavigator({ date, disabled = false, onChange }: DateNavigatorProps)
 
   return (
     <div className="date-navigator">
-      <button disabled={disabled} onClick={() => onChange(shiftDate(date, -1))} type="button">
-        Previous day
+      <button
+        className="secondary-button date-nav-button"
+        disabled={disabled}
+        onClick={() => onChange(shiftDate(date, -1))}
+        type="button"
+      >
+        Prev
       </button>
-      <label className="field-inline">
-        <input disabled={disabled} onChange={handleInputChange} type="date" value={date} />
-      </label>
-      <button disabled={disabled} onClick={() => onChange(shiftDate(date, 1))} type="button">
-        Next day
+      <div className="date-pill">
+        <span className="date-pill-label">Date</span>
+        <label className="field-inline date-picker-field">
+          <input disabled={disabled} onChange={handleInputChange} type="date" value={date} />
+        </label>
+      </div>
+      <button
+        className="secondary-button date-nav-button"
+        disabled={disabled}
+        onClick={() => onChange(shiftDate(date, 1))}
+        type="button"
+      >
+        Next
       </button>
     </div>
   );

@@ -1,5 +1,21 @@
-export type TaskStatus = 'pending' | 'done' | 'rolled_over';
+export type TaskWorkflowStatus = 'pending' | 'in_progress' | 'in_review' | 'completed';
+export type TaskStatus = TaskWorkflowStatus | 'rolled_over';
 export type TaskSource = 'claude' | 'chatgpt' | 'gemini' | 'manual';
+
+export const TASK_WORKFLOW_STATUS_OPTIONS: Array<{ value: TaskWorkflowStatus; label: string }> = [
+  { value: 'pending', label: 'Pending' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'in_review', label: 'In Review' },
+  { value: 'completed', label: 'Completed' }
+];
+
+export interface Subtask {
+  id: string;
+  title: string;
+  status: TaskWorkflowStatus;
+  completed: boolean;
+  completedAt: string | null;
+}
 
 export interface Task {
   id: string;
@@ -11,12 +27,16 @@ export interface Task {
   rolledOver: boolean;
   rolloverCount: number;
   source?: TaskSource;
+  projectId: string | null;
+  subtasks: Subtask[];
 }
 
 export interface TaskSummary {
   total: number;
   pending: number;
-  done: number;
+  inProgress: number;
+  inReview: number;
+  completed: number;
   rolledOver: number;
   date?: string;
 }
@@ -27,6 +47,12 @@ export interface CreateTaskInput {
   date: string;
   status?: TaskStatus;
   source?: TaskSource;
+  projectId?: string | null;
+  subtasks?: Array<{
+    title: string;
+    status?: TaskWorkflowStatus;
+    completedAt?: string | null;
+  }>;
 }
 
 export interface UpdateTaskInput {
@@ -34,4 +60,10 @@ export interface UpdateTaskInput {
   description?: string;
   date?: string;
   status?: TaskStatus;
+  projectId?: string | null;
+  subtasks?: Array<{
+    title: string;
+    status?: TaskWorkflowStatus;
+    completedAt?: string | null;
+  }>;
 }
