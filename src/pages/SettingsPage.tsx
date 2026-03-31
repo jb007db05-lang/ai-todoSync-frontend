@@ -126,7 +126,7 @@ RULES:
       "Scroll down to the bottom of the Configure page.",
       "Click on 'Create new action'.",
       "A new screen will open with Authentication and Schema fields.",
-      "Keep Authentication as 'None' for now (or configure later if needed).",
+      "You will configure API Key authentication for this action in the next step.",
       "Copy and paste the following schema into the Schema field:"
     ],
     code: `openapi: 3.1.0
@@ -142,6 +142,8 @@ paths:
     get:
       operationId: fetchTasks
       summary: Fetch tasks
+      security:
+        - SyncApiKey: []
       parameters:
         - in: query
           name: date
@@ -162,6 +164,8 @@ paths:
     get:
       operationId: fetchProjects
       summary: Fetch projects
+      security:
+        - SyncApiKey: []
       responses:
         "200":
           description: Project list fetched
@@ -174,6 +178,8 @@ paths:
     get:
       operationId: fetchProjectNotes
       summary: Fetch notes for a project
+      security:
+        - SyncApiKey: []
       parameters:
         - in: path
           name: projectId
@@ -191,6 +197,8 @@ paths:
       operationId: createProjectNote
       summary: Create a note for a project
       description: Creates a new note inside the specified project.
+      security:
+        - SyncApiKey: []
       parameters:
         - in: path
           name: projectId
@@ -215,6 +223,8 @@ paths:
     get:
       operationId: fetchNote
       summary: Fetch a single note
+      security:
+        - SyncApiKey: []
       parameters:
         - in: path
           name: id
@@ -234,6 +244,8 @@ paths:
       description: >
         Updates an existing note. If appendContent is true, the incoming content
         is added to the end of the existing note instead of replacing it.
+      security:
+        - SyncApiKey: []
       parameters:
         - in: path
           name: id
@@ -258,6 +270,8 @@ paths:
     get:
       operationId: fetchTaskSummary
       summary: Fetch task summary
+      security:
+        - SyncApiKey: []
       parameters:
         - in: query
           name: date
@@ -282,6 +296,8 @@ paths:
         Creates one task. If project is provided, the task is attached to that
         project and the project is created automatically when needed. If
         subtasks are provided, they are created under the new task.
+      security:
+        - SyncApiKey: []
       requestBody:
         required: true
         content:
@@ -304,6 +320,8 @@ paths:
         Creates multiple tasks in one request. Each task may include project to
         create or attach to a project, and may include subtasks to create under
         that task.
+      security:
+        - SyncApiKey: []
       requestBody:
         required: true
         content:
@@ -319,6 +337,11 @@ paths:
                 $ref: '#/components/schemas/SyncTasksResponse'
 
 components:
+  securitySchemes:
+    SyncApiKey:
+      type: apiKey
+      in: header
+      name: x-sync-api-key
   schemas:
     SyncSingleTaskRequest:
       type: object
