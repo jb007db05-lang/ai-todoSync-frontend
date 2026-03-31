@@ -48,7 +48,19 @@ interface AuthProviderProps {
 
 function AuthProvider({ children }: AuthProviderProps): JSX.Element {
   const [user, setUser] = useState<AuthProfile | null>(null);
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_STORAGE_KEY));
+  const [token, setToken] = useState<string | null>(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tokenFromUrl = urlParams.get('token');
+
+    if (tokenFromUrl) {
+      localStorage.setItem(TOKEN_STORAGE_KEY, tokenFromUrl);
+      const url = new URL(window.location.href);
+      url.searchParams.delete('token');
+      window.history.replaceState({}, '', url.toString());
+      return tokenFromUrl;
+    }
+    return localStorage.getItem(TOKEN_STORAGE_KEY);
+  });
   const [loading, setLoading] = useState<boolean>(token != null);
   const [error, setError] = useState<string | null>(null);
 

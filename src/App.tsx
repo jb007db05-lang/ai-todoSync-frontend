@@ -3,7 +3,6 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import AuthProvider from '@/context/AuthContext';
 import ThemeProvider from '@/context/ThemeContext';
 import DashboardPage from '@/pages/DashboardPage';
-import GoogleOAuthCallbackPage from '@/pages/GoogleOAuthCallbackPage';
 import LoginPage from '@/pages/LoginPage';
 import RegisterPage from '@/pages/RegisterPage';
 import SettingsPage from '@/pages/SettingsPage';
@@ -32,7 +31,6 @@ function App(): JSX.Element {
                 </PublicRoute>
               }
             />
-            <Route path="/oauth/google/success" element={<GoogleOAuthCallbackPage />} />
             <Route
               path="/"
               element={
