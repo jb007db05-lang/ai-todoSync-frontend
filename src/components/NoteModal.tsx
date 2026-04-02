@@ -4,13 +4,26 @@ import Modal from '@/components/Modal';
 import type { Note } from '@/types/note';
 
 interface NoteModalProps {
-  note?: Note | null;
+  allowAppend?: boolean;
+  entityLabel: string;
+  modalTitle?: string;
+  note?: Pick<Note, 'title' | 'content'> | null;
   onClose: () => void;
-  onSave: (payload: { appendContent?: boolean; title: string; content: string }) => Promise<void>;
-  projectName: string;
+  onSave: (payload: { appendContent?: boolean; title?: string; content: string }) => Promise<void>;
+  showTitle?: boolean;
+  titlePlaceholder?: string;
 }
 
-function NoteModal({ note = null, onClose, onSave, projectName }: NoteModalProps): JSX.Element {
+function NoteModal({
+  allowAppend = false,
+  entityLabel,
+  modalTitle,
+  note = null,
+  onClose,
+  onSave,
+  showTitle = true,
+  titlePlaceholder = 'Note title'
+}: NoteModalProps): JSX.Element {
   const [title, setTitle] = useState(note?.title ?? '');
   const [content, setContent] = useState(note?.content ?? '');
   const [fontSize, setFontSize] = useState('3');
@@ -80,7 +93,7 @@ function NoteModal({ note = null, onClose, onSave, projectName }: NoteModalProps
   ): Promise<void> => {
     event.preventDefault();
 
-    if (!title.trim()) {
+    if (showTitle && !title.trim()) {
       setErrorMessage('Note title is required.');
       return;
     }
@@ -91,7 +104,7 @@ function NoteModal({ note = null, onClose, onSave, projectName }: NoteModalProps
     try {
       await onSave({
         appendContent: mode === 'append',
-        title: title.trim(),
+        title: showTitle ? title.trim() : undefined,
         content
       });
     } catch {
@@ -107,19 +120,21 @@ function NoteModal({ note = null, onClose, onSave, projectName }: NoteModalProps
       bodyClassName="note-modal-body"
       onClose={onClose}
       panelClassName="note-modal-panel"
-      title={note ? 'Edit Note' : 'Create Note'}
+      title={modalTitle ?? (note ? 'Edit Note' : 'Create Note')}
     >
       <form className="form note-form" onSubmit={(event) => void handleSubmit(event)}>
-        <p className="muted-text">Rich text note for {projectName}. Use the toolbar to format content before saving.</p>
-        <div className="field-group">
-          <span className="field-label">Title</span>
-          <input
-            onChange={(event) => setTitle(event.target.value)}
-            placeholder="Sprint recap"
-            type="text"
-            value={title}
-          />
-        </div>
+        <p className="muted-text">Rich text note for {entityLabel}. Use the toolbar to format content before saving.</p>
+        {showTitle ? (
+          <div className="field-group">
+            <span className="field-label">Title</span>
+            <input
+              onChange={(event) => setTitle(event.target.value)}
+              placeholder={titlePlaceholder}
+              type="text"
+              value={title}
+            />
+          </div>
+        ) : null}
         <div className="field-group">
           <span className="field-label">Content</span>
           <div className="note-editor-shell">
@@ -269,7 +284,7 @@ function NoteModal({ note = null, onClose, onSave, projectName }: NoteModalProps
           <button className="secondary-button" onClick={onClose} type="button">
             Cancel
           </button>
-          {note ? (
+          {note && allowAppend ? (
             <button
               className="secondary-button note-append-button"
               disabled={submitting}

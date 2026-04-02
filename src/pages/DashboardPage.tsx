@@ -12,6 +12,7 @@ import ProjectPanel from '@/components/ProjectPanel';
 import SectionCard from '@/components/SectionCard';
 import SubtaskForm from '@/components/SubtaskForm';
 import TaskList from '@/components/TaskList';
+import TaskNotesList from '@/components/TaskNotesList';
 import { createNote, deleteNote, getNote, getProjectNotes, updateNote } from '@/services/notes';
 import { createProject, deleteProject, getProjects } from '@/services/projects';
 import { createTask, deleteTask, getTaskSummary, getTasks, updateTask } from '@/services/tasks';
@@ -19,6 +20,29 @@ import type { Note } from '@/types/note';
 import type { Project } from '@/types/project';
 import type { Task, TaskSummary, TaskWorkflowStatus } from '@/types/task';
 import { findProjectByName } from '@/utils/projectTree';
+
+type ActiveNoteEditor =
+  | {
+      kind: 'project';
+      note: Note | null;
+      projectId: string;
+      projectName: string;
+    }
+  | {
+      kind: 'task';
+      task: Task;
+    }
+  | {
+      kind: 'subtask';
+      subtask: Task['subtasks'][number];
+      task: Task;
+    };
+
+interface TaskNotesModalState {
+  noteType: 'task' | 'subtask';
+  tasks: Task[];
+  title: string;
+}
 
 const getTodayDate = (): string => {
   const today = new Date();
@@ -52,8 +76,8 @@ function DashboardPage(): JSX.Element {
   const [subtaskModalTask, setSubtaskModalTask] = useState<Task | null>(null);
   const [projectNotes, setProjectNotes] = useState<Record<string, Note[]>>({});
   const [notesLoadingProjectId, setNotesLoadingProjectId] = useState<string | null>(null);
-  const [noteEditorProjectId, setNoteEditorProjectId] = useState<string | null>(null);
-  const [editingNote, setEditingNote] = useState<Note | null>(null);
+  const [activeNoteEditor, setActiveNoteEditor] = useState<ActiveNoteEditor | null>(null);
+  const [taskNotesModalState, setTaskNotesModalState] = useState<TaskNotesModalState | null>(null);
 
   const loadDashboard = useCallback(async (): Promise<void> => {
     setLoading(true);
@@ -85,13 +109,15 @@ function DashboardPage(): JSX.Element {
   const handleCreateTask = async (payload: {
     title: string;
     description?: string;
+    note?: string;
     status?: TaskWorkflowStatus;
     projectId?: string | null;
-    subtasks?: Array<{ title: string; status?: TaskWorkflowStatus }>;
+    subtasks?: Array<{ title: string; note?: string; status?: TaskWorkflowStatus }>;
   }): Promise<void> => {
     await createTask({
       title: payload.title,
       description: payload.description,
+      note: payload.note,
       date: selectedDate,
       status: payload.status,
       source: 'manual',
@@ -147,7 +173,7 @@ function DashboardPage(): JSX.Element {
         setActiveProjectViewId(undefined);
       }
 
-      setProjectMutationSuccess('Project deleted. Related tasks were kept and detached.');
+      setProjectMutationSuccess('Project deleted. Related tasks and notes were removed.');
     } catch {
       setProjectMutationError('Unable to delete the project.');
     } finally {
@@ -167,6 +193,7 @@ function DashboardPage(): JSX.Element {
               status,
               subtasks: task.subtasks.map((subtask) => ({
                 title: subtask.title,
+                note: subtask.note,
                 status: 'completed' as const,
                 completedAt: subtask.completedAt ?? new Date().toISOString()
               }))
@@ -213,6 +240,7 @@ function DashboardPage(): JSX.Element {
         if (subtask.id !== targetSubtask.id) {
           return {
             title: subtask.title,
+            note: subtask.note,
             status: subtask.status,
             completedAt: subtask.completedAt
           };
@@ -220,6 +248,7 @@ function DashboardPage(): JSX.Element {
 
         return {
           title: subtask.title,
+          note: subtask.note,
           status,
           completedAt: status === 'completed' ? new Date().toISOString() : null
         };
@@ -237,6 +266,7 @@ function DashboardPage(): JSX.Element {
 
   const handleCreateSubtask = async (payload: {
     title: string;
+    note?: string;
     status: TaskWorkflowStatus;
   }): Promise<void> => {
     if (subtaskModalTask == null) {
@@ -252,11 +282,13 @@ function DashboardPage(): JSX.Element {
         subtasks: [
           ...subtaskModalTask.subtasks.map((subtask) => ({
             title: subtask.title,
+            note: subtask.note,
             status: subtask.status,
             completedAt: subtask.completedAt
           })),
           {
             title: payload.title,
+            note: payload.note,
             status: payload.status,
             completedAt: payload.status === 'completed' ? new Date().toISOString() : null
           }
@@ -299,14 +331,18 @@ function DashboardPage(): JSX.Element {
   };
 
   const handleOpenCreateNote = (): void => {
-    if (activeProjectViewId == null) {
+    if (activeProjectViewId == null || activeProject == null) {
       return;
     }
 
     setNoteMutationError(null);
     setNoteMutationSuccess(null);
-    setEditingNote(null);
-    setNoteEditorProjectId(activeProjectViewId);
+    setActiveNoteEditor({
+      kind: 'project',
+      note: null,
+      projectId: activeProjectViewId,
+      projectName: activeProject.name
+    });
   };
 
   const handleOpenExistingNote = async (note: Note): Promise<void> => {
@@ -316,8 +352,14 @@ function DashboardPage(): JSX.Element {
 
     try {
       const latestNote = await getNote(note.id);
-      setEditingNote(latestNote);
-      setNoteEditorProjectId(latestNote.projectId);
+      const projectName =
+        projects.find((project) => project.id === latestNote.projectId)?.name ?? activeProject?.name ?? 'Project';
+      setActiveNoteEditor({
+        kind: 'project',
+        note: latestNote,
+        projectId: latestNote.projectId,
+        projectName
+      });
     } catch {
       setNoteMutationError('Unable to open the note.');
     } finally {
@@ -327,40 +369,61 @@ function DashboardPage(): JSX.Element {
 
   const handleSaveNote = async (payload: {
     appendContent?: boolean;
-    title: string;
+    title?: string;
     content: string;
   }): Promise<void> => {
-    const targetProjectId = noteEditorProjectId;
-
-    if (!targetProjectId) {
+    if (activeNoteEditor == null) {
       return;
     }
 
-    setActionNoteId(editingNote?.id ?? 'new');
+    const editor = activeNoteEditor;
+    setActionNoteId(editor.kind === 'project' ? editor.note?.id ?? 'new' : null);
     setNoteMutationError(null);
     setNoteMutationSuccess(null);
 
     try {
-      if (editingNote) {
-        const updated = await updateNote(editingNote.id, payload);
-        setProjectNotes((current) => ({
-          ...current,
-          [targetProjectId]: (current[targetProjectId] ?? []).map((note) =>
-            note.id === updated.id ? updated : note
-          )
-        }));
-        setNoteMutationSuccess(payload.appendContent ? 'Content appended to note.' : 'Note updated.');
+      if (editor.kind === 'project') {
+        if (editor.note) {
+          const updated = await updateNote(editor.note.id, {
+            appendContent: payload.appendContent,
+            title: payload.title,
+            content: payload.content
+          });
+          setProjectNotes((current) => ({
+            ...current,
+            [editor.projectId]: (current[editor.projectId] ?? []).map((note) => (note.id === updated.id ? updated : note))
+          }));
+          setNoteMutationSuccess(payload.appendContent ? 'Content appended to note.' : 'Note updated.');
+        } else {
+          const created = await createNote(editor.projectId, {
+            title: payload.title ?? '',
+            content: payload.content
+          });
+          setProjectNotes((current) => ({
+            ...current,
+            [editor.projectId]: [created, ...(current[editor.projectId] ?? [])]
+          }));
+          setNoteMutationSuccess('Note created.');
+        }
+      } else if (editor.kind === 'task') {
+        await updateTask(editor.task.id, { note: payload.content });
+        await loadDashboard();
+        setTaskMutationSuccess(editor.task.note?.trim() ? 'Task note updated.' : 'Task note created.');
       } else {
-        const created = await createNote(targetProjectId, payload);
-        setProjectNotes((current) => ({
-          ...current,
-          [targetProjectId]: [created, ...(current[targetProjectId] ?? [])]
+        const latestTask = tasks.find((task) => task.id === editor.task.id) ?? editor.task;
+        const subtasks = latestTask.subtasks.map((subtask) => ({
+          title: subtask.title,
+          note: subtask.id === editor.subtask.id ? payload.content : subtask.note,
+          status: subtask.status,
+          completedAt: subtask.completedAt
         }));
-        setNoteMutationSuccess('Note created.');
+
+        await updateTask(latestTask.id, { subtasks });
+        await loadDashboard();
+        setTaskMutationSuccess(editor.subtask.note?.trim() ? 'Subtask note updated.' : 'Subtask note created.');
       }
 
-      setEditingNote(null);
-      setNoteEditorProjectId(null);
+      setActiveNoteEditor(null);
     } catch {
       setNoteMutationError('Unable to save the note.');
       throw new Error('Unable to save note');
@@ -381,9 +444,8 @@ function DashboardPage(): JSX.Element {
         [note.projectId]: (current[note.projectId] ?? []).filter((currentNote) => currentNote.id !== note.id)
       }));
 
-      if (editingNote?.id === note.id) {
-        setEditingNote(null);
-        setNoteEditorProjectId(null);
+      if (activeNoteEditor?.kind === 'project' && activeNoteEditor.note?.id === note.id) {
+        setActiveNoteEditor(null);
       }
 
       setNoteMutationSuccess('Note deleted.');
@@ -392,6 +454,27 @@ function DashboardPage(): JSX.Element {
     } finally {
       setActionNoteId(null);
     }
+  };
+
+  const handleOpenTaskNote = (task: Task): void => {
+    setNoteMutationError(null);
+    setNoteMutationSuccess(null);
+    setTaskNotesModalState(null);
+    setActiveNoteEditor({
+      kind: 'task',
+      task
+    });
+  };
+
+  const handleOpenSubtaskNote = (task: Task, subtask: Task['subtasks'][number]): void => {
+    setNoteMutationError(null);
+    setNoteMutationSuccess(null);
+    setTaskNotesModalState(null);
+    setActiveNoteEditor({
+      kind: 'subtask',
+      task,
+      subtask
+    });
   };
 
   const hasTasks = tasks.length > 0;
@@ -420,6 +503,8 @@ function DashboardPage(): JSX.Element {
   const activeProjectModalTitle =
     activeProjectViewId == null ? 'Inbox Tasks' : activeProject?.name ?? 'Project Tasks';
   const activeProjectNotes = activeProjectViewId ? projectNotes[activeProjectViewId] ?? [] : [];
+  const activeProjectNotesModalTitle =
+    activeProjectViewId == null ? `Notes for ${activeProjectModalTitle}` : `Notes for ${activeProject?.name ?? 'Project Tasks'}`;
 
   return (
     <main className="stack">
@@ -478,6 +563,27 @@ function DashboardPage(): JSX.Element {
           ) : (
             <p className="workspace-hint">The dashboard stays project-first. Click a project card or Inbox to open its task list modal.</p>
           )}
+          {!loading && hasTasks ? (
+            <TaskList
+              actionTaskId={actionTaskId}
+              onOpenNotesList={() =>
+                setTaskNotesModalState({ noteType: 'task', tasks, title: `Task notes for ${tasksHeading}` })
+              }
+              onOpenSubtaskNotesList={() =>
+                setTaskNotesModalState({ noteType: 'subtask', tasks, title: `Subtask notes for ${tasksHeading}` })
+              }
+              onCreateSubtask={(task) => setSubtaskModalTask(task)}
+              onDelete={(taskId) => void handleDeleteTask(taskId)}
+              onOpenSubtaskNote={(task, subtask) => handleOpenSubtaskNote(task, subtask)}
+              onOpenTaskNote={(task) => handleOpenTaskNote(task)}
+              onUpdateStatus={(task, status) => void handleUpdateTaskStatus(task, status)}
+              onUpdateSubtaskStatus={(task, subtask, status) =>
+                void handleUpdateSubtaskStatus(task, subtask, status)
+              }
+              projects={projects}
+              tasks={tasks}
+            />
+          ) : null}
         </SectionCard>
       </div>
       {isProjectCreateModalOpen ? (
@@ -519,8 +625,24 @@ function DashboardPage(): JSX.Element {
                 {activeProjectTasks.length ? (
                   <TaskList
                     actionTaskId={actionTaskId}
+                    onOpenNotesList={() =>
+                      setTaskNotesModalState({
+                        noteType: 'task',
+                        tasks: activeProjectTasks,
+                        title: `Task notes for ${activeProjectNotesModalTitle}`
+                      })
+                    }
+                    onOpenSubtaskNotesList={() =>
+                      setTaskNotesModalState({
+                        noteType: 'subtask',
+                        tasks: activeProjectTasks,
+                        title: `Subtask notes for ${activeProjectNotesModalTitle}`
+                      })
+                    }
                     onCreateSubtask={(task) => setSubtaskModalTask(task)}
                     onDelete={(taskId) => void handleDeleteTask(taskId)}
+                    onOpenSubtaskNote={(task, subtask) => handleOpenSubtaskNote(task, subtask)}
+                    onOpenTaskNote={(task) => handleOpenTaskNote(task)}
                     onUpdateStatus={(task, status) => void handleUpdateTaskStatus(task, status)}
                     onUpdateSubtaskStatus={(task, subtask, status) =>
                       void handleUpdateSubtaskStatus(task, subtask, status)
@@ -537,20 +659,62 @@ function DashboardPage(): JSX.Element {
         </Modal>
       ) : null}
       {subtaskModalTask ? (
-        <Modal onClose={() => setSubtaskModalTask(null)} title={`Create Subtask for ${subtaskModalTask.title}`}>
+        <Modal
+          backdropClassName="subtask-modal-backdrop"
+          panelClassName="subtask-modal-panel"
+          onClose={() => setSubtaskModalTask(null)}
+          title={`Create Subtask for ${subtaskModalTask.title}`}
+        >
           <SubtaskForm onSubmit={handleCreateSubtask} />
         </Modal>
       ) : null}
-      {noteEditorProjectId && activeProject ? (
+      {activeNoteEditor ? (
         <NoteModal
-          note={editingNote}
+          allowAppend={activeNoteEditor.kind === 'project' && activeNoteEditor.note != null}
+          entityLabel={
+            activeNoteEditor.kind === 'project'
+              ? activeNoteEditor.projectName
+              : activeNoteEditor.kind === 'task'
+                ? activeNoteEditor.task.title
+                : `${activeNoteEditor.task.title} / ${activeNoteEditor.subtask.title}`
+          }
+          modalTitle={
+            activeNoteEditor.kind === 'project'
+              ? activeNoteEditor.note
+                ? 'Edit Project Note'
+                : 'Create Project Note'
+              : activeNoteEditor.kind === 'task'
+                ? activeNoteEditor.task.note?.trim()
+                  ? 'Task Note'
+                  : 'Create Task Note'
+                : activeNoteEditor.subtask.note?.trim()
+                  ? 'Subtask Note'
+                  : 'Create Subtask Note'
+          }
+          note={
+            activeNoteEditor.kind === 'project'
+              ? activeNoteEditor.note
+              : activeNoteEditor.kind === 'task'
+                ? { title: '', content: activeNoteEditor.task.note ?? '' }
+                : { title: '', content: activeNoteEditor.subtask.note ?? '' }
+          }
           onClose={() => {
-            setEditingNote(null);
-            setNoteEditorProjectId(null);
+            setActiveNoteEditor(null);
           }}
           onSave={handleSaveNote}
-          projectName={activeProject.name}
+          showTitle={activeNoteEditor.kind === 'project'}
+          titlePlaceholder="Sprint recap"
         />
+      ) : null}
+      {taskNotesModalState ? (
+        <Modal onClose={() => setTaskNotesModalState(null)} title={taskNotesModalState.title}>
+          <TaskNotesList
+            noteType={taskNotesModalState.noteType}
+            onOpenSubtaskNote={handleOpenSubtaskNote}
+            onOpenTaskNote={handleOpenTaskNote}
+            tasks={taskNotesModalState.tasks}
+          />
+        </Modal>
       ) : null}
     </main>
   );

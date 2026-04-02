@@ -3,11 +3,12 @@ import { FormEvent, useState } from 'react';
 import { TASK_WORKFLOW_STATUS_OPTIONS, type TaskWorkflowStatus } from '@/types/task';
 
 interface SubtaskFormProps {
-  onSubmit: (payload: { title: string; status: TaskWorkflowStatus }) => Promise<void>;
+  onSubmit: (payload: { title: string; note?: string; status: TaskWorkflowStatus }) => Promise<void>;
 }
 
 function SubtaskForm({ onSubmit }: SubtaskFormProps): JSX.Element {
   const [title, setTitle] = useState('');
+  const [note, setNote] = useState('');
   const [status, setStatus] = useState<TaskWorkflowStatus>('pending');
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -24,8 +25,9 @@ function SubtaskForm({ onSubmit }: SubtaskFormProps): JSX.Element {
     setErrorMessage(null);
 
     try {
-      await onSubmit({ title: title.trim(), status });
+      await onSubmit({ title: title.trim(), note: note.trim() || undefined, status });
       setTitle('');
+      setNote('');
       setStatus('pending');
     } catch {
       setErrorMessage('Unable to create the subtask right now.');
@@ -49,6 +51,15 @@ function SubtaskForm({ onSubmit }: SubtaskFormProps): JSX.Element {
             </option>
           ))}
         </select>
+      </label>
+      <label>
+        <span>Subtask note</span>
+        <textarea
+          onChange={(event) => setNote(event.target.value)}
+          placeholder="Optional implementation details"
+          rows={4}
+          value={note}
+        />
       </label>
       <button disabled={submitting} type="submit">
         {submitting ? 'Creating subtask...' : 'Create subtask'}

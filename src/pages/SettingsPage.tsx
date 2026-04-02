@@ -70,12 +70,14 @@ TASK FLOW:
   → extract a clean, short, actionable task title
   → include date when the user provides one
   → include project when the user specifies one
+  → include a task note when the user provides extra task-specific context
   → include subtasks when the user specifies them
+  → include subtask notes when the user provides extra subtask-specific context
 
 - If the user provides multiple tasks in one request:
   → call syncTasks
   → split them into clear individual tasks
-  → preserve any provided dates, projects, statuses, and subtasks
+  → preserve any provided dates, projects, statuses, notes, and subtasks
 
 - If the user asks to list, show, fetch, review, or check tasks:
   → call fetchTasks
@@ -295,7 +297,8 @@ paths:
       description: >
         Creates one task. If project is provided, the task is attached to that
         project and the project is created automatically when needed. If
-        subtasks are provided, they are created under the new task.
+        subtasks are provided, they are created under the new task. Task notes
+        and subtask notes can also be included.
       security:
         - SyncApiKey: []
       requestBody:
@@ -357,6 +360,9 @@ components:
           description: Short task title
         description:
           type: string
+        note:
+          type: string
+          description: Optional task note or extra context for the task
         status:
           $ref: '#/components/schemas/TaskStatus'
         source:
@@ -375,13 +381,16 @@ components:
       example:
         title: Implement auth refresh flow
         description: Handle token refresh for expired sessions
+        note: Verify refresh token expiry edge cases before release
         status: in_progress
         date: '2026-03-31'
         project: Backend
         subtasks:
           - title: Update auth middleware
+            note: Cover bearer token parsing and invalid token branches
             status: in_progress
           - title: Add refresh token tests
+            note: Include expired token coverage
             status: pending
 
     SyncTasksRequest:
@@ -391,7 +400,7 @@ components:
         - tasks
       description: >
         Request for creating multiple tasks. Each task may include its own
-        project and subtasks.
+        project, notes, and subtasks.
       properties:
         tasks:
           type: array
@@ -411,13 +420,17 @@ components:
         date: '2026-03-31'
         tasks:
           - title: Finalize dashboard layout
+            note: Focus on spacing and compact mobile layout
             project: Frontend
             subtasks:
               - title: Tighten spacing
+                note: Align card gutters with modal padding
                 status: in_review
               - title: Polish modal layout
+                note: Check nested modal stacking
                 status: pending
           - title: Review sync endpoints
+            note: Confirm payloads support task and subtask notes
             project:
               name: Backend
             status: pending
@@ -429,13 +442,17 @@ components:
         - title
       description: >
         A task input for bulk sync. Include project to place the task inside a
-        project, and include subtasks to create subtasks under that task.
+        project, include note for task-specific context, and include subtasks
+        to create subtasks under that task.
       properties:
         title:
           type: string
           description: Task title
         description:
           type: string
+        note:
+          type: string
+          description: Optional task note or extra context
         status:
           $ref: '#/components/schemas/TaskStatus'
         source:
@@ -474,6 +491,9 @@ components:
       properties:
         title:
           type: string
+        note:
+          type: string
+          description: Optional note or extra context for the subtask
         status:
           $ref: '#/components/schemas/SubtaskStatus'
         completed:
@@ -515,6 +535,8 @@ components:
           type: string
         title:
           type: string
+        note:
+          type: string
         status:
           type: string
           enum: [pending, in_progress, in_review, completed]
@@ -541,6 +563,8 @@ components:
         title:
           type: string
         description:
+          type: string
+        note:
           type: string
         date:
           type: string
