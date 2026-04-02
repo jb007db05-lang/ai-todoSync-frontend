@@ -198,12 +198,17 @@ main {
   margin-top: 24px;
 }
 
-.form label {
+.form label,
+.field-group {
   display: grid;
   gap: 8px;
   font-weight: 500;
   font-size: 0.95rem;
   color: var(--text-main);
+}
+
+.field-label {
+  display: block;
 }
 
 .form input,

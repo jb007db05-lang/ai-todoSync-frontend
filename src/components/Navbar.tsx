@@ -1,11 +1,10 @@
 import { Link, NavLink } from 'react-router-dom';
-import { Moon, Sun } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { useTheme } from '@/context/ThemeContext';
+// import { useTheme } from '@/context/ThemeContext';
 
 function Navbar(): JSX.Element {
-  const { logout, user } = useAuth();
-  const { theme, toggleTheme } = useTheme();
+  const { logout } = useAuth();
+  // const { theme, toggleTheme } = useTheme();
 
   return (
     <header className="navbar">

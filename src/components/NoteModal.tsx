@@ -18,6 +18,7 @@ function NoteModal({ note = null, onClose, onSave, projectName }: NoteModalProps
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const editorRef = useRef<HTMLDivElement | null>(null);
+  const isInternalUpdateRef = useRef(false);
 
   useEffect(() => {
     setTitle(note?.title ?? '');
@@ -26,16 +27,30 @@ function NoteModal({ note = null, onClose, onSave, projectName }: NoteModalProps
     setTextColor('#1f2937');
     setErrorMessage(null);
     setSubmitting(false);
+
+    // Ensure the editor reflects the initial or reset content
+    if (editorRef.current) {
+      editorRef.current.innerHTML = note?.content ?? '';
+    }
   }, [note]);
 
   useEffect(() => {
-    if (editorRef.current && editorRef.current.innerHTML !== content) {
+    // Only update the DOM if the change came from an external source (not typing)
+    if (editorRef.current && !isInternalUpdateRef.current && editorRef.current.innerHTML !== content) {
       editorRef.current.innerHTML = content;
     }
+    // Reset the internal update flag
+    isInternalUpdateRef.current = false;
   }, [content]);
 
   const syncEditorContent = (): void => {
-    setContent(editorRef.current?.innerHTML ?? '');
+    if (editorRef.current) {
+      const newContent = editorRef.current.innerHTML;
+      if (newContent !== content) {
+        isInternalUpdateRef.current = true;
+        setContent(newContent);
+      }
+    }
   };
 
   const applyCommand = (command: string, value?: string): void => {
@@ -60,7 +75,7 @@ function NoteModal({ note = null, onClose, onSave, projectName }: NoteModalProps
   };
 
   const handleSubmit = async (
-    event: FormEvent<HTMLFormElement>,
+    event: FormEvent<HTMLFormElement> | MouseEvent<HTMLButtonElement>,
     mode: 'replace' | 'append' = 'replace'
   ): Promise<void> => {
     event.preventDefault();
@@ -96,17 +111,17 @@ function NoteModal({ note = null, onClose, onSave, projectName }: NoteModalProps
     >
       <form className="form note-form" onSubmit={(event) => void handleSubmit(event)}>
         <p className="muted-text">Rich text note for {projectName}. Use the toolbar to format content before saving.</p>
-        <label>
-          <span>Title</span>
+        <div className="field-group">
+          <span className="field-label">Title</span>
           <input
             onChange={(event) => setTitle(event.target.value)}
             placeholder="Sprint recap"
             type="text"
             value={title}
           />
-        </label>
-        <label>
-          <span>Content</span>
+        </div>
+        <div className="field-group">
+          <span className="field-label">Content</span>
           <div className="note-editor-shell">
             <div className="note-editor-toolbar">
               <div className="note-toolbar-cluster">
@@ -249,7 +264,7 @@ function NoteModal({ note = null, onClose, onSave, projectName }: NoteModalProps
               suppressContentEditableWarning
             />
           </div>
-        </label>
+        </div>
         <div className="note-form-actions">
           <button className="secondary-button" onClick={onClose} type="button">
             Cancel
