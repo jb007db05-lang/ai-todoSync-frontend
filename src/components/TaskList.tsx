@@ -1,4 +1,4 @@
-import { ClipboardList, NotebookTabs } from 'lucide-react';
+import { ClipboardList } from 'lucide-react';
 
 import EmptyState from '@/components/EmptyState';
 import TaskCard from '@/components/TaskCard';
@@ -9,8 +9,6 @@ import { flattenProjectLabels } from '@/utils/projectTree';
 interface TaskListProps {
   actionTaskId: string | null;
   onDeleteSubtask: (task: Task, subtask: Subtask) => void;
-  onOpenNotesList: () => void;
-  onOpenSubtaskNotesList: () => void;
   onCreateSubtask: (task: Task) => void;
   onDelete: (taskId: string) => void;
   onOpenSubtaskNote: (task: Task, subtask: Subtask) => void;
@@ -24,8 +22,6 @@ interface TaskListProps {
 function TaskList({
   actionTaskId,
   onDeleteSubtask,
-  onOpenNotesList,
-  onOpenSubtaskNotesList,
   onCreateSubtask,
   onDelete,
   onOpenSubtaskNote,
@@ -39,16 +35,6 @@ function TaskList({
 
   return (
     <div className="task-list-shell">
-      <div className="task-list-toolbar">
-        <button className="secondary-button" onClick={onOpenNotesList} type="button">
-          <NotebookTabs size={16} />
-          Task notes
-        </button>
-        <button className="secondary-button" onClick={onOpenSubtaskNotesList} type="button">
-          <ClipboardList size={16} />
-          Subtask notes
-        </button>
-      </div>
       {tasks.length === 0 ? (
         <EmptyState
           description="Create a task or switch the active project to start planning work for this date."

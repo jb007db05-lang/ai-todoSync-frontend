@@ -1020,7 +1020,7 @@ function SettingsPage(): JSX.Element {
     }
   };
 
-  const activeCompanionDevices = devices.filter((device) => device.status === 'active');
+  const activeCompanionDevices = devices;
 
   return (
     <main className="stack settings-shell">
@@ -1172,9 +1172,7 @@ function SettingsPage(): JSX.Element {
                           <strong>{device.deviceName}</strong>
                           <p className="muted-text">{device.deviceType}</p>
                         </div>
-                        <span className={`settings-device-status settings-device-status-${device.status}`}>
-                          {device.status === 'active' ? 'Active' : 'Revoked'}
-                        </span>
+                        <span className="settings-device-status settings-device-status-active">Active</span>
                       </div>
                       <div className="settings-device-edit-grid">
                         <input
@@ -1194,7 +1192,7 @@ function SettingsPage(): JSX.Element {
                       <ActionGroup>
                         <button
                           className="secondary-button"
-                          disabled={isWorking || device.status !== 'active'}
+                          disabled={isWorking}
                           onClick={() => void handleUpdateDevice(device.id)}
                           type="button"
                         >
@@ -1202,7 +1200,7 @@ function SettingsPage(): JSX.Element {
                         </button>
                         <button
                           className="danger-button"
-                          disabled={isWorking || device.status !== 'active'}
+                          disabled={isWorking}
                           onClick={() => void handleRevokeDevice(device.id)}
                           type="button"
                         >

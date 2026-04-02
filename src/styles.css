@@ -959,6 +959,27 @@ button:disabled {
   gap: 18px;
 }
 
+.project-panel-intro {
+  align-items: flex-start;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.project-panel-intro h3 {
+  margin: 4px 0 6px;
+}
+
+.project-panel-stats {
+  align-items: flex-end;
+  color: var(--text-muted);
+  display: grid;
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  gap: 6px;
+  justify-items: end;
+}
+
 .project-tree-row span {
   font-family: 'Space Grotesk', sans-serif;
 }
@@ -2018,9 +2039,9 @@ button:disabled {
   align-items: stretch;
   background: rgba(247, 250, 252, 0.9);
   border: 1px solid rgba(35, 52, 63, 0.08);
-  border-radius: 20px;
-  display: flex;
-  justify-content: space-between;
+  border-radius: 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   overflow: hidden;
 }
 
@@ -2150,6 +2171,15 @@ button:disabled {
   overflow: auto;
   padding: 28px 32px;
   width: min(calc(100vw - 56px), 1320px);
+}
+
+.project-manager-modal-panel {
+  max-width: 760px;
+  width: min(calc(100vw - 40px), 760px);
+}
+
+.project-manager-modal-body {
+  padding-top: 4px;
 }
 
 .subtask-modal-backdrop {
@@ -2635,8 +2665,36 @@ button:disabled {
   padding: 22px;
 }
 
+.project-list-actions {
+  align-items: center;
+  border-left: 1px solid rgba(15, 23, 42, 0.06);
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+}
+
 .project-list-main strong {
   letter-spacing: -0.02em;
+}
+
+@media (max-width: 760px) {
+  .project-panel-intro {
+    display: grid;
+  }
+
+  .project-panel-stats {
+    justify-items: start;
+  }
+
+  .project-list-card {
+    grid-template-columns: 1fr;
+  }
+
+  .project-list-actions {
+    border-left: 0;
+    border-top: 1px solid rgba(15, 23, 42, 0.06);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 :root[data-theme='dark'] .dashboard-shell,
