@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import AddTaskForm from '@/components/AddTaskForm';
 import DateNavigator from '@/components/DateNavigator';
+import EmptyState from '@/components/EmptyState';
 import Modal from '@/components/Modal';
 import Navbar from '@/components/Navbar';
 import NoteModal from '@/components/NoteModal';
@@ -13,8 +14,9 @@ import SectionCard from '@/components/SectionCard';
 import SubtaskForm from '@/components/SubtaskForm';
 import TaskList from '@/components/TaskList';
 import TaskNotesList from '@/components/TaskNotesList';
+import { ClipboardList } from 'lucide-react';
 import { createNote, deleteNote, getNote, getProjectNotes, updateNote } from '@/services/notes';
-import { createProject, deleteProject, getProjects } from '@/services/projects';
+import { createProject, deleteProject, getProjects, updateProject } from '@/services/projects';
 import { createTask, deleteTask, getTasks, updateTask } from '@/services/tasks';
 import type { Note } from '@/types/note';
 import type { Project } from '@/types/project';
@@ -99,6 +101,7 @@ function DashboardPage(): JSX.Element {
   const [noteMutationError, setNoteMutationError] = useState<string | null>(null);
   const [noteMutationSuccess, setNoteMutationSuccess] = useState<string | null>(null);
   const [isProjectCreateModalOpen, setIsProjectCreateModalOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [isProjectManagerOpen, setIsProjectManagerOpen] = useState(false);
   const [isProjectNotesModalOpen, setIsProjectNotesModalOpen] = useState(false);
   const [isTaskCreateModalOpen, setIsTaskCreateModalOpen] = useState(false);
@@ -134,20 +137,16 @@ function DashboardPage(): JSX.Element {
   const handleCreateTask = async (payload: {
     title: string;
     description?: string;
-    note?: string;
     status?: TaskWorkflowStatus;
     projectId?: string | null;
-    subtasks?: Array<{ title: string; note?: string; status?: TaskWorkflowStatus }>;
   }): Promise<void> => {
     await createTask({
       title: payload.title,
       description: payload.description,
-      note: payload.note,
       date: selectedDate,
       status: payload.status,
       source: 'manual',
-      projectId: payload.projectId,
-      subtasks: payload.subtasks
+      projectId: payload.projectId
     });
     await loadDashboard();
     setIsTaskCreateModalOpen(false);
@@ -173,6 +172,27 @@ function DashboardPage(): JSX.Element {
       setIsProjectCreateModalOpen(false);
     } catch {
       setProjectMutationError('Unable to create the project.');
+    } finally {
+      setActionProjectId(null);
+    }
+  };
+
+  const handleUpdateProject = async (payload: { name: string }): Promise<void> => {
+    if (editingProject == null) {
+      return;
+    }
+
+    setActionProjectId(editingProject.id);
+    setProjectMutationError(null);
+    setProjectMutationSuccess(null);
+
+    try {
+      await updateProject(editingProject.id, payload);
+      await loadDashboard();
+      setProjectMutationSuccess('Project updated.');
+      setEditingProject(null);
+    } catch {
+      setProjectMutationError('Unable to update the project.');
     } finally {
       setActionProjectId(null);
     }
@@ -330,11 +350,9 @@ function DashboardPage(): JSX.Element {
     }
   };
 
-  const handleCreateSubtask = async (payload: {
-    title: string;
-    note?: string;
-    status: TaskWorkflowStatus;
-  }): Promise<void> => {
+  const handleCreateSubtask = async (
+    payload: Array<{ title: string; status: TaskWorkflowStatus }>
+  ): Promise<void> => {
     if (subtaskModalTask == null) {
       return;
     }
@@ -351,12 +369,11 @@ function DashboardPage(): JSX.Element {
           status: subtask.status,
           completedAt: subtask.completedAt
         })),
-        {
-          title: payload.title,
-          note: payload.note,
-          status: payload.status,
-          completedAt: payload.status === 'completed' ? new Date().toISOString() : null
-        }
+        ...payload.map((subtask) => ({
+          title: subtask.title,
+          status: subtask.status,
+          completedAt: subtask.status === 'completed' ? new Date().toISOString() : null
+        }))
       ];
 
       await updateTask(subtaskModalTask.id, {
@@ -365,7 +382,7 @@ function DashboardPage(): JSX.Element {
       });
       await loadDashboard();
       setSubtaskModalTask(null);
-      setTaskMutationSuccess('Subtask created.');
+      setTaskMutationSuccess(payload.length === 1 ? 'Sub-task created.' : 'Sub-tasks created.');
     } catch {
       setTaskMutationError('Unable to create the subtask.');
     } finally {
@@ -696,22 +713,21 @@ function DashboardPage(): JSX.Element {
   return (
     <main className="stack">
       <Navbar />
-      <SectionCard className="hero-card">
-        <div className="hero-layout">
-          <div className="hero-copy dashboard-hero-copy">
-            <PageHeader
-              title="Dashboard"
-              description="Switch projects from the dropdown, manage projects from one modal, and work directly in the selected task list."
-            />
-            <DateNavigator date={selectedDate} disabled={loading} onChange={setSelectedDate} />
-          </div>
+      <SectionCard className="hero-card dashboard-shell">
+        <div className="dashboard-hero-simple">
+          <PageHeader
+            title="Dashboard"
+            description="Select a project, review tasks for the day, and manage work from one clean workspace."
+          />
+          <DateNavigator date={selectedDate} disabled={loading} onChange={setSelectedDate} />
         </div>
       </SectionCard>
       <SectionCard className="workspace-card workspace-card-full">
         <div className="card-header workspace-header">
-          <div>
+          <div className="workspace-header-copy">
+            <span className="eyebrow">Task Surface</span>
             <h2>{tasksHeading}</h2>
-            <p className="muted-text">Project-filtered tasks for the selected date.</p>
+            <p className="muted-text">Project-filtered execution list for the selected date.</p>
           </div>
           <div className="workspace-header-actions">
             <label className="workspace-project-switcher">
@@ -764,7 +780,11 @@ function DashboardPage(): JSX.Element {
           {error ? <p className="error-text">{error}</p> : null}
         </div>
         {!loading && visibleTasks.length === 0 ? (
-          <p className="empty-state">No tasks in this view yet. Use the project selector or create a new task.</p>
+          <EmptyState
+            description="Use the project selector or create a new task to populate this date."
+            icon={ClipboardList}
+            title="No tasks in this view"
+          />
         ) : null}
         {!loading && visibleTasks.length > 0 ? (
           <TaskList
@@ -800,6 +820,11 @@ function DashboardPage(): JSX.Element {
           <ProjectForm onSubmit={handleCreateProject} />
         </Modal>
       ) : null}
+      {editingProject ? (
+        <Modal onClose={() => setEditingProject(null)} title="Update Project">
+          <ProjectForm initialName={editingProject.name} onSubmit={handleUpdateProject} submitLabel="Update project" />
+        </Modal>
+      ) : null}
       {isProjectManagerOpen ? (
         <Modal onClose={() => setIsProjectManagerOpen(false)} title="Manage Projects">
           <ProjectPanel
@@ -809,6 +834,9 @@ function DashboardPage(): JSX.Element {
             onOpenProject={(projectId) => {
               setSelectedProjectView(projectId ?? ALL_PROJECTS_VALUE);
               setIsProjectManagerOpen(false);
+            }}
+            onOpenUpdateProject={(project) => {
+              setEditingProject(project);
             }}
             onDeleteProject={handleDeleteProject}
             projects={projects}
