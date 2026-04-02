@@ -75,7 +75,7 @@ function NoteModal({ note = null, onClose, onSave, projectName }: NoteModalProps
   };
 
   const handleSubmit = async (
-    event: FormEvent<HTMLFormElement>,
+    event: FormEvent<HTMLFormElement> | MouseEvent<HTMLButtonElement>,
     mode: 'replace' | 'append' = 'replace'
   ): Promise<void> => {
     event.preventDefault();
