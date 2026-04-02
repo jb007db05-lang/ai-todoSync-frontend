@@ -9,9 +9,10 @@ interface AddTaskFormProps {
   onCreateTask: (payload: {
     title: string;
     description?: string;
+    note?: string;
     status?: TaskWorkflowStatus;
     projectId?: string | null;
-    subtasks?: Array<{ title: string; status?: TaskWorkflowStatus }>;
+    subtasks?: Array<{ title: string; note?: string; status?: TaskWorkflowStatus }>;
   }) => Promise<void>;
   projects: Project[];
 }
@@ -19,6 +20,7 @@ interface AddTaskFormProps {
 function AddTaskForm({ initialProjectId = null, onCreateTask, projects }: AddTaskFormProps): JSX.Element {
   const [title, setTitle] = useState<string>('');
   const [description, setDescription] = useState<string>('');
+  const [note, setNote] = useState<string>('');
   const [status, setStatus] = useState<TaskWorkflowStatus>('pending');
   const [projectId, setProjectId] = useState<string>(initialProjectId ?? '');
   const [subtaskDraft, setSubtaskDraft] = useState<string>('');
@@ -27,15 +29,12 @@ function AddTaskForm({ initialProjectId = null, onCreateTask, projects }: AddTas
 
   const projectOptions = flattenProjectOptions(projects);
 
-  const parseSubtasks = (): Array<{ title: string; status?: TaskWorkflowStatus }> =>
+  const parseSubtasks = (): Array<{ title: string; note?: string; status?: TaskWorkflowStatus }> =>
     subtaskDraft
       .split('\n')
       .map((entry) => entry.trim())
       .filter(Boolean)
-      .map((entry) => ({
-        title: entry.replace(/\s*::\s*(pending|in-progress|in review|in_review|completed)\s*$/i, '').trim(),
-        status: parseSubtaskStatus(entry)
-      }))
+      .map((entry) => parseSubtaskDraft(entry))
       .filter((subtask) => subtask.title !== '');
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
@@ -54,12 +53,14 @@ function AddTaskForm({ initialProjectId = null, onCreateTask, projects }: AddTas
       await onCreateTask({
         title: title.trim(),
         description: description.trim() || undefined,
+        note: note.trim() || undefined,
         status,
         projectId: projectId || undefined,
         subtasks: subtasks.length ? subtasks : undefined
       });
       setTitle('');
       setDescription('');
+      setNote('');
       setStatus('pending');
       setProjectId(initialProjectId ?? '');
       setSubtaskDraft('');
@@ -92,6 +93,15 @@ function AddTaskForm({ initialProjectId = null, onCreateTask, projects }: AddTas
         />
       </label>
       <label>
+        <span>Task note</span>
+        <textarea
+          onChange={(event) => setNote(event.target.value)}
+          placeholder="Optional task-specific notes"
+          rows={4}
+          value={note}
+        />
+      </label>
+      <label>
         <span>Status</span>
         <select onChange={(event) => setStatus(event.target.value as TaskWorkflowStatus)} value={status}>
           {TASK_WORKFLOW_STATUS_OPTIONS.map((option) => (
@@ -116,7 +126,7 @@ function AddTaskForm({ initialProjectId = null, onCreateTask, projects }: AddTas
         <span>Subtasks</span>
         <textarea
           onChange={(event) => setSubtaskDraft(event.target.value)}
-          placeholder={'One subtask per line\nDraft endpoint :: in-progress\nReview schema :: completed'}
+          placeholder={'One subtask per line\nDraft endpoint :: in-progress :: API contract first\nReview schema :: completed'}
           rows={4}
           value={subtaskDraft}
         />
@@ -129,15 +139,49 @@ function AddTaskForm({ initialProjectId = null, onCreateTask, projects }: AddTas
   );
 }
 
-const parseSubtaskStatus = (entry: string): TaskWorkflowStatus | undefined => {
-  const match = entry.match(/\s*::\s*(pending|in-progress|in review|in_review|completed)\s*$/i);
+const parseSubtaskDraft = (entry: string): { title: string; note?: string; status?: TaskWorkflowStatus } => {
+  const segments = entry
+    .split('::')
+    .map((segment) => segment.trim())
+    .filter(Boolean);
 
-  if (!match) {
-    return undefined;
+  if (segments.length === 0) {
+    return { title: '' };
   }
 
-  const normalized = match[1].toLowerCase().replace('in-progress', 'in_progress').replace('in review', 'in_review');
-  return normalized as TaskWorkflowStatus;
+  if (segments.length === 1) {
+    return { title: segments[0] };
+  }
+
+  const maybeStatus = normalizeSubtaskStatusSegment(segments[segments.length - 1]);
+
+  if (maybeStatus) {
+    return {
+      title: segments[0],
+      note: segments.slice(1, -1).join(' :: ') || undefined,
+      status: maybeStatus
+    };
+  }
+
+  return {
+    title: segments[0],
+    note: segments.slice(1).join(' :: ') || undefined
+  };
+};
+
+const normalizeSubtaskStatusSegment = (value: string): TaskWorkflowStatus | undefined => {
+  const normalized = value.toLowerCase().replace('in-progress', 'in_progress').replace('in review', 'in_review');
+
+  if (
+    normalized === 'pending' ||
+    normalized === 'in_progress' ||
+    normalized === 'in_review' ||
+    normalized === 'completed'
+  ) {
+    return normalized;
+  }
+
+  return undefined;
 };
 
 export default AddTaskForm;

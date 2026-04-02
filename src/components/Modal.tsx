@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 interface ModalProps {
   backdropClassName?: string;
@@ -10,7 +11,24 @@ interface ModalProps {
 }
 
 function Modal({ backdropClassName, bodyClassName, children, onClose, panelClassName, title }: ModalProps): JSX.Element {
-  return (
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setPortalTarget(document.body);
+
+    const { overflow } = document.body.style;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = overflow;
+    };
+  }, []);
+
+  if (portalTarget == null) {
+    return <></>;
+  }
+
+  return createPortal(
     <div
       aria-modal="true"
       className={`modal-backdrop${backdropClassName ? ` ${backdropClassName}` : ''}`}
@@ -26,7 +44,8 @@ function Modal({ backdropClassName, bodyClassName, children, onClose, panelClass
         </div>
         <div className={`modal-body${bodyClassName ? ` ${bodyClassName}` : ''}`}>{children}</div>
       </div>
-    </div>
+    </div>,
+    portalTarget
   );
 }
 

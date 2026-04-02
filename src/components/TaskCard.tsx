@@ -13,6 +13,8 @@ interface TaskCardProps {
   actionTaskId: string | null;
   onCreateSubtask: (task: Task) => void;
   onDelete: (taskId: string) => void;
+  onOpenSubtaskNote: (task: Task, subtask: Subtask) => void;
+  onOpenTaskNote: (task: Task) => void;
   onUpdateStatus: (task: Task, status: TaskWorkflowStatus) => void;
   onUpdateSubtaskStatus: (task: Task, subtask: Subtask, status: TaskWorkflowStatus) => void;
   projectName?: string;
@@ -23,6 +25,8 @@ function TaskCard({
   actionTaskId,
   onCreateSubtask,
   onDelete,
+  onOpenSubtaskNote,
+  onOpenTaskNote,
   onUpdateStatus,
   onUpdateSubtaskStatus,
   projectName,
@@ -64,27 +68,47 @@ function TaskCard({
               ))}
             </select>
           </label>
+          <ActionGroup>
+            <button
+              className="secondary-button"
+              disabled={actionTaskId === task.id}
+              onClick={() => onOpenTaskNote(task)}
+              type="button"
+            >
+              {task.note?.trim() ? 'Open task note' : 'Create task note'}
+            </button>
+          </ActionGroup>
           {task.subtasks.length ? (
             <div className="subtask-list">
               {task.subtasks.map((subtask) => (
-                <label className="subtask-row" key={subtask.id || subtask.title}>
-                  <span className={subtask.completed ? 'subtask-title subtask-title-done' : 'subtask-title'}>
-                    {subtask.title}
-                  </span>
-                  <select
+                <div className="subtask-row" key={subtask.id || subtask.title}>
+                  <label>
+                    <span className={subtask.completed ? 'subtask-title subtask-title-done' : 'subtask-title'}>
+                      {subtask.title}
+                    </span>
+                    <select
+                      disabled={actionTaskId === task.id}
+                      onChange={(event) =>
+                        onUpdateSubtaskStatus(task, subtask, event.target.value as TaskWorkflowStatus)
+                      }
+                      value={subtask.status}
+                    >
+                      {TASK_WORKFLOW_STATUS_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    className="secondary-button"
                     disabled={actionTaskId === task.id}
-                    onChange={(event) =>
-                      onUpdateSubtaskStatus(task, subtask, event.target.value as TaskWorkflowStatus)
-                    }
-                    value={subtask.status}
+                    onClick={() => onOpenSubtaskNote(task, subtask)}
+                    type="button"
                   >
-                    {TASK_WORKFLOW_STATUS_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                    {subtask.note?.trim() ? 'Open subtask note' : 'Create subtask note'}
+                  </button>
+                </div>
               ))}
             </div>
           ) : (

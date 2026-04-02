@@ -582,9 +582,22 @@ button:disabled {
 
 .subtask-row {
   align-items: center;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.subtask-row > label:first-child {
+  align-items: center;
   display: flex;
   gap: 12px;
   justify-content: space-between;
+  min-width: 0;
+}
+
+.subtask-row > button {
+  justify-self: end;
+  white-space: nowrap;
 }
 
 .subtask-title {
@@ -608,6 +621,17 @@ button:disabled {
 .task-list {
   display: grid;
   gap: 16px;
+}
+
+.task-list-shell {
+  display: grid;
+  gap: 14px;
+}
+
+.task-list-toolbar {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
 }
 
 .task-card {
@@ -703,6 +727,14 @@ button:disabled {
   display: grid;
   gap: 8px;
   max-width: 220px;
+}
+
+.task-note-editor {
+  max-width: none;
+}
+
+.task-note-editor textarea {
+  min-height: 88px;
 }
 
 .status-editor span {
@@ -823,7 +855,7 @@ button:disabled {
 
   .subtask-row {
     align-items: stretch;
-    flex-direction: column;
+    grid-template-columns: 1fr;
   }
 }
 
@@ -1647,6 +1679,15 @@ button:disabled {
   width: min(calc(100vw - 56px), 1320px);
 }
 
+.subtask-modal-backdrop {
+  z-index: 60;
+}
+
+.subtask-modal-panel {
+  max-width: 640px;
+  width: min(calc(100vw - 40px), 640px);
+}
+
 .modal-header {
   align-items: center;
   border-bottom: 1px solid rgba(35, 52, 63, 0.08);
@@ -1750,6 +1791,14 @@ button:disabled {
   font-size: 0.86rem;
 }
 
+.task-note-preview {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  text-align: left;
+}
+
 .note-form {
   gap: 16px;
   min-width: 0;
@@ -1769,6 +1818,7 @@ button:disabled {
 .note-modal-backdrop {
   align-items: flex-start;
   padding: 16px;
+  z-index: 70;
 }
 
 .note-modal-body {

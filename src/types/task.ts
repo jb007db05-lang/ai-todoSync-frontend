@@ -12,6 +12,7 @@ export const TASK_WORKFLOW_STATUS_OPTIONS: Array<{ value: TaskWorkflowStatus; la
 export interface Subtask {
   id: string;
   title: string;
+  note?: string;
   status: TaskWorkflowStatus;
   completed: boolean;
   completedAt: string | null;
@@ -22,6 +23,7 @@ export interface Task {
   userId: string;
   title: string;
   description?: string;
+  note?: string;
   date: string;
   status: TaskStatus;
   rolledOver: boolean;
@@ -44,12 +46,14 @@ export interface TaskSummary {
 export interface CreateTaskInput {
   title: string;
   description?: string;
+  note?: string;
   date: string;
   status?: TaskStatus;
   source?: TaskSource;
   projectId?: string | null;
   subtasks?: Array<{
     title: string;
+    note?: string;
     status?: TaskWorkflowStatus;
     completedAt?: string | null;
   }>;
@@ -58,11 +62,13 @@ export interface CreateTaskInput {
 export interface UpdateTaskInput {
   title?: string;
   description?: string;
+  note?: string;
   date?: string;
   status?: TaskStatus;
   projectId?: string | null;
   subtasks?: Array<{
     title: string;
+    note?: string;
     status?: TaskWorkflowStatus;
     completedAt?: string | null;
   }>;
