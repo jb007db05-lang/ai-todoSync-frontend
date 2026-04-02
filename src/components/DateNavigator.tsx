@@ -1,10 +1,20 @@
 import type { ChangeEvent } from 'react';
+import { CalendarDays, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
 
 interface DateNavigatorProps {
   date: string;
   disabled?: boolean;
   onChange: (nextDate: string) => void;
 }
+
+const getTodayDate = (): string => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = `${today.getMonth() + 1}`.padStart(2, '0');
+  const day = `${today.getDate()}`.padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+};
 
 const shiftDate = (date: string, days: number): string => {
   const nextDate = new Date(`${date}T00:00:00`);
@@ -22,6 +32,8 @@ function DateNavigator({ date, disabled = false, onChange }: DateNavigatorProps)
     onChange(event.target.value);
   };
 
+  const today = getTodayDate();
+
   return (
     <div className="date-navigator">
       <button
@@ -30,10 +42,14 @@ function DateNavigator({ date, disabled = false, onChange }: DateNavigatorProps)
         onClick={() => onChange(shiftDate(date, -1))}
         type="button"
       >
+        <ChevronLeft size={16} />
         Prev
       </button>
       <div className="date-pill">
-        <span className="date-pill-label">Date</span>
+        <span className="date-pill-label">
+          <CalendarDays size={13} />
+          Date
+        </span>
         <label className="field-inline date-picker-field">
           <input disabled={disabled} onChange={handleInputChange} type="date" value={date} />
         </label>
@@ -45,6 +61,16 @@ function DateNavigator({ date, disabled = false, onChange }: DateNavigatorProps)
         type="button"
       >
         Next
+        <ChevronRight size={16} />
+      </button>
+      <button
+        className="secondary-button date-nav-button"
+        disabled={disabled || date === today}
+        onClick={() => onChange(today)}
+        type="button"
+      >
+        <RotateCcw size={16} />
+        Today
       </button>
     </div>
   );

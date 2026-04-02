@@ -11,12 +11,23 @@ interface AuthProfile {
   authProvider: 'local' | 'google';
 }
 
+interface AuthSession {
+  sessionId: string | null;
+  deviceId: string | null;
+  deviceType: 'primary' | 'companion' | 'sync_key';
+  deviceName: string | null;
+  companionDeviceType: string | null;
+  authMethod: 'access_token' | 'sync_api_key';
+}
+
 interface AuthContextValue {
   user: AuthProfile | null;
+  session: AuthSession | null;
   token: string | null;
   loading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
+  loginWithCompanionKey: (key: string) => Promise<void>;
   authenticateWithToken: (token: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
   logout: () => void;
@@ -28,6 +39,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 interface AuthResponseData {
   token: string;
   user: AuthProfile;
+  session?: AuthSession;
 }
 
 interface AuthResponse {
@@ -39,6 +51,7 @@ interface MeResponse {
   message: string;
   data: {
     user: AuthProfile;
+    session?: AuthSession | null;
   };
 }
 
@@ -48,6 +61,7 @@ interface AuthProviderProps {
 
 function AuthProvider({ children }: AuthProviderProps): JSX.Element {
   const [user, setUser] = useState<AuthProfile | null>(null);
+  const [session, setSession] = useState<AuthSession | null>(null);
   const [token, setToken] = useState<string | null>(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const tokenFromUrl = urlParams.get('token');
@@ -77,12 +91,14 @@ function AuthProvider({ children }: AuthProviderProps): JSX.Element {
   const logout = useCallback((): void => {
     persistToken(null);
     setUser(null);
+    setSession(null);
     setError(null);
   }, [persistToken]);
 
   const handleAuthSuccess = useCallback((payload: AuthResponseData) => {
     persistToken(payload.token);
     setUser(payload.user);
+    setSession(payload.session ?? null);
     setError(null);
   }, [persistToken]);
 
@@ -90,6 +106,7 @@ function AuthProvider({ children }: AuthProviderProps): JSX.Element {
     try {
       const response = await api.get<MeResponse>('/auth/me');
       setUser(response.data.data.user);
+      setSession(response.data.data.session ?? null);
       setError(null);
     } catch (error) {
       logout();
@@ -101,6 +118,7 @@ function AuthProvider({ children }: AuthProviderProps): JSX.Element {
     if (!token) {
       setLoading(false);
       setUser(null);
+      setSession(null);
       return;
     }
 
@@ -145,6 +163,21 @@ function AuthProvider({ children }: AuthProviderProps): JSX.Element {
     }
   };
 
+  const loginWithCompanionKey = async (key: string): Promise<void> => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await api.post<AuthResponse>('/auth/companion-login', { key });
+      handleAuthSuccess(response.data.data);
+    } catch (error) {
+      setError('Companion login failed. Check the key and try again.');
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const authenticateWithToken = useCallback(
     async (newToken: string): Promise<void> => {
       setLoading(true);
@@ -162,8 +195,20 @@ function AuthProvider({ children }: AuthProviderProps): JSX.Element {
   );
 
   const value = useMemo(
-    () => ({ user, token, loading, error, login, register, logout, refreshUser, authenticateWithToken }),
-    [error, loading, login, logout, refreshUser, register, token, user, authenticateWithToken]
+    () => ({
+      user,
+      session,
+      token,
+      loading,
+      error,
+      login,
+      loginWithCompanionKey,
+      register,
+      logout,
+      refreshUser,
+      authenticateWithToken
+    }),
+    [authenticateWithToken, error, loading, login, loginWithCompanionKey, logout, refreshUser, register, session, token, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

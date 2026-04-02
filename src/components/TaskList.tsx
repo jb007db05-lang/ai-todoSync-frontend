@@ -5,6 +5,7 @@ import { flattenProjectLabels } from '@/utils/projectTree';
 
 interface TaskListProps {
   actionTaskId: string | null;
+  onDeleteSubtask: (task: Task, subtask: Subtask) => void;
   onOpenNotesList: () => void;
   onOpenSubtaskNotesList: () => void;
   onCreateSubtask: (task: Task) => void;
@@ -19,6 +20,7 @@ interface TaskListProps {
 
 function TaskList({
   actionTaskId,
+  onDeleteSubtask,
   onOpenNotesList,
   onOpenSubtaskNotesList,
   onCreateSubtask,
@@ -49,6 +51,7 @@ function TaskList({
             key={task.id}
             onCreateSubtask={onCreateSubtask}
             onDelete={onDelete}
+            onDeleteSubtask={onDeleteSubtask}
             onOpenSubtaskNote={onOpenSubtaskNote}
             onOpenTaskNote={onOpenTaskNote}
             onUpdateStatus={onUpdateStatus}

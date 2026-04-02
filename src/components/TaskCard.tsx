@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Check, FilePenLine, NotebookPen, Plus, Trash2 } from 'lucide-react';
 
 import ActionGroup from '@/components/ActionGroup';
 import SourceBadge from '@/components/SourceBadge';
@@ -13,6 +14,7 @@ interface TaskCardProps {
   actionTaskId: string | null;
   onCreateSubtask: (task: Task) => void;
   onDelete: (taskId: string) => void;
+  onDeleteSubtask: (task: Task, subtask: Subtask) => void;
   onOpenSubtaskNote: (task: Task, subtask: Subtask) => void;
   onOpenTaskNote: (task: Task) => void;
   onUpdateStatus: (task: Task, status: TaskWorkflowStatus) => void;
@@ -25,6 +27,7 @@ function TaskCard({
   actionTaskId,
   onCreateSubtask,
   onDelete,
+  onDeleteSubtask,
   onOpenSubtaskNote,
   onOpenTaskNote,
   onUpdateStatus,
@@ -37,6 +40,20 @@ function TaskCard({
 
   return (
     <article className={`task-card accordion-card ${expanded ? 'accordion-open' : ''}`}>
+      <div className="task-card-topbar">
+        <button
+          aria-label={`Delete ${task.title}`}
+          className="danger-button ghost-button task-card-delete-button"
+          disabled={actionTaskId === task.id}
+          onClick={(event) => {
+            event.stopPropagation();
+            onDelete(task.id);
+          }}
+          type="button"
+        >
+          <Trash2 size={15} />
+        </button>
+      </div>
       <button className="accordion-trigger" onClick={() => setExpanded((current) => !current)} type="button">
         <div className="task-heading">
           <h3>{task.title}</h3>
@@ -70,14 +87,36 @@ function TaskCard({
           </label>
           <ActionGroup>
             <button
+              className="secondary-button complete-button"
+              disabled={actionTaskId === task.id || task.status === 'completed' || task.status === 'rolled_over'}
+              onClick={() => onUpdateStatus(task, 'completed')}
+              type="button"
+            >
+              <Check size={16} />
+              {task.status === 'completed' ? 'Task Completed' : 'Mark Task as Completed'}
+            </button>
+            <button
               className="secondary-button"
               disabled={actionTaskId === task.id}
               onClick={() => onOpenTaskNote(task)}
               type="button"
             >
-              {task.note?.trim() ? 'Open task note' : 'Create task note'}
+              <FilePenLine size={16} />
+              {task.note?.trim() ? 'Edit Task Note' : 'Create Task Note'}
             </button>
           </ActionGroup>
+          <div className="subtask-section-header">
+            <span className="subtask-section-title">Sub-tasks</span>
+            <button
+              aria-label={`Create sub-task for ${task.title}`}
+              className="secondary-button subtask-add-button"
+              disabled={actionTaskId === task.id}
+              onClick={() => onCreateSubtask(task)}
+              type="button"
+            >
+              <Plus size={18} />
+            </button>
+          </div>
           {task.subtasks.length ? (
             <div className="subtask-list">
               {task.subtasks.map((subtask) => (
@@ -100,14 +139,35 @@ function TaskCard({
                       ))}
                     </select>
                   </label>
-                  <button
-                    className="secondary-button"
-                    disabled={actionTaskId === task.id}
-                    onClick={() => onOpenSubtaskNote(task, subtask)}
-                    type="button"
-                  >
-                    {subtask.note?.trim() ? 'Open subtask note' : 'Create subtask note'}
-                  </button>
+                  <div className="subtask-row-actions">
+                    <button
+                      className="secondary-button complete-button"
+                      disabled={actionTaskId === task.id || subtask.status === 'completed'}
+                      onClick={() => onUpdateSubtaskStatus(task, subtask, 'completed')}
+                      type="button"
+                    >
+                      <Check size={16} />
+                      {subtask.status === 'completed' ? 'Completed' : 'Mark as Completed'}
+                    </button>
+                    <button
+                      className="secondary-button"
+                      disabled={actionTaskId === task.id}
+                      onClick={() => onOpenSubtaskNote(task, subtask)}
+                      type="button"
+                    >
+                      <NotebookPen size={16} />
+                      {subtask.note?.trim() ? 'Edit Sub-task Note' : 'Create Sub-task Note'}
+                    </button>
+                    <button
+                      className="danger-button ghost-button"
+                      disabled={actionTaskId === task.id}
+                      onClick={() => onDeleteSubtask(task, subtask)}
+                      type="button"
+                    >
+                      <Trash2 size={16} />
+                      Delete Sub-task
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -115,16 +175,14 @@ function TaskCard({
             <p className="empty-state compact-empty-state">No subtasks yet for this task.</p>
           )}
           <ActionGroup>
-            <button className="secondary-button" onClick={() => onCreateSubtask(task)} type="button">
-              Add subtask
-            </button>
             <button
               className="danger-button"
               disabled={actionTaskId === task.id}
               onClick={() => onDelete(task.id)}
               type="button"
             >
-              {actionTaskId === task.id ? 'Deleting...' : 'Delete task'}
+              <Trash2 size={16} />
+              {actionTaskId === task.id ? 'Deleting...' : 'Delete Task'}
             </button>
           </ActionGroup>
         </div>
