@@ -24,9 +24,21 @@ function ProjectPanel({
   projects,
   tasksByProject
 }: ProjectPanelProps): JSX.Element {
+  const totalProjects = projects.length;
+  const totalAssignedTasks = projects.reduce((count, project) => count + (tasksByProject.get(project.id) ?? 0), 0);
+
   return (
     <div className="project-panel">
-      <div className="panel-intro">
+      <div className="project-panel-intro">
+        <div>
+          <span className="project-list-kicker">Workspace</span>
+          <h3>Project directory</h3>
+          <p className="muted-text">Create, open, rename, or remove projects from one place.</p>
+        </div>
+        <div className="project-panel-stats">
+          <span>{totalProjects} project(s)</span>
+          <span>{totalAssignedTasks} task(s)</span>
+        </div>
       </div>
       <div className="project-toolbar">
         <h2>Projects</h2>

@@ -103,7 +103,7 @@ function TaskCard({
               type="button"
             >
               <FilePenLine size={16} />
-              {task.note?.trim() ? 'Edit Task Note' : 'Create Task Note'}
+              {task.note?.trim() ? 'View Task Note' : 'Add Task Note'}
             </button>
           </ActionGroup>
           <div className="subtask-section-header">
@@ -157,7 +157,7 @@ function TaskCard({
                       type="button"
                     >
                       <NotebookPen size={16} />
-                      {subtask.note?.trim() ? 'Edit Sub-task Note' : 'Create Sub-task Note'}
+                      {subtask.note?.trim() ? 'View Sub-task Note' : 'Add Sub-task Note'}
                     </button>
                     <button
                       className="danger-button ghost-button"
