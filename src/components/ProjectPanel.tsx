@@ -1,11 +1,14 @@
 import type { Project } from '@/types/project';
-import { FolderKanban, Plus, Trash2 } from 'lucide-react';
+import { FolderKanban, Pencil, Plus, Trash2 } from 'lucide-react';
+
+import EmptyState from '@/components/EmptyState';
 
 interface ProjectPanelProps {
   actionProjectId: string | null;
   loading: boolean;
   onOpenCreateProject: () => void;
   onOpenProject: (projectId: string | null) => void;
+  onOpenUpdateProject: (project: Project) => void;
   onDeleteProject: (projectId: string) => Promise<void>;
   projects: Project[];
   tasksByProject: Map<string | null, number>;
@@ -16,6 +19,7 @@ function ProjectPanel({
   loading,
   onOpenCreateProject,
   onOpenProject,
+  onOpenUpdateProject,
   onDeleteProject,
   projects,
   tasksByProject
@@ -33,7 +37,11 @@ function ProjectPanel({
       </div>
       {loading ? <p className="muted-text">Refreshing projects...</p> : null}
       {!loading && projects.length === 0 && (tasksByProject.get(null) ?? 0) === 0 ? (
-        <p className="empty-state">No projects yet. Create one to start grouping tasks.</p>
+        <EmptyState
+          description="Create a project to organize work into focused execution lanes."
+          icon={FolderKanban}
+          title="No projects yet"
+        />
       ) : null}
       {projects.length || (tasksByProject.get(null) ?? 0) > 0 ? (
         <div className="project-grid">
@@ -46,6 +54,15 @@ function ProjectPanel({
                 <span>{tasksByProject.get(project.id) ?? 0} task(s)</span>
               </button>
               <div className="project-list-actions">
+                <button
+                  className="secondary-button ghost-button"
+                  disabled={actionProjectId === project.id}
+                  onClick={() => onOpenUpdateProject(project)}
+                  type="button"
+                >
+                  <Pencil size={16} />
+                  Edit
+                </button>
                 <button
                   className="danger-button ghost-button"
                   disabled={actionProjectId === project.id}

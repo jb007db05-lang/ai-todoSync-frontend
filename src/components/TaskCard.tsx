@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Check, FilePenLine, NotebookPen, Plus, Trash2 } from 'lucide-react';
+import { Check, FilePenLine, NotebookPen, Plus, Rows3, Trash2 } from 'lucide-react';
 
 import ActionGroup from '@/components/ActionGroup';
+import EmptyState from '@/components/EmptyState';
 import SourceBadge from '@/components/SourceBadge';
 import {
   TASK_WORKFLOW_STATUS_OPTIONS,
@@ -172,7 +173,12 @@ function TaskCard({
               ))}
             </div>
           ) : (
-            <p className="empty-state compact-empty-state">No subtasks yet for this task.</p>
+            <EmptyState
+              compact
+              description="Use the plus button to create one or more sub-tasks for this task."
+              icon={Rows3}
+              title="No sub-tasks yet"
+            />
           )}
           <ActionGroup>
             <button

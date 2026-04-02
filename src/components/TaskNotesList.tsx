@@ -1,3 +1,6 @@
+import { FileText } from 'lucide-react';
+
+import EmptyState from '@/components/EmptyState';
 import type { Subtask, Task } from '@/types/task';
 
 interface TaskNotesListProps {
@@ -65,13 +68,24 @@ function TaskNotesList({
 
   if (entries.length === 0) {
     return (
-      <p className="empty-state compact-empty-state">
-        {noteType === 'task'
-          ? 'No task notes in this list yet.'
-          : noteType === 'subtask'
-            ? 'No subtask notes in this list yet.'
-            : 'No task or subtask notes in this list yet.'}
-      </p>
+      <EmptyState
+        compact
+        description={
+          noteType === 'task'
+            ? 'Task notes will appear here after you add them from any task.'
+            : noteType === 'subtask'
+              ? 'Sub-task notes will appear here after you add them from any sub-task.'
+              : 'Notes will appear here after you add them to tasks or sub-tasks.'
+        }
+        icon={FileText}
+        title={
+          noteType === 'task'
+            ? 'No task notes yet'
+            : noteType === 'subtask'
+              ? 'No sub-task notes yet'
+              : 'No notes yet'
+        }
+      />
     );
   }
 

@@ -1,5 +1,8 @@
-import type { Project } from '@/types/project';
+import { ClipboardList, NotebookTabs } from 'lucide-react';
+
+import EmptyState from '@/components/EmptyState';
 import TaskCard from '@/components/TaskCard';
+import type { Project } from '@/types/project';
 import type { Subtask, Task, TaskWorkflowStatus } from '@/types/task';
 import { flattenProjectLabels } from '@/utils/projectTree';
 
@@ -38,29 +41,39 @@ function TaskList({
     <div className="task-list-shell">
       <div className="task-list-toolbar">
         <button className="secondary-button" onClick={onOpenNotesList} type="button">
+          <NotebookTabs size={16} />
           Task notes
         </button>
         <button className="secondary-button" onClick={onOpenSubtaskNotesList} type="button">
+          <ClipboardList size={16} />
           Subtask notes
         </button>
       </div>
-      <div className="task-list">
-        {tasks.map((task) => (
-          <TaskCard
-            actionTaskId={actionTaskId}
-            key={task.id}
-            onCreateSubtask={onCreateSubtask}
-            onDelete={onDelete}
-            onDeleteSubtask={onDeleteSubtask}
-            onOpenSubtaskNote={onOpenSubtaskNote}
-            onOpenTaskNote={onOpenTaskNote}
-            onUpdateStatus={onUpdateStatus}
-            onUpdateSubtaskStatus={onUpdateSubtaskStatus}
-            projectName={task.projectId ? projectNames.get(task.projectId) : undefined}
-            task={task}
-          />
-        ))}
-      </div>
+      {tasks.length === 0 ? (
+        <EmptyState
+          description="Create a task or switch the active project to start planning work for this date."
+          icon={ClipboardList}
+          title="No tasks in this view"
+        />
+      ) : (
+        <div className="task-list">
+          {tasks.map((task) => (
+            <TaskCard
+              actionTaskId={actionTaskId}
+              key={task.id}
+              onCreateSubtask={onCreateSubtask}
+              onDelete={onDelete}
+              onDeleteSubtask={onDeleteSubtask}
+              onOpenSubtaskNote={onOpenSubtaskNote}
+              onOpenTaskNote={onOpenTaskNote}
+              onUpdateStatus={onUpdateStatus}
+              onUpdateSubtaskStatus={onUpdateSubtaskStatus}
+              projectName={task.projectId ? projectNames.get(task.projectId) : undefined}
+              task={task}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,3 +1,6 @@
+import { ScrollText } from 'lucide-react';
+
+import EmptyState from '@/components/EmptyState';
 import type { Note } from '@/types/note';
 
 interface ProjectNotesProps {
@@ -44,7 +47,12 @@ function ProjectNotes({
       </div>
       {loading ? <p className="muted-text">Loading notes...</p> : null}
       {!loading && notes.length === 0 ? (
-        <p className="empty-state compact-empty-state">No notes yet for this project.</p>
+        <EmptyState
+          compact
+          description="Create the first note to capture decisions, references, or follow-ups for this project."
+          icon={ScrollText}
+          title="No project notes yet"
+        />
       ) : null}
       {notes.length ? (
         <div className="note-list">
