@@ -5,10 +5,13 @@ import type { Note } from '@/types/note';
 
 interface NoteModalProps {
   allowAppend?: boolean;
+  allowDelete?: boolean;
+  deleteLabel?: string;
   entityLabel: string;
   modalTitle?: string;
   note?: Pick<Note, 'title' | 'content'> | null;
   onClose: () => void;
+  onDelete?: () => Promise<void> | void;
   onSave: (payload: { appendContent?: boolean; title?: string; content: string }) => Promise<void>;
   showTitle?: boolean;
   titlePlaceholder?: string;
@@ -16,10 +19,13 @@ interface NoteModalProps {
 
 function NoteModal({
   allowAppend = false,
+  allowDelete = false,
+  deleteLabel = 'Delete',
   entityLabel,
   modalTitle,
   note = null,
   onClose,
+  onDelete,
   onSave,
   showTitle = true,
   titlePlaceholder = 'Note title'
@@ -284,6 +290,16 @@ function NoteModal({
           <button className="secondary-button" onClick={onClose} type="button">
             Cancel
           </button>
+          {note && allowDelete && onDelete ? (
+            <button
+              className="danger-button"
+              disabled={submitting}
+              onClick={() => void onDelete()}
+              type="button"
+            >
+              {deleteLabel}
+            </button>
+          ) : null}
           {note && allowAppend ? (
             <button
               className="secondary-button note-append-button"

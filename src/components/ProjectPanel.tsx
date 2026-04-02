@@ -1,4 +1,5 @@
 import type { Project } from '@/types/project';
+import { FolderKanban, Plus, Trash2 } from 'lucide-react';
 
 interface ProjectPanelProps {
   actionProjectId: string | null;
@@ -26,6 +27,7 @@ function ProjectPanel({
       <div className="project-toolbar">
         <h2>Projects</h2>
         <button onClick={onOpenCreateProject} type="button">
+          <Plus size={16} />
           New project
         </button>
       </div>
@@ -39,6 +41,7 @@ function ProjectPanel({
             <div className="project-list-card" key={project.id}>
               <button className="project-list-main" onClick={() => onOpenProject(project.id)} type="button">
                 <span className="project-list-kicker">Project</span>
+                <span className="project-list-icon"><FolderKanban size={16} /></span>
                 <strong>{project.name}</strong>
                 <span>{tasksByProject.get(project.id) ?? 0} task(s)</span>
               </button>
@@ -49,6 +52,7 @@ function ProjectPanel({
                   onClick={() => void onDeleteProject(project.id)}
                   type="button"
                 >
+                  <Trash2 size={16} />
                   {actionProjectId === project.id ? 'Deleting...' : 'Delete'}
                 </button>
               </div>
