@@ -1,7 +1,18 @@
-import { useState } from 'react';
-import { Copy, Check } from "lucide-react";
+import { useEffect, useState } from 'react';
+import {
+  Check,
+  Copy,
+  KeyRound,
+  ListChecks,
+  RefreshCcw,
+  Shield,
+  Smartphone,
+  Sparkles,
+  Trash2
+} from 'lucide-react';
 
 import ActionGroup from '@/components/ActionGroup';
+import Modal from '@/components/Modal';
 import Navbar from '@/components/Navbar';
 import PageHeader from '@/components/PageHeader';
 import SectionCard from '@/components/SectionCard';
@@ -20,6 +31,32 @@ interface RegenerateSyncKeyResponse {
   message: string;
   data: {
     syncApiKey: string;
+  };
+}
+
+interface CompanionDevice {
+  id: string;
+  deviceName: string;
+  deviceType: string;
+  status: 'active' | 'revoked';
+  createdAt?: string;
+  updatedAt?: string;
+  revokedAt?: string | null;
+}
+
+interface CompanionDevicesResponse {
+  message: string;
+  data: {
+    devices: CompanionDevice[];
+  };
+}
+
+interface CompanionKeyResponse {
+  message: string;
+  data: {
+    key: string;
+    maxCompanionDevices: number;
+    activeCompanionDevices: number;
   };
 }
 
@@ -819,12 +856,59 @@ components:
 ];
 
 function SettingsPage(): JSX.Element {
-  const { refreshUser, user } = useAuth();
+  const { refreshUser, session, user } = useAuth();
   const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [openStepIndex, setOpenStepIndex] = useState<number | null>(0);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [devices, setDevices] = useState<CompanionDevice[]>([]);
+  const [isLoadingDevices, setIsLoadingDevices] = useState<boolean>(false);
+  const [devicesError, setDevicesError] = useState<string | null>(null);
+  const [isGeneratingCompanionKey, setIsGeneratingCompanionKey] = useState<boolean>(false);
+  const [deviceName, setDeviceName] = useState<string>('');
+  const [deviceType, setDeviceType] = useState<string>('mobile');
+  const [renameDrafts, setRenameDrafts] = useState<Record<string, { deviceName: string; deviceType: string }>>({});
+  const [activeDeviceActionId, setActiveDeviceActionId] = useState<string | null>(null);
+  const [generatedCompanionKey, setGeneratedCompanionKey] = useState<{
+    key: string;
+    deviceName: string;
+  } | null>(null);
+  const canManagePrimarySecurity = session?.deviceType === 'primary';
+
+  const loadDevices = async (): Promise<void> => {
+    setIsLoadingDevices(true);
+    setDevicesError(null);
+
+    try {
+      const response = await api.get<CompanionDevicesResponse>('/auth/devices');
+      const nextDevices = response.data.data.devices;
+      setDevices(nextDevices);
+      setRenameDrafts(
+        nextDevices.reduce<Record<string, { deviceName: string; deviceType: string }>>((accumulator, current) => {
+          accumulator[current.id] = {
+            deviceName: current.deviceName,
+            deviceType: current.deviceType
+          };
+
+          return accumulator;
+        }, {})
+      );
+    } catch {
+      setDevicesError('Unable to load companion devices.');
+    } finally {
+      setIsLoadingDevices(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!canManagePrimarySecurity) {
+      setDevices([]);
+      return;
+    }
+
+    void loadDevices();
+  }, [canManagePrimarySecurity]);
 
   const handleCopy = async (text: string, index: number) => {
     try {
@@ -847,7 +931,11 @@ function SettingsPage(): JSX.Element {
     try {
       const response = await api.patch<RegenerateSyncKeyResponse>('/auth/regenerate-sync-key');
       await refreshUser();
-      setSuccessMessage(`New sync key issued: ${response.data.data.syncApiKey}`);
+      setSuccessMessage(
+        response.data.data.syncApiKey
+          ? 'Integration key rotated successfully. Reconnect any external clients that still use the previous key.'
+          : 'Integration key rotated successfully.'
+      );
     } catch {
       setErrorMessage('Unable to regenerate the sync API key.');
     } finally {
@@ -855,46 +943,318 @@ function SettingsPage(): JSX.Element {
     }
   };
 
-  return (
-    <main className="stack">
-      <Navbar />
-      <SectionCard>
-        <PageHeader title="Settings" description="Manage the authenticated session and review integration details." />
-      </SectionCard>
-      <SectionCard>
-        <h2>Account</h2>
-        <p>{user?.email}</p>
-        <div className="sync-key-container">
+  const handleGenerateCompanionKey = async (): Promise<void> => {
+    setIsGeneratingCompanionKey(true);
+    setDevicesError(null);
+    setSuccessMessage(null);
+    setErrorMessage(null);
 
-          {user?.syncApiKey && (
-            <button
-              className="copy-button"
-              onClick={() => handleCopy(user.syncApiKey, -1)}
-              type="button"
-              style={{ display: "flex", alignItems: "center", gap: "4px", background: "#0d1117" }}
-            >
-              Copy Sync Key {copiedIndex === -1 ? <Check size={14} /> : <Copy size={14} />}
-            </button>
-          )}
+    try {
+      const response = await api.post<CompanionKeyResponse>('/auth/companion-keys', {
+        deviceName,
+        deviceType
+      });
+      setGeneratedCompanionKey({
+        key: response.data.data.key,
+        deviceName: deviceName.trim() || 'Companion device'
+      });
+      setSuccessMessage('Companion login key generated. It stays valid until it is used.');
+      setDeviceName('');
+    } catch {
+      setDevicesError('Unable to generate a companion device key.');
+    } finally {
+      setIsGeneratingCompanionKey(false);
+    }
+  };
+
+  const handleRenameDraftChange = (
+    deviceId: string,
+    field: 'deviceName' | 'deviceType',
+    value: string
+  ): void => {
+    setRenameDrafts((current) => ({
+      ...current,
+      [deviceId]: {
+        deviceName: current[deviceId]?.deviceName ?? '',
+        deviceType: current[deviceId]?.deviceType ?? '',
+        [field]: value
+      }
+    }));
+  };
+
+  const handleUpdateDevice = async (deviceId: string): Promise<void> => {
+    setActiveDeviceActionId(deviceId);
+    setDevicesError(null);
+
+    try {
+      const draft = renameDrafts[deviceId];
+      await api.patch(`/auth/devices/${deviceId}`, {
+        deviceName: draft.deviceName,
+        deviceType: draft.deviceType
+      });
+      await loadDevices();
+    } catch {
+      setDevicesError('Unable to update the companion device.');
+    } finally {
+      setActiveDeviceActionId(null);
+    }
+  };
+
+  const handleRevokeDevice = async (deviceId: string): Promise<void> => {
+    const confirmed = window.confirm('Do you want to revoke this companion device?');
+
+    if (!confirmed) {
+      return;
+    }
+
+    setActiveDeviceActionId(deviceId);
+    setDevicesError(null);
+
+    try {
+      await api.delete(`/auth/devices/${deviceId}`);
+      await loadDevices();
+    } catch {
+      setDevicesError('Unable to revoke the companion device.');
+    } finally {
+      setActiveDeviceActionId(null);
+    }
+  };
+
+  const activeCompanionDevices = devices;
+
+  return (
+    <main className="stack settings-shell">
+      <Navbar />
+      <SectionCard className="settings-hero">
+        <div className="settings-hero-grid">
+          <PageHeader
+            title="Settings"
+            description="Manage integration security, companion-device access, and external GPT configuration from a tighter control panel."
+          />
+          <div className="settings-hero-aside">
+            <span className="eyebrow">Security Workspace</span>
+            <p className="muted-text">
+              Companion access, integration credentials, and GPT action setup now live in one restrained admin view. Sensitive
+              values are handled through actions instead of being left exposed on the page.
+            </p>
+          </div>
         </div>
-        <ActionGroup>
-          <button disabled={isRegenerating} onClick={() => void handleRegenerateSyncKey()} type="button">
-            {isRegenerating ? 'Regenerating key...' : 'Regenerate sync key'}
-          </button>
-        </ActionGroup>
-        {isRegenerating ? <p className="muted-text">Requesting a new sync key from the backend...</p> : null}
-        {successMessage ? <p className="success-text">{successMessage}</p> : null}
-        {errorMessage ? <p className="error-text">{errorMessage}</p> : null}
       </SectionCard>
-      <SectionCard>
-        <h2>Chat GPT Integration</h2>
-        <div className="accordion-list">
+      <div className="settings-grid">
+        <SectionCard className="settings-account-card">
+          <div className="settings-card-head">
+            <div>
+              <span className="eyebrow">Account</span>
+              <h2>Sync access</h2>
+            </div>
+            <span className="settings-card-icon"><KeyRound size={18} /></span>
+          </div>
+          <div className="settings-account-meta">
+            <div className="settings-stat">
+              <span className="settings-stat-label">Signed in as</span>
+              <strong>{user?.email ?? 'Unknown account'}</strong>
+            </div>
+            <div className="settings-stat">
+              <span className="settings-stat-label">Current key status</span>
+              <strong>{user?.syncApiKey ? 'Ready to use' : 'Unavailable'}</strong>
+            </div>
+          </div>
+          {canManagePrimarySecurity ? (
+            <div className="settings-key-card">
+              <div className="settings-key-copy">
+                <span className="settings-stat-label">Integration key</span>
+                <strong>Hidden by default</strong>
+                <p className="muted-text">
+                  The sync key is no longer rendered in the interface. Use controlled actions when you need to rotate or copy it.
+                </p>
+              </div>
+              <ActionGroup>
+                {user?.syncApiKey ? (
+                  <button className="secondary-button settings-copy-button" onClick={() => handleCopy(user.syncApiKey, -1)} type="button">
+                    {copiedIndex === -1 ? <Check size={14} /> : <Copy size={14} />}
+                    {copiedIndex === -1 ? 'Copied' : 'Copy integration key'}
+                  </button>
+                ) : null}
+                <button disabled={isRegenerating} onClick={() => void handleRegenerateSyncKey()} type="button">
+                  <RefreshCcw size={14} />
+                  {isRegenerating ? 'Rotating key...' : 'Rotate integration key'}
+                </button>
+              </ActionGroup>
+            </div>
+          ) : (
+            <div className="settings-restricted-card">
+              <span className="settings-stat-label">Primary-only control</span>
+              <strong>Integration credentials are only available on the main device.</strong>
+              <p className="muted-text">
+                Companion sessions cannot copy the sync key, rotate credentials, view other companion devices, or authorize new devices.
+              </p>
+            </div>
+          )}
+          {isRegenerating ? <p className="muted-text">Requesting a new integration key from the backend...</p> : null}
+          {successMessage ? <p className="success-text">{successMessage}</p> : null}
+          {errorMessage ? <p className="error-text">{errorMessage}</p> : null}
+        </SectionCard>
+        <SectionCard className="settings-summary-card">
+          <div className="settings-card-head">
+            <div>
+              <span className="eyebrow">Access</span>
+              <h2>Companion devices</h2>
+            </div>
+            <span className="settings-card-icon"><Smartphone size={18} /></span>
+          </div>
+          <div className="settings-account-meta">
+            <div className="settings-stat">
+              <span className="settings-stat-label">Active devices</span>
+              <strong>{activeCompanionDevices.length} / 5</strong>
+            </div>
+            <div className="settings-stat">
+              <span className="settings-stat-label">Policy</span>
+              <strong>Primary device approval required</strong>
+            </div>
+          </div>
+          {canManagePrimarySecurity ? (
+            <>
+              <div className="settings-device-form">
+                <div className="field">
+                  <label htmlFor="device-name">Device name</label>
+                  <input
+                    id="device-name"
+                    onChange={(event) => setDeviceName(event.target.value)}
+                    placeholder="Example: Work iPad"
+                    value={deviceName}
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="device-type">Device type</label>
+                  <select id="device-type" onChange={(event) => setDeviceType(event.target.value)} value={deviceType}>
+                    <option value="mobile">Mobile</option>
+                    <option value="tablet">Tablet</option>
+                    <option value="desktop">Desktop</option>
+                    <option value="assistant">Assistant</option>
+                  </select>
+                </div>
+                <ActionGroup>
+                  <button
+                    disabled={isGeneratingCompanionKey || activeCompanionDevices.length >= 5}
+                    onClick={() => void handleGenerateCompanionKey()}
+                    type="button"
+                  >
+                    <Shield size={14} />
+                    {isGeneratingCompanionKey ? 'Generating key...' : 'Add companion device'}
+                  </button>
+                </ActionGroup>
+              </div>
+              <div className="settings-device-list">
+                <div className="settings-device-list-head">
+                  <strong>Registered companion devices</strong>
+                  <button className="secondary-button" onClick={() => void loadDevices()} type="button">
+                    Refresh
+                  </button>
+                </div>
+                {isLoadingDevices ? <p className="muted-text">Loading companion devices...</p> : null}
+                {devicesError ? <p className="error-text">{devicesError}</p> : null}
+                {!isLoadingDevices && devices.length === 0 ? (
+                  <div className="settings-empty-state">
+                    <p>No companion devices are registered yet.</p>
+                  </div>
+                ) : null}
+                {devices.map((device) => {
+                  const draft = renameDrafts[device.id] ?? {
+                    deviceName: device.deviceName,
+                    deviceType: device.deviceType
+                  };
+                  const isWorking = activeDeviceActionId === device.id;
+
+                  return (
+                    <article className="settings-device-row" key={device.id}>
+                      <div className="settings-device-row-top">
+                        <div>
+                          <strong>{device.deviceName}</strong>
+                          <p className="muted-text">{device.deviceType}</p>
+                        </div>
+                        <span className="settings-device-status settings-device-status-active">Active</span>
+                      </div>
+                      <div className="settings-device-edit-grid">
+                        <input
+                          onChange={(event) => handleRenameDraftChange(device.id, 'deviceName', event.target.value)}
+                          value={draft.deviceName}
+                        />
+                        <select
+                          onChange={(event) => handleRenameDraftChange(device.id, 'deviceType', event.target.value)}
+                          value={draft.deviceType}
+                        >
+                          <option value="mobile">Mobile</option>
+                          <option value="tablet">Tablet</option>
+                          <option value="desktop">Desktop</option>
+                          <option value="assistant">Assistant</option>
+                        </select>
+                      </div>
+                      <ActionGroup>
+                        <button
+                          className="secondary-button"
+                          disabled={isWorking}
+                          onClick={() => void handleUpdateDevice(device.id)}
+                          type="button"
+                        >
+                          {isWorking ? 'Saving...' : 'Update device'}
+                        </button>
+                        <button
+                          className="danger-button"
+                          disabled={isWorking}
+                          onClick={() => void handleRevokeDevice(device.id)}
+                          type="button"
+                        >
+                          <Trash2 size={14} />
+                          Revoke
+                        </button>
+                      </ActionGroup>
+                    </article>
+                  );
+                })}
+              </div>
+            </>
+          ) : (
+            <div className="settings-restricted-card">
+              <span className="settings-stat-label">Restricted on companion devices</span>
+              <strong>Only the main device can add, view, update, or revoke companion devices.</strong>
+              <p className="muted-text">
+                This session can use the app normally, but companion-device administration is intentionally hidden and blocked.
+              </p>
+            </div>
+          )}
+        </SectionCard>
+      </div>
+      <SectionCard className="settings-summary-card">
+        <div className="settings-card-head">
+          <div>
+            <span className="eyebrow">Checklist</span>
+            <h2>Before connecting GPT</h2>
+          </div>
+          <span className="settings-card-icon"><ListChecks size={18} /></span>
+        </div>
+        <ul className="settings-checklist">
+          <li>Use the integration key only in trusted tools and private automations.</li>
+          <li>Paste the schema exactly as provided in the guide below.</li>
+          <li>Keep the instruction block intact so task, project, and note operations stay consistent.</li>
+          <li>Rotate the integration key immediately if it has been exposed or copied into an untrusted environment.</li>
+        </ul>
+      </SectionCard>
+      <SectionCard className="settings-integration-card">
+        <div className="settings-card-head">
+          <div>
+            <span className="eyebrow">Guide</span>
+            <h2>ChatGPT integration</h2>
+            <p className="muted-text">Follow these steps in order to configure a custom GPT against your Todo Sync backend.</p>
+          </div>
+          <span className="settings-card-icon"><Sparkles size={18} /></span>
+        </div>
+        <div className="accordion-list settings-accordion-list">
           {chatGptIntegrationSteps.map((step, index) => {
             const isOpen = openStepIndex === index;
             const panelId = `chatgpt-step-panel-${index}`;
 
             return (
-              <article className={`accordion-item${isOpen ? ' accordion-item-open' : ''}`} key={step.title}>
+              <article className={`accordion-item settings-accordion-item${isOpen ? ' accordion-item-open' : ''}`} key={step.title}>
                 <button
                   aria-controls={panelId}
                   aria-expanded={isOpen}
@@ -914,39 +1274,52 @@ function SettingsPage(): JSX.Element {
                       <div className="accordion-image">
                         <img src={step.image} alt={step.title} />
                       </div>
-
                       <ol className="accordion-steps">
                         {step.details.map((detail) => (
-                          <li key={detail} style={{ whiteSpace: "pre-line" }}>
+                          <li key={detail} style={{ whiteSpace: 'pre-line' }}>
                             {detail}
                           </li>
                         ))}
                       </ol>
                     </div>
-
                     {step.code && (
                       <div className="code-container">
-                        <button
-                          className="copy-button"
-                          onClick={() => handleCopy(step.code!, index)}
-                          type="button"
-                        >
+                        <button className="copy-button" onClick={() => handleCopy(step.code!, index)} type="button">
                           {copiedIndex === index ? <Check size={14} /> : <Copy size={14} />}
                         </button>
-
                         <pre className="code-block">
                           <code>{step.code}</code>
                         </pre>
                       </div>
                     )}
                   </div>
-
                 </div>
               </article>
             );
           })}
         </div>
       </SectionCard>
+      {generatedCompanionKey ? (
+        <Modal onClose={() => setGeneratedCompanionKey(null)} panelClassName="settings-secret-modal" title="Companion Device Key">
+          <div className="settings-secret-modal-body">
+            <p className="muted-text">
+              This key is shown once for <strong>{generatedCompanionKey.deviceName}</strong>. Share it directly with the target device and do
+              not leave it visible in screenshots or recordings.
+            </p>
+            <code className="settings-secret-value">{generatedCompanionKey.key}</code>
+            <p className="muted-text">This key does not expire on its own. It becomes unusable after the first successful companion login.</p>
+            <ActionGroup>
+              <button onClick={() => void handleCopy(generatedCompanionKey.key, -2)} type="button">
+                {copiedIndex === -2 ? <Check size={14} /> : <Copy size={14} />}
+                {copiedIndex === -2 ? 'Copied' : 'Copy device key'}
+              </button>
+              <button className="secondary-button" onClick={() => setGeneratedCompanionKey(null)} type="button">
+                Close
+              </button>
+            </ActionGroup>
+          </div>
+        </Modal>
+      ) : null}
     </main>
   );
 }

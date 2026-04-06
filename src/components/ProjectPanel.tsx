@@ -1,10 +1,14 @@
 import type { Project } from '@/types/project';
+import { FolderKanban, Pencil, Plus, Trash2 } from 'lucide-react';
+
+import EmptyState from '@/components/EmptyState';
 
 interface ProjectPanelProps {
   actionProjectId: string | null;
   loading: boolean;
   onOpenCreateProject: () => void;
   onOpenProject: (projectId: string | null) => void;
+  onOpenUpdateProject: (project: Project) => void;
   onDeleteProject: (projectId: string) => Promise<void>;
   projects: Project[];
   tasksByProject: Map<string | null, number>;
@@ -15,23 +19,41 @@ function ProjectPanel({
   loading,
   onOpenCreateProject,
   onOpenProject,
+  onOpenUpdateProject,
   onDeleteProject,
   projects,
   tasksByProject
 }: ProjectPanelProps): JSX.Element {
+  const totalProjects = projects.length;
+  const totalAssignedTasks = projects.reduce((count, project) => count + (tasksByProject.get(project.id) ?? 0), 0);
+
   return (
     <div className="project-panel">
-      <div className="panel-intro">
+      <div className="project-panel-intro">
+        <div>
+          <span className="project-list-kicker">Workspace</span>
+          <h3>Project directory</h3>
+          <p className="muted-text">Create, open, rename, or remove projects from one place.</p>
+        </div>
+        <div className="project-panel-stats">
+          <span>{totalProjects} project(s)</span>
+          <span>{totalAssignedTasks} task(s)</span>
+        </div>
       </div>
       <div className="project-toolbar">
         <h2>Projects</h2>
         <button onClick={onOpenCreateProject} type="button">
+          <Plus size={16} />
           New project
         </button>
       </div>
       {loading ? <p className="muted-text">Refreshing projects...</p> : null}
       {!loading && projects.length === 0 && (tasksByProject.get(null) ?? 0) === 0 ? (
-        <p className="empty-state">No projects yet. Create one to start grouping tasks.</p>
+        <EmptyState
+          description="Create a project to organize work into focused execution lanes."
+          icon={FolderKanban}
+          title="No projects yet"
+        />
       ) : null}
       {projects.length || (tasksByProject.get(null) ?? 0) > 0 ? (
         <div className="project-grid">
@@ -39,16 +61,27 @@ function ProjectPanel({
             <div className="project-list-card" key={project.id}>
               <button className="project-list-main" onClick={() => onOpenProject(project.id)} type="button">
                 <span className="project-list-kicker">Project</span>
+                <span className="project-list-icon"><FolderKanban size={16} /></span>
                 <strong>{project.name}</strong>
                 <span>{tasksByProject.get(project.id) ?? 0} task(s)</span>
               </button>
               <div className="project-list-actions">
+                <button
+                  className="secondary-button ghost-button"
+                  disabled={actionProjectId === project.id}
+                  onClick={() => onOpenUpdateProject(project)}
+                  type="button"
+                >
+                  <Pencil size={16} />
+                  Edit
+                </button>
                 <button
                   className="danger-button ghost-button"
                   disabled={actionProjectId === project.id}
                   onClick={() => void onDeleteProject(project.id)}
                   type="button"
                 >
+                  <Trash2 size={16} />
                   {actionProjectId === project.id ? 'Deleting...' : 'Delete'}
                 </button>
               </div>

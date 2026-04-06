@@ -1,12 +1,14 @@
-import type { Project } from '@/types/project';
+import { ClipboardList } from 'lucide-react';
+
+import EmptyState from '@/components/EmptyState';
 import TaskCard from '@/components/TaskCard';
+import type { Project } from '@/types/project';
 import type { Subtask, Task, TaskWorkflowStatus } from '@/types/task';
 import { flattenProjectLabels } from '@/utils/projectTree';
 
 interface TaskListProps {
   actionTaskId: string | null;
-  onOpenNotesList: () => void;
-  onOpenSubtaskNotesList: () => void;
+  onDeleteSubtask: (task: Task, subtask: Subtask) => void;
   onCreateSubtask: (task: Task) => void;
   onDelete: (taskId: string) => void;
   onOpenSubtaskNote: (task: Task, subtask: Subtask) => void;
@@ -19,8 +21,7 @@ interface TaskListProps {
 
 function TaskList({
   actionTaskId,
-  onOpenNotesList,
-  onOpenSubtaskNotesList,
+  onDeleteSubtask,
   onCreateSubtask,
   onDelete,
   onOpenSubtaskNote,
@@ -34,30 +35,31 @@ function TaskList({
 
   return (
     <div className="task-list-shell">
-      <div className="task-list-toolbar">
-        <button className="secondary-button" onClick={onOpenNotesList} type="button">
-          Task notes
-        </button>
-        <button className="secondary-button" onClick={onOpenSubtaskNotesList} type="button">
-          Subtask notes
-        </button>
-      </div>
-      <div className="task-list">
-        {tasks.map((task) => (
-          <TaskCard
-            actionTaskId={actionTaskId}
-            key={task.id}
-            onCreateSubtask={onCreateSubtask}
-            onDelete={onDelete}
-            onOpenSubtaskNote={onOpenSubtaskNote}
-            onOpenTaskNote={onOpenTaskNote}
-            onUpdateStatus={onUpdateStatus}
-            onUpdateSubtaskStatus={onUpdateSubtaskStatus}
-            projectName={task.projectId ? projectNames.get(task.projectId) : undefined}
-            task={task}
-          />
-        ))}
-      </div>
+      {tasks.length === 0 ? (
+        <EmptyState
+          description="Create a task or switch the active project to start planning work for this date."
+          icon={ClipboardList}
+          title="No tasks in this view"
+        />
+      ) : (
+        <div className="task-list">
+          {tasks.map((task) => (
+            <TaskCard
+              actionTaskId={actionTaskId}
+              key={task.id}
+              onCreateSubtask={onCreateSubtask}
+              onDelete={onDelete}
+              onDeleteSubtask={onDeleteSubtask}
+              onOpenSubtaskNote={onOpenSubtaskNote}
+              onOpenTaskNote={onOpenTaskNote}
+              onUpdateStatus={onUpdateStatus}
+              onUpdateSubtaskStatus={onUpdateSubtaskStatus}
+              projectName={task.projectId ? projectNames.get(task.projectId) : undefined}
+              task={task}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

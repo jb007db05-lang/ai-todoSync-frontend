@@ -1,11 +1,17 @@
 import { FormEvent, useState } from 'react';
 
 interface ProjectFormProps {
+  initialName?: string;
   onSubmit: (payload: { name: string }) => Promise<void>;
+  submitLabel?: string;
 }
 
-function ProjectForm({ onSubmit }: ProjectFormProps): JSX.Element {
-  const [name, setName] = useState('');
+function ProjectForm({
+  initialName = '',
+  onSubmit,
+  submitLabel = 'Create project'
+}: ProjectFormProps): JSX.Element {
+  const [name, setName] = useState(initialName);
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -22,9 +28,9 @@ function ProjectForm({ onSubmit }: ProjectFormProps): JSX.Element {
 
     try {
       await onSubmit({ name: name.trim() });
-      setName('');
+      setName(initialName);
     } catch {
-      setErrorMessage('Unable to create the project right now.');
+      setErrorMessage(`Unable to ${submitLabel.toLowerCase()} right now.`);
     } finally {
       setSubmitting(false);
     }
@@ -37,7 +43,7 @@ function ProjectForm({ onSubmit }: ProjectFormProps): JSX.Element {
         <input onChange={(event) => setName(event.target.value)} placeholder="Backend" type="text" value={name} />
       </label>
       <button disabled={submitting} type="submit">
-        {submitting ? 'Creating project...' : 'Create project'}
+        {submitting ? 'Saving...' : submitLabel}
       </button>
       {errorMessage ? <p className="error-text">{errorMessage}</p> : null}
     </form>
