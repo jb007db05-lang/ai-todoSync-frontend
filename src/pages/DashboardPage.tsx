@@ -750,7 +750,7 @@ function DashboardPage(): JSX.Element {
             </button>
           </div>
         </div>
-        <div className="workspace-notices">
+        
           {projectMutationSuccess ? <p className="success-text">{projectMutationSuccess}</p> : null}
           {projectMutationError ? <p className="error-text">{projectMutationError}</p> : null}
           {taskMutationSuccess ? <p className="success-text">{taskMutationSuccess}</p> : null}
@@ -759,7 +759,7 @@ function DashboardPage(): JSX.Element {
           {noteMutationError ? <p className="error-text">{noteMutationError}</p> : null}
           {loading ? <p className="muted-text">Refreshing tasks for {selectedDate}...</p> : null}
           {error ? <p className="error-text">{error}</p> : null}
-        </div>
+        
         {!loading && visibleTasks.length === 0 ? (
           <EmptyState
             description="Use the project selector or create a new task to populate this date."
