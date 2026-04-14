@@ -5,6 +5,10 @@ import type { Note } from '@/types/note';
 
 interface ProjectNotesProps {
   actionNoteId: string | null;
+  createLabel?: string;
+  emptyDescription?: string;
+  emptyTitle?: string;
+  heading?: string;
   loading: boolean;
   notes: Note[];
   onCreateNote: () => void;
@@ -28,6 +32,10 @@ const formatTimestamp = (value?: string): string => {
 
 function ProjectNotes({
   actionNoteId,
+  createLabel = 'Create note',
+  emptyDescription = 'Create the first note to capture decisions, references, or follow-ups for this project.',
+  emptyTitle = 'No notes yet',
+  heading = 'Notes',
   loading,
   notes,
   onCreateNote,
@@ -39,19 +47,19 @@ function ProjectNotes({
       <div className="notes-panel-header">
         <div>
           <span className="project-list-kicker">Notes</span>
-          <h3>Project notes</h3>
+          <h3>{heading}</h3>
         </div>
         <button onClick={onCreateNote} type="button">
-          Create note
+          {createLabel}
         </button>
       </div>
       {loading ? <p className="muted-text">Loading notes...</p> : null}
       {!loading && notes.length === 0 ? (
         <EmptyState
           compact
-          description="Create the first note to capture decisions, references, or follow-ups for this project."
+          description={emptyDescription}
           icon={ScrollText}
-          title="No project notes yet"
+          title={emptyTitle}
         />
       ) : null}
       {notes.length ? (

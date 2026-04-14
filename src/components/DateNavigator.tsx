@@ -35,42 +35,50 @@ function DateNavigator({ date, disabled = false, onChange }: DateNavigatorProps)
   const today = getTodayDate();
 
   return (
-    <div className="date-navigator">
+    <div className="date-navigator-group">
       <button
-        className="secondary-button date-nav-button"
+        className="secondary-button"
         disabled={disabled}
         onClick={() => onChange(shiftDate(date, -1))}
+        title="Previous Day"
         type="button"
       >
-        <ChevronLeft size={16} />
-        Prev
+        <ChevronLeft size={18} />
       </button>
-      <div className="date-pill">
-        <span className="date-pill-label">
-          <CalendarDays size={13} />
-          Date
+
+      <div className="date-display-pill">
+        <CalendarDays className="muted-icon" size={16} />
+        <input 
+          disabled={disabled} 
+          onChange={handleInputChange} 
+          type="date" 
+          value={date} 
+          className="date-input-hidden"
+        />
+        <span className="date-text-display">
+          {new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
         </span>
-        <label className="field-inline date-picker-field">
-          <input disabled={disabled} onChange={handleInputChange} type="date" value={date} />
-        </label>
       </div>
+
       <button
-        className="secondary-button date-nav-button"
+        className="secondary-button"
         disabled={disabled}
         onClick={() => onChange(shiftDate(date, 1))}
+        title="Next Day"
         type="button"
       >
-        Next
-        <ChevronRight size={16} />
+        <ChevronRight size={18} />
       </button>
+
       <button
-        className="secondary-button date-nav-button"
+        className="secondary-button"
         disabled={disabled || date === today}
         onClick={() => onChange(today)}
+        title="Go to Today"
         type="button"
       >
         <RotateCcw size={16} />
-        Today
+        <span style={{ fontSize: '0.8rem' }}>Today</span>
       </button>
     </div>
   );

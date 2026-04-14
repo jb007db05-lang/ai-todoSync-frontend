@@ -6,16 +6,18 @@ import { TASK_WORKFLOW_STATUS_OPTIONS, type TaskWorkflowStatus } from '@/types/t
 interface SubtaskDraft {
   id: string;
   title: string;
+  description?: string;
   status: TaskWorkflowStatus;
 }
 
 interface SubtaskFormProps {
-  onSubmit: (payload: Array<{ title: string; status: TaskWorkflowStatus }>) => Promise<void>;
+  onSubmit: (payload: Array<{ title: string; description?: string; status: TaskWorkflowStatus }>) => Promise<void>;
 }
 
 const createDraft = (): SubtaskDraft => ({
   id: crypto.randomUUID(),
   title: '',
+  description: '',
   status: 'pending'
 });
 
@@ -44,6 +46,7 @@ function SubtaskForm({ onSubmit }: SubtaskFormProps): JSX.Element {
     const normalizedDrafts = drafts
       .map((draft) => ({
         title: draft.title.trim(),
+        description: draft.description?.trim() || undefined,
         status: draft.status
       }))
       .filter((draft) => draft.title !== '');
@@ -60,6 +63,7 @@ function SubtaskForm({ onSubmit }: SubtaskFormProps): JSX.Element {
       await onSubmit(
         normalizedDrafts.map((draft) => ({
           title: draft.title,
+          description: draft.description,
           status: draft.status
         }))
       );
@@ -95,6 +99,15 @@ function SubtaskForm({ onSubmit }: SubtaskFormProps): JSX.Element {
                 placeholder="Write tests"
                 type="text"
                 value={draft.title}
+              />
+            </label>
+            <label>
+              <span>Description</span>
+              <input
+                onChange={(event) => updateDraft(draft.id, 'description', event.target.value)}
+                placeholder="Optional description"
+                type="text"
+                value={draft.description}
               />
             </label>
             <label>

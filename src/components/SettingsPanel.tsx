@@ -13,8 +13,6 @@ import {
 
 import ActionGroup from '@/components/ActionGroup';
 import Modal from '@/components/Modal';
-import Navbar from '@/components/Navbar';
-import PageHeader from '@/components/PageHeader';
 import SectionCard from '@/components/SectionCard';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/services/api';
@@ -25,7 +23,6 @@ import step3 from '@/assets/gptIntegration/step3.png';
 import step4 from '@/assets/gptIntegration/step4.png';
 import step5 from '@/assets/gptIntegration/step5.png';
 import step6 from '@/assets/gptIntegration/step6.png';
-
 
 interface RegenerateSyncKeyResponse {
   message: string;
@@ -776,7 +773,7 @@ const chatGptIntegrationSteps = [
   }
 ];
 
-function SettingsPage(): JSX.Element {
+function SettingsPanel(): JSX.Element {
   const { refreshUser, session, user } = useAuth();
   const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -800,21 +797,9 @@ function SettingsPage(): JSX.Element {
   const loadDevices = async (): Promise<void> => {
     setIsLoadingDevices(true);
     setDevicesError(null);
-
     try {
-      const response = await api.get<CompanionDevicesResponse>('/auth/devices');
-      const nextDevices = response.data.data.devices;
-      setDevices(nextDevices);
-      setRenameDrafts(
-        nextDevices.reduce<Record<string, { deviceName: string; deviceType: string }>>((accumulator, current) => {
-          accumulator[current.id] = {
-            deviceName: current.deviceName,
-            deviceType: current.deviceType
-          };
-
-          return accumulator;
-        }, {})
-      );
+      const response = await api.get<CompanionDevicesResponse>('/companion/devices');
+      setDevices(response.data.data.devices);
     } catch {
       setDevicesError('Unable to load companion devices.');
     } finally {
@@ -823,280 +808,219 @@ function SettingsPage(): JSX.Element {
   };
 
   useEffect(() => {
-    if (!canManagePrimarySecurity) {
-      setDevices([]);
+    if (canManagePrimarySecurity) {
+      void loadDevices();
+    }
+  }, [canManagePrimarySecurity]);
+
+  const handleRegenerateKey = async (): Promise<void> => {
+    if (!confirm('Are you sure you want to regenerate your sync API key? Any existing GPT integrations using this key will stop working immediately.')) {
       return;
     }
 
-    void loadDevices();
-  }, [canManagePrimarySecurity]);
-
-  const handleCopy = async (text: string, index: number) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopiedIndex(index);
-
-      setTimeout(() => {
-        setCopiedIndex(null);
-      }, 1500);
-    } catch {
-      console.error("Copy failed");
-    }
-  };
-
-  const handleRegenerateSyncKey = async (): Promise<void> => {
     setIsRegenerating(true);
     setSuccessMessage(null);
     setErrorMessage(null);
 
     try {
-      const response = await api.patch<RegenerateSyncKeyResponse>('/auth/regenerate-sync-key');
+      const response = await api.post<RegenerateSyncKeyResponse>('/auth/regenerate-api-key');
       await refreshUser();
-      setSuccessMessage(
-        response.data.data.syncApiKey
-          ? 'Integration key rotated successfully. Reconnect any external clients that still use the previous key.'
-          : 'Integration key rotated successfully.'
-      );
+      setSuccessMessage('Sync API key regenerated successfully.');
     } catch {
-      setErrorMessage('Unable to regenerate the sync API key.');
+      setErrorMessage('Unable to regenerate sync API key right now.');
     } finally {
       setIsRegenerating(false);
     }
   };
 
   const handleGenerateCompanionKey = async (): Promise<void> => {
+    if (!deviceName.trim()) {
+      setErrorMessage('Device name is required to generate a companion key.');
+      return;
+    }
+
     setIsGeneratingCompanionKey(true);
-    setDevicesError(null);
     setSuccessMessage(null);
     setErrorMessage(null);
 
     try {
-      const response = await api.post<CompanionKeyResponse>('/auth/companion-keys', {
-        deviceName,
+      const response = await api.post<CompanionKeyResponse>('/companion/key', {
+        deviceName: deviceName.trim(),
         deviceType
       });
       setGeneratedCompanionKey({
         key: response.data.data.key,
-        deviceName: deviceName.trim() || 'Companion device'
+        deviceName: deviceName.trim()
       });
-      setSuccessMessage('Companion login key generated. It stays valid until it is used.');
       setDeviceName('');
+      void loadDevices();
     } catch {
-      setDevicesError('Unable to generate a companion device key.');
+      setErrorMessage('Unable to generate companion key right now.');
     } finally {
       setIsGeneratingCompanionKey(false);
     }
   };
 
-  const handleRenameDraftChange = (
-    deviceId: string,
-    field: 'deviceName' | 'deviceType',
-    value: string
-  ): void => {
-    setRenameDrafts((current) => ({
-      ...current,
-      [deviceId]: {
-        deviceName: current[deviceId]?.deviceName ?? '',
-        deviceType: current[deviceId]?.deviceType ?? '',
-        [field]: value
-      }
-    }));
-  };
-
   const handleUpdateDevice = async (deviceId: string): Promise<void> => {
-    setActiveDeviceActionId(deviceId);
-    setDevicesError(null);
+    const draft = renameDrafts[deviceId];
+    if (!draft || !draft.deviceName.trim()) return;
 
+    setActiveDeviceActionId(deviceId);
     try {
-      const draft = renameDrafts[deviceId];
-      await api.patch(`/auth/devices/${deviceId}`, {
-        deviceName: draft.deviceName,
+      await api.patch(`/companion/devices/${deviceId}`, {
+        deviceName: draft.deviceName.trim(),
         deviceType: draft.deviceType
       });
-      await loadDevices();
+      setRenameDrafts((current) => {
+        const next = { ...current };
+        delete next[deviceId];
+        return next;
+      });
+      void loadDevices();
     } catch {
-      setDevicesError('Unable to update the companion device.');
+      setErrorMessage('Unable to update device.');
     } finally {
       setActiveDeviceActionId(null);
     }
   };
 
   const handleRevokeDevice = async (deviceId: string): Promise<void> => {
-    const confirmed = window.confirm('Do you want to revoke this companion device?');
-
-    if (!confirmed) {
+    if (!confirm('Revoke this companion device immediately? It will be signed out and unable to reconnect without a new key.')) {
       return;
     }
 
     setActiveDeviceActionId(deviceId);
-    setDevicesError(null);
-
     try {
-      await api.delete(`/auth/devices/${deviceId}`);
-      await loadDevices();
+      await api.delete(`/companion/devices/${deviceId}`);
+      void loadDevices();
     } catch {
-      setDevicesError('Unable to revoke the companion device.');
+      setErrorMessage('Unable to revoke device.');
     } finally {
       setActiveDeviceActionId(null);
     }
   };
 
-  const activeCompanionDevices = devices;
+  const handleCopy = async (text: string, index: number): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedIndex(index);
+      setTimeout(() => setCopiedIndex(null), 2000);
+    } catch {
+      alert('Unable to copy to clipboard.');
+    }
+  };
+
+  const handleRenameDraftChange = (deviceId: string, field: 'deviceName' | 'deviceType', value: string): void => {
+    setRenameDrafts((current) => ({
+      ...current,
+      [deviceId]: {
+        ...(current[deviceId] || {
+          deviceName: devices.find((d) => d.id === deviceId)?.deviceName || '',
+          deviceType: devices.find((d) => d.id === deviceId)?.deviceType || 'mobile'
+        }),
+        [field]: value
+      }
+    }));
+  };
 
   return (
-    <main className="stack settings-shell">
-      <Navbar />
-      <SectionCard className="settings-hero">
-        <div className="settings-hero-grid">
-          <PageHeader
-            title="Settings"
-            description="Manage integration security, companion-device access, and external GPT configuration from a tighter control panel."
-          />
-          <div className="settings-hero-aside">
-            <span className="eyebrow">Security Workspace</span>
-            <p className="muted-text">
-              Companion access, integration credentials, and GPT action setup now live in one restrained admin view. Sensitive
-              values are handled through actions instead of being left exposed on the page.
-            </p>
-          </div>
-        </div>
-      </SectionCard>
+    <div className="settings-panel-content">
       <div className="settings-grid">
-        <SectionCard className="settings-account-card">
+        <SectionCard className="settings-security-card">
           <div className="settings-card-head">
             <div>
-              <span className="eyebrow">Account</span>
-              <h2>Sync access</h2>
+              <span className="eyebrow">Security</span>
+              <h2>Sync API Key</h2>
+              <p className="muted-text">Your unique key for connecting external task tools.</p>
             </div>
-            <span className="settings-card-icon"><KeyRound size={18} /></span>
+            <span className="settings-card-icon"><Shield size={18} /></span>
           </div>
-          <div className="settings-account-meta">
-            <div className="settings-stat">
-              <span className="settings-stat-label">Signed in as</span>
-              <strong>{user?.email ?? 'Unknown account'}</strong>
+          <div className="settings-key-container">
+            <div className="settings-key-display">
+              <KeyRound className="muted-text" size={16} />
+              <code>{user?.syncApiKey || 'No key generated'}</code>
+              <button className="copy-button" onClick={() => user?.syncApiKey && handleCopy(user.syncApiKey, -1)} type="button">
+                {copiedIndex === -1 ? <Check size={14} /> : <Copy size={14} />}
+              </button>
             </div>
-            <div className="settings-stat">
-              <span className="settings-stat-label">Current key status</span>
-              <strong>{user?.syncApiKey ? 'Ready to use' : 'Unavailable'}</strong>
-            </div>
+            <button
+              className="secondary-button"
+              disabled={isRegenerating}
+              onClick={() => void handleRegenerateKey()}
+              type="button"
+            >
+              <RefreshCcw className={isRegenerating ? 'spin' : ''} size={14} />
+              {isRegenerating ? 'Regenerating...' : 'Regenerate Key'}
+            </button>
           </div>
-          {canManagePrimarySecurity ? (
-            <div className="settings-key-card">
-              <div className="settings-key-copy">
-                <span className="settings-stat-label">Integration key</span>
-                <strong>Hidden by default</strong>
-                <p className="muted-text">
-                  The sync key is no longer rendered in the interface. Use controlled actions when you need to rotate or copy it.
-                </p>
-              </div>
-              <ActionGroup>
-                {user?.syncApiKey ? (
-                  <button className="secondary-button settings-copy-button" onClick={() => handleCopy(user.syncApiKey, -1)} type="button">
-                    {copiedIndex === -1 ? <Check size={14} /> : <Copy size={14} />}
-                    {copiedIndex === -1 ? 'Copied' : 'Copy integration key'}
-                  </button>
-                ) : null}
-                <button disabled={isRegenerating} onClick={() => void handleRegenerateSyncKey()} type="button">
-                  <RefreshCcw size={14} />
-                  {isRegenerating ? 'Rotating key...' : 'Rotate integration key'}
-                </button>
-              </ActionGroup>
-            </div>
-          ) : (
-            <div className="settings-restricted-card">
-              <span className="settings-stat-label">Primary-only control</span>
-              <strong>Integration credentials are only available on the main device.</strong>
-              <p className="muted-text">
-                Companion sessions cannot copy the sync key, rotate credentials, view other companion devices, or authorize new devices.
-              </p>
-            </div>
-          )}
-          {isRegenerating ? <p className="muted-text">Requesting a new integration key from the backend...</p> : null}
-          {successMessage ? <p className="success-text">{successMessage}</p> : null}
-          {errorMessage ? <p className="error-text">{errorMessage}</p> : null}
+          {successMessage && <p className="success-text">{successMessage}</p>}
+          {errorMessage && <p className="error-text">{errorMessage}</p>}
         </SectionCard>
-        <SectionCard className="settings-summary-card">
+
+        <SectionCard className="settings-companion-card">
           <div className="settings-card-head">
             <div>
-              <span className="eyebrow">Access</span>
-              <h2>Companion devices</h2>
+              <span className="eyebrow">Devices</span>
+              <h2>Companion Access</h2>
+              <p className="muted-text">Manage secure keys for mobile, desktop, or voice apps.</p>
             </div>
             <span className="settings-card-icon"><Smartphone size={18} /></span>
           </div>
-          <div className="settings-account-meta">
-            <div className="settings-stat">
-              <span className="settings-stat-label">Active devices</span>
-              <strong>{activeCompanionDevices.length} / 5</strong>
-            </div>
-            <div className="settings-stat">
-              <span className="settings-stat-label">Policy</span>
-              <strong>Primary device approval required</strong>
-            </div>
-          </div>
+
           {canManagePrimarySecurity ? (
             <>
-              <div className="settings-device-form">
-                <div className="field">
-                  <label htmlFor="device-name">Device name</label>
-                  <input
-                    id="device-name"
-                    onChange={(event) => setDeviceName(event.target.value)}
-                    placeholder="Example: Work iPad"
-                    value={deviceName}
-                  />
+              <div className="settings-companion-setup">
+                <div className="form-row">
+                  <label>
+                    <span>Target Device Name</span>
+                    <input
+                      disabled={isGeneratingCompanionKey}
+                      onChange={(e) => setDeviceName(e.target.value)}
+                      placeholder="My iPhone 15"
+                      type="text"
+                      value={deviceName}
+                    />
+                  </label>
+                  <label>
+                    <span>Category</span>
+                    <select
+                      disabled={isGeneratingCompanionKey}
+                      onChange={(e) => setDeviceType(e.target.value)}
+                      value={deviceType}
+                    >
+                      <option value="mobile">Mobile</option>
+                      <option value="tablet">Tablet</option>
+                      <option value="desktop">Desktop</option>
+                      <option value="assistant">Voice Assistant</option>
+                    </select>
+                  </label>
                 </div>
-                <div className="field">
-                  <label htmlFor="device-type">Device type</label>
-                  <select id="device-type" onChange={(event) => setDeviceType(event.target.value)} value={deviceType}>
-                    <option value="mobile">Mobile</option>
-                    <option value="tablet">Tablet</option>
-                    <option value="desktop">Desktop</option>
-                    <option value="assistant">Assistant</option>
-                  </select>
-                </div>
-                <ActionGroup>
-                  <button
-                    disabled={isGeneratingCompanionKey || activeCompanionDevices.length >= 5}
-                    onClick={() => void handleGenerateCompanionKey()}
-                    type="button"
-                  >
-                    <Shield size={14} />
-                    {isGeneratingCompanionKey ? 'Generating key...' : 'Add companion device'}
-                  </button>
-                </ActionGroup>
+                <button
+                  disabled={isGeneratingCompanionKey || !deviceName.trim()}
+                  onClick={() => void handleGenerateCompanionKey()}
+                  type="button"
+                >
+                  Generate Device Key
+                </button>
               </div>
-              <div className="settings-device-list">
-                <div className="settings-device-list-head">
-                  <strong>Registered companion devices</strong>
-                  <button className="secondary-button" onClick={() => void loadDevices()} type="button">
-                    Refresh
-                  </button>
-                </div>
-                {isLoadingDevices ? <p className="muted-text">Loading companion devices...</p> : null}
-                {devicesError ? <p className="error-text">{devicesError}</p> : null}
-                {!isLoadingDevices && devices.length === 0 ? (
-                  <div className="settings-empty-state">
-                    <p>No companion devices are registered yet.</p>
+
+              <div className="companion-device-list">
+                {isLoadingDevices && <p className="muted-text">Loading secure sessions...</p>}
+                {devicesError && <p className="error-text">{devicesError}</p>}
+                {!isLoadingDevices && devices.length === 0 && (
+                  <div className="empty-state-mini">
+                    <p className="muted-text">No companion devices active.</p>
                   </div>
-                ) : null}
+                )}
                 {devices.map((device) => {
-                  const draft = renameDrafts[device.id] ?? {
-                    deviceName: device.deviceName,
-                    deviceType: device.deviceType
-                  };
+                  const draft = renameDrafts[device.id] || { deviceName: device.deviceName, deviceType: device.deviceType };
                   const isWorking = activeDeviceActionId === device.id;
 
                   return (
-                    <article className="settings-device-row" key={device.id}>
-                      <div className="settings-device-row-top">
-                        <div>
-                          <strong>{device.deviceName}</strong>
-                          <p className="muted-text">{device.deviceType}</p>
-                        </div>
-                        <span className="settings-device-status settings-device-status-active">Active</span>
-                      </div>
-                      <div className="settings-device-edit-grid">
+                    <article className="companion-device-item" key={device.id}>
+                      <div className="device-info">
                         <input
+                          className="device-rename-input"
                           onChange={(event) => handleRenameDraftChange(device.id, 'deviceName', event.target.value)}
                           value={draft.deviceName}
                         />
@@ -1137,35 +1061,18 @@ function SettingsPage(): JSX.Element {
           ) : (
             <div className="settings-restricted-card">
               <span className="settings-stat-label">Restricted on companion devices</span>
-              <strong>Only the main device can add, view, update, or revoke companion devices.</strong>
-              <p className="muted-text">
-                This session can use the app normally, but companion-device administration is intentionally hidden and blocked.
-              </p>
+              <strong>Only the main device can manage companion devices.</strong>
             </div>
           )}
         </SectionCard>
       </div>
-      <SectionCard className="settings-summary-card">
-        <div className="settings-card-head">
-          <div>
-            <span className="eyebrow">Checklist</span>
-            <h2>Before connecting GPT</h2>
-          </div>
-          <span className="settings-card-icon"><ListChecks size={18} /></span>
-        </div>
-        <ul className="settings-checklist">
-          <li>Use the integration key only in trusted tools and private automations.</li>
-          <li>Paste the schema exactly as provided in the guide below.</li>
-          <li>Keep the instruction block intact so task, project, and note operations stay consistent.</li>
-          <li>Rotate the integration key immediately if it has been exposed or copied into an untrusted environment.</li>
-        </ul>
-      </SectionCard>
+
       <SectionCard className="settings-integration-card">
         <div className="settings-card-head">
           <div>
-            <span className="eyebrow">Guide</span>
-            <h2>ChatGPT integration</h2>
-            <p className="muted-text">Follow these steps in order to configure a custom GPT against your Todo Sync backend.</p>
+            <span className="eyebrow">A.I.</span>
+            <h2>ChatGPT Integration</h2>
+            <p className="muted-text">Configure a custom GPT to manage your tasks via voice or chat.</p>
           </div>
           <span className="settings-card-icon"><Sparkles size={18} /></span>
         </div>
@@ -1197,9 +1104,7 @@ function SettingsPage(): JSX.Element {
                       </div>
                       <ol className="accordion-steps">
                         {step.details.map((detail) => (
-                          <li key={detail} style={{ whiteSpace: 'pre-line' }}>
-                            {detail}
-                          </li>
+                          <li key={detail}>{detail}</li>
                         ))}
                       </ol>
                     </div>
@@ -1220,19 +1125,18 @@ function SettingsPage(): JSX.Element {
           })}
         </div>
       </SectionCard>
-      {generatedCompanionKey ? (
-        <Modal onClose={() => setGeneratedCompanionKey(null)} panelClassName="settings-secret-modal" title="Companion Device Key">
+
+      {generatedCompanionKey && (
+        <Modal onClose={() => setGeneratedCompanionKey(null)} title="Companion Device Key">
           <div className="settings-secret-modal-body">
             <p className="muted-text">
-              This key is shown once for <strong>{generatedCompanionKey.deviceName}</strong>. Share it directly with the target device and do
-              not leave it visible in screenshots or recordings.
+              Key for <strong>{generatedCompanionKey.deviceName}</strong>. Copy it now; it won't be shown again.
             </p>
             <code className="settings-secret-value">{generatedCompanionKey.key}</code>
-            <p className="muted-text">This key does not expire on its own. It becomes unusable after the first successful companion login.</p>
             <ActionGroup>
               <button onClick={() => void handleCopy(generatedCompanionKey.key, -2)} type="button">
                 {copiedIndex === -2 ? <Check size={14} /> : <Copy size={14} />}
-                {copiedIndex === -2 ? 'Copied' : 'Copy device key'}
+                Copy Key
               </button>
               <button className="secondary-button" onClick={() => setGeneratedCompanionKey(null)} type="button">
                 Close
@@ -1240,9 +1144,9 @@ function SettingsPage(): JSX.Element {
             </ActionGroup>
           </div>
         </Modal>
-      ) : null}
-    </main>
+      )}
+    </div>
   );
 }
 
-export default SettingsPage;
+export default SettingsPanel;

@@ -13,13 +13,16 @@ import ProjectForm from '@/components/ProjectForm';
 import ProjectNotes from '@/components/ProjectNotes';
 import ProjectPanel from '@/components/ProjectPanel';
 import SectionCard from '@/components/SectionCard';
+import SettingsPanel from '@/components/SettingsPanel';
 import SubtaskForm from '@/components/SubtaskForm';
 import TaskList from '@/components/TaskList';
-import { ClipboardList } from 'lucide-react';
+import { Calendar, CheckCircle, Folder, Layout, List, LogOut, MessageSquare, Plus, Settings } from 'lucide-react';
 import { createEpic, deleteEpic, getEpics, reorderEpics, updateEpic } from '@/services/epics';
-import { createNote, deleteNote, getNote, getProjectNotes, updateNote } from '@/services/notes';
-import { createProject, deleteProject, getProjects, updateProject } from '@/services/projects';
+import { createEpicNote, createNote, deleteNote, getEpicNotes, getNote, getProjectNotes, updateNote } from '@/services/notes';
+import { createProject, deleteProject, deleteProjects, getProjects, updateProject } from '@/services/projects';
 import { createTask, deleteTask, getTasks, updateTask } from '@/services/tasks';
+import { useAuth } from '@/context/AuthContext';
+import { NavLink } from 'react-router-dom';
 import type { Epic, EpicStatus } from '@/types/epic';
 import type { Note } from '@/types/note';
 import type { Project } from '@/types/project';
@@ -32,6 +35,13 @@ type ActiveNoteEditor =
       note: Note | null;
       projectId: string;
       projectName: string;
+    }
+  | {
+      kind: 'epic';
+      epicId: string;
+      epicName: string;
+      note: Note | null;
+      projectId: string;
     }
   | {
       kind: 'task';
@@ -108,12 +118,22 @@ function DashboardPage(): JSX.Element {
   const [isEpicCreateModalOpen, setIsEpicCreateModalOpen] = useState(false);
   const [editingEpic, setEditingEpic] = useState<Epic | null>(null);
   const [isProjectNotesModalOpen, setIsProjectNotesModalOpen] = useState(false);
+  const [isEpicNotesModalOpen, setIsEpicNotesModalOpen] = useState(false);
   const [isTaskCreateModalOpen, setIsTaskCreateModalOpen] = useState(false);
   const [selectedProjectView, setSelectedProjectView] = useState<string>(ALL_PROJECTS_VALUE);
+  const [selectedEpicId, setSelectedEpicId] = useState<string | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [taskModalProjectId, setTaskModalProjectId] = useState<string | null>(null);
   const [subtaskModalTask, setSubtaskModalTask] = useState<Task | null>(null);
   const [projectNotes, setProjectNotes] = useState<Record<string, Note[]>>({});
-  const [notesLoadingProjectId, setNotesLoadingProjectId] = useState<string | null>(null);
+  const [epicNotes, setEpicNotes] = useState<Record<string, Note[]>>({});
+  const [notesLoadingKey, setNotesLoadingKey] = useState<string | null>(null);
+  const [projectPage, setProjectPage] = useState(1);
+  const [projectTotalPages, setProjectTotalPages] = useState<number>(1);
+  const [projectSearchTerm, setProjectSearchTerm] = useState<string>('');
+  const [activeView, setActiveView] = useState<'dashboard' | 'settings'>('dashboard');
+  const [activeProjectForNotes, setActiveProjectForNotes] = useState<Project | null>(null);
+  const [activeEpicForNotes, setActiveEpicForNotes] = useState<Epic | null>(null);
   const [activeNoteEditor, setActiveNoteEditor] = useState<ActiveNoteEditor | null>(null);
 
   const loadDashboard = useCallback(async (): Promise<void> => {
@@ -121,11 +141,16 @@ function DashboardPage(): JSX.Element {
     setError(null);
 
     try {
-      const [taskList, projectList] = await Promise.all([getTasks(selectedDate), getProjects()]);
-      const epicGroups = await Promise.all(projectList.map((project) => getEpics(project.id)));
+      const [taskList, projectData] = await Promise.all([
+        getTasks(selectedDate),
+        getProjects({ page: projectPage, limit: 10, search: projectSearchTerm })
+      ]);
+      const projectList = projectData.projects;
+      const epicGroups = await Promise.all(projectList.map((project: Project) => getEpics(project.id)));
       setTasks(taskList);
       setProjects(projectList);
       setEpics(epicGroups.flat());
+      setProjectTotalPages(projectData.totalPages);
     } catch {
       setError('Unable to load tasks for the selected day.');
       setTasks([]);
@@ -134,7 +159,7 @@ function DashboardPage(): JSX.Element {
     } finally {
       setLoading(false);
     }
-  }, [selectedDate]);
+  }, [selectedDate, projectPage, projectSearchTerm]);
 
   useEffect(() => {
     void loadDashboard();
@@ -225,9 +250,19 @@ function DashboardPage(): JSX.Element {
       await deleteEpic(epic.projectId, epic.id);
       await loadDashboard();
       setEpicMutationSuccess('Epic deleted. Related tasks were preserved and unassigned.');
+      setEpicNotes((current) => {
+        const next = { ...current };
+        delete next[epic.id];
+        return next;
+      });
 
       if (editingEpic?.id === epic.id) {
         setEditingEpic(null);
+      }
+
+      if (activeEpicForNotes?.id === epic.id) {
+        setActiveEpicForNotes(null);
+        setIsEpicNotesModalOpen(false);
       }
     } catch {
       setEpicMutationError('Unable to delete the epic.');
@@ -271,7 +306,7 @@ function DashboardPage(): JSX.Element {
     }
   };
 
-  const handleCreateProject = async (payload: { name: string }): Promise<void> => {
+  const handleCreateProject = async (payload: { name: string; description?: string }): Promise<void> => {
     setActionProjectId('new');
     setProjectMutationError(null);
     setProjectMutationSuccess(null);
@@ -296,7 +331,7 @@ function DashboardPage(): JSX.Element {
     }
   };
 
-  const handleUpdateProject = async (payload: { name: string }): Promise<void> => {
+  const handleUpdateProject = async (payload: { name: string; description?: string }): Promise<void> => {
     if (editingProject == null) {
       return;
     }
@@ -318,24 +353,26 @@ function DashboardPage(): JSX.Element {
   };
 
   const handleDeleteProject = async (projectId: string): Promise<void> => {
-    const projectName = projects.find((project) => project.id === projectId)?.name ?? 'this project';
-
-    if (!requestConfirmation(`Delete ${projectName}? This will remove the project, its tasks, and its notes.`)) {
+    if (!requestConfirmation('Are you sure you want to delete this project? All associated tasks, epics, and notes will be permanently removed.')) {
       return;
     }
 
     setActionProjectId(projectId);
-    setProjectMutationError(null);
-    setProjectMutationSuccess(null);
-    setNoteMutationError(null);
-    setNoteMutationSuccess(null);
-
     try {
       await deleteProject(projectId);
       await loadDashboard();
       setProjectNotes((current) => {
         const next = { ...current };
         delete next[projectId];
+        return next;
+      });
+      setEpicNotes((current) => {
+        const next = { ...current };
+        Object.keys(next).forEach((epicId) => {
+          if (epics.find((epic) => epic.id === epicId)?.projectId === projectId) {
+            delete next[epicId];
+          }
+        });
         return next;
       });
       setEpics((current) => current.filter((epic) => epic.projectId !== projectId));
@@ -353,6 +390,10 @@ function DashboardPage(): JSX.Element {
           return current.projectId === projectId ? null : current;
         }
 
+        if (current.kind === 'epic') {
+          return current.projectId === projectId ? null : current;
+        }
+
         return current.task.projectId === projectId ? null : current;
       });
       setSubtaskModalTask((current) => (current?.projectId === projectId ? null : current));
@@ -361,11 +402,41 @@ function DashboardPage(): JSX.Element {
       if (activeProject?.id === projectId) {
         setIsEpicManagerOpen(false);
         setIsEpicCreateModalOpen(false);
+        setIsProjectNotesModalOpen(false);
+      }
+
+      if (activeProjectForNotes?.id === projectId) {
+        setActiveProjectForNotes(null);
+        setIsProjectNotesModalOpen(false);
+      }
+
+      if (activeEpicForNotes?.projectId === projectId) {
+        setActiveEpicForNotes(null);
+        setIsEpicNotesModalOpen(false);
       }
 
       setProjectMutationSuccess('Project deleted. Related tasks and notes were removed.');
     } catch {
       setProjectMutationError('Unable to delete the project.');
+    } finally {
+      setActionProjectId(null);
+    }
+  };
+
+  const handleDeleteProjects = async (projectIds: string[]): Promise<void> => {
+    if (!requestConfirmation(`Are you sure you want to delete ${projectIds.length} projects? All associated tasks, epics, and notes will be permanently removed.`)) {
+      return;
+    }
+
+    setActionProjectId('bulk');
+    try {
+      await deleteProjects(projectIds);
+      await loadDashboard();
+      if (selectedProjectView && projectIds.includes(selectedProjectView)) {
+        handleProjectSelect(ALL_PROJECTS_VALUE);
+      }
+    } catch {
+      // Error handled by UI
     } finally {
       setActionProjectId(null);
     }
@@ -570,7 +641,7 @@ function DashboardPage(): JSX.Element {
   };
 
   const loadNotesForProject = useCallback(async (projectId: string): Promise<void> => {
-    setNotesLoadingProjectId(projectId);
+    setNotesLoadingKey(`project:${projectId}`);
 
     try {
       const notes = await getProjectNotes(projectId);
@@ -581,22 +652,46 @@ function DashboardPage(): JSX.Element {
     } catch {
       setNoteMutationError('Unable to load notes for this project.');
     } finally {
-      setNotesLoadingProjectId((current) => (current === projectId ? null : current));
+      setNotesLoadingKey((current) => (current === `project:${projectId}` ? null : current));
     }
   }, []);
 
-  const handleOpenCreateNote = (): void => {
-    if (activeProject == null) {
-      return;
-    }
+  const loadNotesForEpic = useCallback(async (projectId: string, epicId: string): Promise<void> => {
+    setNotesLoadingKey(`epic:${epicId}`);
 
+    try {
+      const notes = await getEpicNotes(projectId, epicId);
+      setEpicNotes((current) => ({
+        ...current,
+        [epicId]: notes
+      }));
+    } catch {
+      setNoteMutationError('Unable to load notes for this epic.');
+    } finally {
+      setNotesLoadingKey((current) => (current === `epic:${epicId}` ? null : current));
+    }
+  }, []);
+
+  const handleOpenCreateProjectNote = (project: Project): void => {
     setNoteMutationError(null);
     setNoteMutationSuccess(null);
     setActiveNoteEditor({
       kind: 'project',
       note: null,
-      projectId: activeProject.id,
-      projectName: activeProject.name
+      projectId: project.id,
+      projectName: project.name
+    });
+  };
+
+  const handleOpenCreateEpicNote = (epic: Epic): void => {
+    setNoteMutationError(null);
+    setNoteMutationSuccess(null);
+    setActiveNoteEditor({
+      kind: 'epic',
+      epicId: epic.id,
+      epicName: epic.name,
+      note: null,
+      projectId: epic.projectId
     });
   };
 
@@ -607,14 +702,25 @@ function DashboardPage(): JSX.Element {
 
     try {
       const latestNote = await getNote(note.id);
-      const projectName =
-        projects.find((project) => project.id === latestNote.projectId)?.name ?? activeProject?.name ?? 'Project';
-      setActiveNoteEditor({
-        kind: 'project',
-        note: latestNote,
-        projectId: latestNote.projectId,
-        projectName
-      });
+      if (latestNote.entityType === 'epic') {
+        const epicName = epics.find((epic) => epic.id === latestNote.epicId)?.name ?? activeEpicForNotes?.name ?? 'Epic';
+        setActiveNoteEditor({
+          kind: 'epic',
+          epicId: latestNote.epicId ?? '',
+          epicName,
+          note: latestNote,
+          projectId: latestNote.projectId
+        });
+      } else {
+        const projectName =
+          projects.find((project) => project.id === latestNote.projectId)?.name ?? activeProject?.name ?? 'Project';
+        setActiveNoteEditor({
+          kind: 'project',
+          note: latestNote,
+          projectId: latestNote.projectId,
+          projectName
+        });
+      }
     } catch {
       setNoteMutationError('Unable to open the note.');
     } finally {
@@ -635,12 +741,15 @@ function DashboardPage(): JSX.Element {
 
     if (
       (editor.kind === 'project' && editor.note != null) ||
+      (editor.kind === 'epic' && editor.note != null) ||
       (editor.kind === 'task' && editor.task.note?.trim()) ||
       (editor.kind === 'subtask' && editor.subtask.note?.trim())
     ) {
       const label =
         editor.kind === 'project'
           ? `project note "${editor.note?.title ?? ''}"`
+          : editor.kind === 'epic'
+            ? `epic note "${editor.note?.title ?? ''}"`
           : editor.kind === 'task'
             ? `task note for "${editor.task.title}"`
             : `sub-task note for "${editor.subtask.title}"`;
@@ -651,7 +760,7 @@ function DashboardPage(): JSX.Element {
       }
     }
 
-    setActionNoteId(editor.kind === 'project' ? editor.note?.id ?? 'new' : null);
+    setActionNoteId(editor.kind === 'project' || editor.kind === 'epic' ? editor.note?.id ?? 'new' : null);
     setNoteMutationError(null);
     setNoteMutationSuccess(null);
 
@@ -678,6 +787,29 @@ function DashboardPage(): JSX.Element {
             [editor.projectId]: [created, ...(current[editor.projectId] ?? [])]
           }));
           setNoteMutationSuccess('Note created.');
+        }
+      } else if (editor.kind === 'epic') {
+        if (editor.note) {
+          const updated = await updateNote(editor.note.id, {
+            appendContent: payload.appendContent,
+            title: payload.title,
+            content: payload.content
+          });
+          setEpicNotes((current) => ({
+            ...current,
+            [editor.epicId]: (current[editor.epicId] ?? []).map((note) => (note.id === updated.id ? updated : note))
+          }));
+          setNoteMutationSuccess(payload.appendContent ? 'Content appended to note.' : 'Note updated.');
+        } else {
+          const created = await createEpicNote(editor.projectId, editor.epicId, {
+            title: payload.title ?? '',
+            content: payload.content
+          });
+          setEpicNotes((current) => ({
+            ...current,
+            [editor.epicId]: [created, ...(current[editor.epicId] ?? [])]
+          }));
+          setNoteMutationSuccess('Epic note created.');
         }
       } else if (editor.kind === 'task') {
         await updateTask(editor.task.id, { note: payload.content });
@@ -720,12 +852,19 @@ function DashboardPage(): JSX.Element {
 
     try {
       await deleteNote(note.id);
-      setProjectNotes((current) => ({
-        ...current,
-        [note.projectId]: (current[note.projectId] ?? []).filter((currentNote) => currentNote.id !== note.id)
-      }));
+      if (note.entityType === 'epic' && note.epicId) {
+        setEpicNotes((current) => ({
+          ...current,
+          [note.epicId as string]: (current[note.epicId as string] ?? []).filter((currentNote) => currentNote.id !== note.id)
+        }));
+      } else {
+        setProjectNotes((current) => ({
+          ...current,
+          [note.projectId]: (current[note.projectId] ?? []).filter((currentNote) => currentNote.id !== note.id)
+        }));
+      }
 
-      if (activeNoteEditor?.kind === 'project' && activeNoteEditor.note?.id === note.id) {
+      if ((activeNoteEditor?.kind === 'project' || activeNoteEditor?.kind === 'epic') && activeNoteEditor.note?.id === note.id) {
         setActiveNoteEditor(null);
       }
 
@@ -738,7 +877,7 @@ function DashboardPage(): JSX.Element {
   };
 
   const handleDeleteInlineNote = async (): Promise<void> => {
-    if (activeNoteEditor == null || activeNoteEditor.kind === 'project') {
+    if (activeNoteEditor == null || activeNoteEditor.kind === 'project' || activeNoteEditor.kind === 'epic') {
       return;
     }
 
@@ -810,6 +949,25 @@ function DashboardPage(): JSX.Element {
     });
   };
 
+  const handleOpenProjectNotesPanel = (project: Project): void => {
+    if (projectNotes[project.id] == null) {
+      void loadNotesForProject(project.id);
+    }
+
+    setActiveProjectForNotes(project);
+    setActiveEpicForNotes(null);
+    setIsProjectNotesModalOpen(true);
+  };
+
+  const handleOpenEpicNotesPanel = (epic: Epic): void => {
+    if (epicNotes[epic.id] == null) {
+      void loadNotesForEpic(epic.projectId, epic.id);
+    }
+
+    setActiveEpicForNotes(epic);
+    setIsEpicNotesModalOpen(true);
+  };
+
   const tasksByProject = useMemo(() => {
     const counts = new Map<string | null, number>();
 
@@ -850,113 +1008,338 @@ function DashboardPage(): JSX.Element {
             .sort((left, right) => left.order - right.order),
     [activeProject, epics]
   );
-  const activeProjectNotes = activeProject ? projectNotes[activeProject.id] ?? [] : [];
-  const activeProjectNotesModalTitle = activeProject ? `Notes for ${activeProject.name}` : 'Project Notes';
+  const activeProjectNotes = activeProjectForNotes ? projectNotes[activeProjectForNotes.id] ?? [] : [];
+  const activeEpicNotes = activeEpicForNotes ? epicNotes[activeEpicForNotes.id] ?? [] : [];
+  const activeProjectNotesModalTitle = activeProjectForNotes ? `Notes for ${activeProjectForNotes.name}` : 'Project Notes';
+  const activeEpicNotesModalTitle = activeEpicForNotes ? `Notes for ${activeEpicForNotes.name}` : 'Epic Notes';
+
+  const { user, logout } = useAuth();
+
+  const handleProjectSelect = (projectId: string): void => {
+    setActiveView('dashboard');
+    setSelectedProjectView(projectId);
+    setSelectedEpicId(null);
+    setSelectedTaskId(null);
+  };
+
+  const handleProjectPageChange = (page: number): void => {
+    setProjectPage(page);
+  };
+
+  const handleProjectSearch = (term: string): void => {
+    setProjectSearchTerm(term);
+    setProjectPage(1);
+  };
+
+  const handleEpicSelect = (epicId: string): void => {
+    setSelectedEpicId(epicId);
+    setSelectedTaskId(null);
+  };
+
+  const activeEpicTasks = useMemo(() => {
+    if (!selectedEpicId) return [];
+    return visibleTasks.filter(t => t.epicId === selectedEpicId);
+  }, [selectedEpicId, visibleTasks]);
+
+  const activeTask = useMemo(() => {
+    if (!selectedTaskId) return null;
+    return tasks.find(t => t.id === selectedTaskId) ?? null;
+  }, [selectedTaskId, tasks]);
 
   return (
-    <main className="stack">
-      <Navbar />
-      <SectionCard className="hero-card dashboard-shell">
-        <div className="dashboard-hero-simple">
-          <PageHeader
-            title="Dashboard"
-            description="Select a project, review tasks for the day, and manage work from one clean workspace."
-          />
+    <div className="dashboard-root">
+      {/* Sidebar - Projects */}
+      <aside className="sidebar-nav">
+        <div className="sidebar-logo">
+          <Layout className="accent-blue" size={24} />
+          <span className="logo-text">TodoSync</span>
+        </div>
+        <div className="sidebar-projects">
+          <p className="eyebrow">Workspace</p>
+          <button
+            className={`project-nav-item ${selectedProjectView === ALL_PROJECTS_VALUE ? 'project-nav-item-active' : ''}`}
+            onClick={() => handleProjectSelect(ALL_PROJECTS_VALUE)}
+            type="button"
+          >
+            <Folder size={18} />
+            <span>All Projects</span>
+          </button>
+          
+          <button
+            className="project-nav-item project-nav-item-new"
+            onClick={() => setIsProjectCreateModalOpen(true)}
+            type="button"
+          >
+            <Plus size={18} />
+            <span>New Project</span>
+          </button>
+        </div>
+        
+        <div className="sidebar-footer" style={{ marginTop: 'auto', padding: '16px', borderTop: '1px solid var(--card-border)' }}>
+          <button 
+            className={`project-nav-item ${activeView === 'settings' ? 'project-nav-item-active' : ''}`}
+            onClick={() => setActiveView('settings')}
+            title="Settings"
+            type="button"
+          >
+            <Settings size={18} />
+            <span>Settings</span>
+          </button>
+          <button className="project-nav-item" onClick={logout} title="Sign out" type="button">
+            <LogOut size={18} />
+            <span>Sign out</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* Top Bar - User & Global Actions */}
+      <header className="top-bar-nav">
+        <div className="top-bar-user">
+          <div className="user-avatar">
+            {user?.email?.[0].toUpperCase()}
+          </div>
+          <span className="user-email">{user?.email}</span>
+        </div>
+        
+        <div className="top-bar-actions">
           <DateNavigator date={selectedDate} disabled={loading} onChange={setSelectedDate} />
         </div>
-      </SectionCard>
-      <SectionCard className="workspace-card workspace-card-full">
-        <div className="card-header workspace-header">
-          <div className="workspace-header-copy">
-            <span className="eyebrow">Task Surface</span>
-            <h2>{tasksHeading}</h2>
-            <p className="muted-text">Project-filtered execution list for the selected date.</p>
+      </header>
+
+      {/* Main Content Area */}
+      <main className="dashboard-main">
+        {activeView === 'settings' ? (
+          <div className="full-width-pane">
+            <div className="pane-header">
+              <div className="pane-header-content">
+                <h3 className="pane-header-title">Settings</h3>
+                <p className="pane-header-subtitle">Account & Preferences</p>
+              </div>
+            </div>
+            <div className="pane-content">
+              <SettingsPanel />
+            </div>
           </div>
-          <div className="workspace-header-actions">
-            <label className="workspace-project-switcher">
-              <span>Project</span>
-              <select onChange={(event) => setSelectedProjectView(event.target.value)} value={selectedProjectView}>
-                <option value={ALL_PROJECTS_VALUE}>All projects</option>
-                {projects.map((project) => (
-                  <option key={project.id} value={project.id}>
-                    {project.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {activeProject ? (
-              <button
-                className="secondary-button"
-                onClick={() => setIsEpicManagerOpen(true)}
-                type="button"
-              >
-                Manage epics
-              </button>
-            ) : null}
-            {activeProject ? (
-              <button
-                className="secondary-button"
-                onClick={() => {
-                  if (projectNotes[activeProject.id] == null) {
-                    void loadNotesForProject(activeProject.id);
-                  }
-                  setIsProjectNotesModalOpen(true);
-                }}
-                type="button"
-              >
-                Project notes
-              </button>
-            ) : null}
-            <button className="secondary-button" onClick={() => setIsProjectManagerOpen(true)} type="button">
-              Manage projects
-            </button>
-            <button
-              onClick={() => {
-                setTaskModalProjectId(selectedProjectView === ALL_PROJECTS_VALUE ? null : selectedProjectView);
-                setIsTaskCreateModalOpen(true);
+        ) : !activeProject ? (
+          <div className="full-width-pane">
+            <ProjectPanel
+              actionProjectId={actionProjectId}
+              currentPage={projectPage}
+              loading={loading}
+              onDeleteProject={handleDeleteProject}
+              onDeleteProjects={handleDeleteProjects}
+              onOpenCreateProject={() => setIsProjectCreateModalOpen(true)}
+              onOpenEpicManager={(project) => {
+                handleProjectSelect(project.id);
               }}
-              type="button"
-            >
-              New task
-            </button>
+              onOpenProject={(projectId) => {
+                handleProjectSelect(projectId ?? ALL_PROJECTS_VALUE);
+              }}
+              onOpenUpdateProject={(project) => {
+                setEditingProject(project);
+              }}
+              projects={projects}
+              tasksByProject={tasksByProject}
+              totalPages={projectTotalPages}
+              onPageChange={handleProjectPageChange}
+              onSearch={handleProjectSearch}
+              searchTerm={projectSearchTerm}
+            />
           </div>
+        ) : (
+          <div className="workspace-columns">
+            {/* Column 1: Epics */}
+            <div className="pane-column">
+              <div className="pane-header">
+                <div className="pane-header-content">
+                  <h3 className="pane-header-title">Epics</h3>
+                  <p className="pane-header-subtitle">{activeProject.name}</p>
+                </div>
+                <button className="subtask-add-button primary-button" onClick={() => setIsEpicCreateModalOpen(true)} type="button">
+                  <Plus size={16} />
+                </button>
+              </div>
+              <div className="pane-content">
+                <div className="stack">
+                  {activeProjectEpics.map(epic => (
+                    <button
+                      key={epic.id}
+                      className={`selectable-card ${selectedEpicId === epic.id ? 'selectable-card-active' : ''}`}
+                      onClick={() => setSelectedEpicId(epic.id === selectedEpicId ? null : epic.id)}
+                      type="button"
+                    >
+                      <div className="card-title-row">
+                        <h4>{epic.name}</h4>
+                        <span className={`status-pill status-${epic.status.toLowerCase()}`}>
+                          {epic.status}
+                        </span>
+                      </div>
+                      {epic.description && (
+                        <p className="card-description">{epic.description}</p>
+                      )}
+                      <div className="card-actions-row-compact">
+                        <button
+                          className="ghost-button"
+                          onClick={(e) => { e.stopPropagation(); handleOpenEpicNotesPanel(epic); }}
+                          style={{ padding: '0', fontSize: '0.75rem' }}
+                          type="button"
+                        >
+                          <MessageSquare size={14} style={{ marginRight: 4 }} /> Notes
+                        </button>
+                        <button
+                          className="ghost-button"
+                          onClick={(e) => { e.stopPropagation(); setEditingEpic(epic); }}
+                          style={{ padding: '0', fontSize: '0.75rem' }}
+                          type="button"
+                        >
+                          Edit
+                        </button>
+                      </div>
+                    </button>
+                  ))}
+                  {activeProjectEpics.length === 0 && (
+                    <EmptyState description="Create an epic to group your tasks." icon={List} title="No epics found" />
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Column 2: Tasks */}
+            {selectedEpicId && (
+              <div className="pane-column">
+                <div className="pane-header">
+                  <div className="pane-header-content">
+                    <h3 className="pane-header-title">Tasks</h3>
+                    <p className="pane-header-subtitle">{epics.find(e => e.id === selectedEpicId)?.name}</p>
+                  </div>
+                  <button
+                    className="subtask-add-button primary-button"
+                  onClick={() => {
+                    setTaskModalProjectId(activeProject?.id ?? null);
+                    setIsTaskCreateModalOpen(true);
+                  }}
+                  type="button"
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
+              <div className="pane-content">
+                <TaskList
+                  actionTaskId={actionTaskId}
+                  epics={epics}
+                  onDeleteSubtask={(task, subtask) => void handleDeleteSubtask(task, subtask)}
+                  onCreateSubtask={(task) => setSubtaskModalTask(task)}
+                  onDelete={(taskId) => void handleDeleteTask(taskId)}
+                  onOpenEpicNotes={(epic) => handleOpenEpicNotesPanel(epic)}
+                  onOpenProjectNotes={(project) => handleOpenProjectNotesPanel(project)}
+                  onOpenSubtaskNote={(task, subtask) => handleOpenSubtaskNote(task, subtask)}
+                  onOpenTaskNote={(task) => handleOpenTaskNote(task)}
+                  onUpdateEpic={(task, epicId) => void handleUpdateTaskEpic(task, epicId)}
+                  onUpdateStatus={(task, status) => void handleUpdateTaskStatus(task, status)}
+                  onUpdateSubtaskStatus={(task, subtask, status) => void handleUpdateSubtaskStatus(task, subtask, status)}
+                  projects={projects}
+                  tasks={activeEpicTasks}
+                  onSelectTask={(task) => setSelectedTaskId(task.id)}
+                  selectedTaskId={selectedTaskId}
+                />
+                {activeEpicTasks.length === 0 && (
+                  <EmptyState description="No tasks scheduled for this epic today." icon={Calendar} title="Empty workspace" />
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Column 3: Subtasks */}
+          {selectedTaskId && activeTask && (
+            <div className="pane-column">
+              <div className="pane-header">
+                <div className="pane-header-content">
+                  <h3 className="pane-header-title">Subtasks</h3>
+                  <p className="pane-header-subtitle">{activeTask.title}</p>
+                </div>
+                <button
+                  className="subtask-add-button primary-button"
+                  onClick={() => setSubtaskModalTask(activeTask)}
+                  type="button"
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
+              <div className="pane-content">
+                <div className="stack" style={{ gap: '12px' }}>
+                  {activeTask.subtasks.map(subtask => (
+                    <div key={subtask.id} className="task-card" style={{ padding: '12px' }}>
+                      <div className="subtask-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <input
+                            checked={subtask.status === 'completed'}
+                            className="custom-checkbox"
+                            onChange={() => void handleUpdateSubtaskStatus(activeTask, subtask, subtask.status === 'completed' ? 'pending' : 'completed')}
+                            type="checkbox"
+                          />
+                          <span className={subtask.status === 'completed' ? 'subtask-title-done' : 'subtask-title'}>
+                            {subtask.title}
+                          </span>
+                        </div>
+                        <div className="card-actions-row-compact" style={{ marginTop: 0 }}>
+                          <button
+                            className="ghost-button"
+                            onClick={() => handleOpenSubtaskNote(activeTask, subtask)}
+                            style={{ padding: '0' }}
+                            type="button"
+                          >
+                            <MessageSquare size={14} />
+                          </button>
+                          <button
+                            className="ghost-button danger-text"
+                            onClick={() => void handleDeleteSubtask(activeTask, subtask)}
+                            style={{ padding: '0', fontSize: '0.75rem' }}
+                            type="button"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                      {subtask.description && (
+                         <p className="card-description" style={{ marginTop: 4, paddingLeft: 28, fontStyle: 'italic', fontSize: '0.8rem' }}>
+                           {subtask.description}
+                         </p>
+                      )}
+                      {subtask.note && (
+                        <p className="card-description" style={{ marginTop: 8, paddingLeft: 28 }}>
+                          {subtask.note}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                  {activeTask.subtasks.length === 0 && (
+                    <EmptyState description="Break down your task into smaller steps." icon={CheckCircle} title="All clear" />
+                  )}
+                  
+                  <div style={{ marginTop: 'auto', paddingTop: 24 }}>
+                    <div className="pane-header-content" style={{ marginBottom: 16 }}>
+                      <h4 className="pane-header-title" style={{ fontSize: '0.9rem' }}>Task Detail</h4>
+                    </div>
+                    {activeTask.description && <p className="card-description" style={{ marginBottom: 16 }}>{activeTask.description}</p>}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                      <span className={`status-pill status-${activeTask.status}`}>{activeTask.status.replace('_', ' ')}</span>
+                      <span className="source-badge">{activeTask.source}</span>
+                    </div>
+                    <div className="card-actions-row">
+                      <button className="secondary-button" onClick={() => handleOpenTaskNote(activeTask)} style={{ flex: 1 }} type="button">
+                        <MessageSquare size={16} /> Task Note
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-        
-          {projectMutationSuccess ? <p className="success-text">{projectMutationSuccess}</p> : null}
-          {projectMutationError ? <p className="error-text">{projectMutationError}</p> : null}
-          {epicMutationSuccess ? <p className="success-text">{epicMutationSuccess}</p> : null}
-          {epicMutationError ? <p className="error-text">{epicMutationError}</p> : null}
-          {taskMutationSuccess ? <p className="success-text">{taskMutationSuccess}</p> : null}
-          {taskMutationError ? <p className="error-text">{taskMutationError}</p> : null}
-          {noteMutationSuccess ? <p className="success-text">{noteMutationSuccess}</p> : null}
-          {noteMutationError ? <p className="error-text">{noteMutationError}</p> : null}
-          {loading ? <p className="muted-text">Refreshing tasks for {selectedDate}...</p> : null}
-          {error ? <p className="error-text">{error}</p> : null}
-        
-        {!loading && visibleTasks.length === 0 ? (
-          <EmptyState
-            description="Use the project selector or create a new task to populate this date."
-            icon={ClipboardList}
-            title="No tasks in this view"
-          />
-        ) : null}
-        {!loading && visibleTasks.length > 0 ? (
-          <TaskList
-            actionTaskId={actionTaskId}
-            epics={epics}
-            onDeleteSubtask={(task, subtask) => void handleDeleteSubtask(task, subtask)}
-            onCreateSubtask={(task) => setSubtaskModalTask(task)}
-            onDelete={(taskId) => void handleDeleteTask(taskId)}
-            onOpenSubtaskNote={(task, subtask) => handleOpenSubtaskNote(task, subtask)}
-            onOpenTaskNote={(task) => handleOpenTaskNote(task)}
-            onUpdateEpic={(task, epicId) => void handleUpdateTaskEpic(task, epicId)}
-            onUpdateStatus={(task, status) => void handleUpdateTaskStatus(task, status)}
-            onUpdateSubtaskStatus={(task, subtask, status) => void handleUpdateSubtaskStatus(task, subtask, status)}
-            projects={projects}
-            tasks={visibleTasks}
-          />
-        ) : null}
-      </SectionCard>
+       )}
+      </main>
+
+      {/* Modals & Overlays */}
       {isProjectCreateModalOpen ? (
         <Modal onClose={() => setIsProjectCreateModalOpen(false)} title="Create Project">
           <ProjectForm onSubmit={handleCreateProject} />
@@ -964,51 +1347,7 @@ function DashboardPage(): JSX.Element {
       ) : null}
       {editingProject ? (
         <Modal onClose={() => setEditingProject(null)} title="Update Project">
-          <ProjectForm initialName={editingProject.name} onSubmit={handleUpdateProject} submitLabel="Update project" />
-        </Modal>
-      ) : null}
-      {isProjectManagerOpen ? (
-        <Modal
-          bodyClassName="project-manager-modal-body"
-          onClose={() => setIsProjectManagerOpen(false)}
-          panelClassName="project-manager-modal-panel"
-          title="Manage Projects"
-        >
-          <ProjectPanel
-            actionProjectId={actionProjectId}
-            loading={loading}
-            onOpenCreateProject={() => setIsProjectCreateModalOpen(true)}
-            onOpenEpicManager={(project) => {
-              setSelectedProjectView(project.id);
-              setEditingEpic(null);
-              setIsEpicCreateModalOpen(false);
-              setIsProjectManagerOpen(false);
-              setIsEpicManagerOpen(true);
-            }}
-            onOpenProject={(projectId) => {
-              setSelectedProjectView(projectId ?? ALL_PROJECTS_VALUE);
-              setIsProjectManagerOpen(false);
-            }}
-            onOpenUpdateProject={(project) => {
-              setEditingProject(project);
-            }}
-            onDeleteProject={handleDeleteProject}
-            projects={projects}
-            tasksByProject={tasksByProject}
-          />
-        </Modal>
-      ) : null}
-      {isEpicManagerOpen && activeProject ? (
-        <Modal onClose={() => setIsEpicManagerOpen(false)} title={`Manage Epics for ${activeProject.name}`}>
-          <EpicManager
-            actionEpicId={actionEpicId}
-            epics={activeProjectEpics}
-            onCreateEpic={() => setIsEpicCreateModalOpen(true)}
-            onDeleteEpic={handleDeleteEpic}
-            onEditEpic={(epic) => setEditingEpic(epic)}
-            onMoveEpic={handleMoveEpic}
-            projectName={activeProject.name}
-          />
+          <ProjectForm initialDescription={editingProject.description} initialName={editingProject.name} onSubmit={handleUpdateProject} submitLabel="Update project" />
         </Modal>
       ) : null}
       {isEpicCreateModalOpen && activeProject ? (
@@ -1032,13 +1371,30 @@ function DashboardPage(): JSX.Element {
           <AddTaskForm epics={epics} initialProjectId={taskModalProjectId} onCreateTask={handleCreateTask} projects={projects} />
         </Modal>
       ) : null}
-      {isProjectNotesModalOpen && activeProject ? (
+      {isProjectNotesModalOpen && activeProjectForNotes ? (
         <Modal onClose={() => setIsProjectNotesModalOpen(false)} title={activeProjectNotesModalTitle}>
           <ProjectNotes
             actionNoteId={actionNoteId}
-            loading={notesLoadingProjectId === activeProject.id}
+            heading="Project notes"
+            loading={activeProjectForNotes != null && notesLoadingKey === `project:${activeProjectForNotes.id}`}
             notes={activeProjectNotes}
-            onCreateNote={handleOpenCreateNote}
+            onCreateNote={() => activeProjectForNotes && handleOpenCreateProjectNote(activeProjectForNotes)}
+            onDeleteNote={(note) => void handleDeleteNote(note)}
+            onOpenNote={(note) => void handleOpenExistingNote(note)}
+          />
+        </Modal>
+      ) : null}
+      {isEpicNotesModalOpen && activeEpicForNotes ? (
+        <Modal onClose={() => setIsEpicNotesModalOpen(false)} title={activeEpicNotesModalTitle}>
+          <ProjectNotes
+            actionNoteId={actionNoteId}
+            createLabel="Create epic note"
+            emptyDescription="Create the first note to capture decisions, references, or follow-ups for this epic."
+            emptyTitle="No epic notes yet"
+            heading="Epic notes"
+            loading={notesLoadingKey === `epic:${activeEpicForNotes.id}`}
+            notes={activeEpicNotes}
+            onCreateNote={() => handleOpenCreateEpicNote(activeEpicForNotes)}
             onDeleteNote={(note) => void handleDeleteNote(note)}
             onOpenNote={(note) => void handleOpenExistingNote(note)}
           />
@@ -1056,9 +1412,9 @@ function DashboardPage(): JSX.Element {
       ) : null}
       {activeNoteEditor ? (
         <NoteModal
-          allowAppend={activeNoteEditor.kind === 'project' && activeNoteEditor.note != null}
+          allowAppend={(activeNoteEditor.kind === 'project' || activeNoteEditor.kind === 'epic') && activeNoteEditor.note != null}
           allowDelete={
-            activeNoteEditor.kind === 'project'
+            activeNoteEditor.kind === 'project' || activeNoteEditor.kind === 'epic'
               ? activeNoteEditor.note != null
               : activeNoteEditor.kind === 'task'
                 ? Boolean(activeNoteEditor.task.note?.trim())
@@ -1067,6 +1423,8 @@ function DashboardPage(): JSX.Element {
           deleteLabel={
             activeNoteEditor.kind === 'project'
               ? 'Delete Note'
+              : activeNoteEditor.kind === 'epic'
+                ? 'Delete Epic Note'
               : activeNoteEditor.kind === 'task'
                 ? 'Delete Task Note'
                 : 'Delete Sub-task Note'
@@ -1074,6 +1432,8 @@ function DashboardPage(): JSX.Element {
           entityLabel={
             activeNoteEditor.kind === 'project'
               ? activeNoteEditor.projectName
+              : activeNoteEditor.kind === 'epic'
+                ? activeNoteEditor.epicName
               : activeNoteEditor.kind === 'task'
                 ? activeNoteEditor.task.title
                 : `${activeNoteEditor.task.title} / ${activeNoteEditor.subtask.title}`
@@ -1083,6 +1443,10 @@ function DashboardPage(): JSX.Element {
               ? activeNoteEditor.note
                 ? 'Edit Project Note'
                 : 'Create Project Note'
+              : activeNoteEditor.kind === 'epic'
+                ? activeNoteEditor.note
+                  ? 'Edit Epic Note'
+                  : 'Create Epic Note'
               : activeNoteEditor.kind === 'task'
                 ? activeNoteEditor.task.note?.trim()
                   ? 'Edit Task Note'
@@ -1094,6 +1458,8 @@ function DashboardPage(): JSX.Element {
           note={
             activeNoteEditor.kind === 'project'
               ? activeNoteEditor.note
+              : activeNoteEditor.kind === 'epic'
+                ? activeNoteEditor.note
               : activeNoteEditor.kind === 'task'
                 ? { title: '', content: activeNoteEditor.task.note ?? '' }
                 : { title: '', content: activeNoteEditor.subtask.note ?? '' }
@@ -1102,18 +1468,18 @@ function DashboardPage(): JSX.Element {
             setActiveNoteEditor(null);
           }}
           onDelete={
-            activeNoteEditor.kind === 'project'
+            activeNoteEditor.kind === 'project' || activeNoteEditor.kind === 'epic'
               ? activeNoteEditor.note
                 ? () => void handleDeleteNote(activeNoteEditor.note as Note)
                 : undefined
               : () => void handleDeleteInlineNote()
           }
           onSave={handleSaveNote}
-          showTitle={activeNoteEditor.kind === 'project'}
+          showTitle={activeNoteEditor.kind === 'project' || activeNoteEditor.kind === 'epic'}
           titlePlaceholder="Sprint recap"
         />
       ) : null}
-    </main>
+    </div>
   );
 }
 

@@ -1,10 +1,20 @@
 import api from '@/services/api';
 import type { CreateProjectInput, Project, UpdateProjectInput } from '@/types/project';
 
+export interface ProjectsPaginationParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
 interface ProjectListResponse {
   message: string;
   data: {
     projects: Project[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
   };
 }
 
@@ -15,9 +25,9 @@ interface ProjectResponse {
   };
 }
 
-const getProjects = async (): Promise<Project[]> => {
-  const response = await api.get<ProjectListResponse>('/projects');
-  return response.data.data.projects;
+const getProjects = async (params?: ProjectsPaginationParams): Promise<ProjectListResponse['data']> => {
+  const response = await api.get<ProjectListResponse>('/projects', { params });
+  return response.data.data;
 };
 
 const createProject = async (payload: CreateProjectInput): Promise<Project> => {
@@ -34,4 +44,8 @@ const deleteProject = async (projectId: string): Promise<void> => {
   await api.delete(`/projects/${projectId}`);
 };
 
-export { createProject, deleteProject, getProjects, updateProject };
+const deleteProjects = async (projectIds: string[]): Promise<void> => {
+  await api.post('/projects/bulk-delete', { projectIds });
+};
+
+export { createProject, deleteProject, deleteProjects, getProjects, updateProject };

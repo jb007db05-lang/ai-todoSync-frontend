@@ -26,6 +26,8 @@ interface TaskCardProps {
   epicName?: string;
   projectName?: string;
   task: Task;
+  onSelect?: (task: Task) => void;
+  isSelected?: boolean;
 }
 
 function TaskCard({
@@ -41,13 +43,15 @@ function TaskCard({
   onUpdateSubtaskStatus,
   epicName,
   projectName,
-  task
+  task,
+  onSelect,
+  isSelected
 }: TaskCardProps): JSX.Element {
   const completedSubtasks = task.subtasks.filter((subtask) => subtask.completed).length;
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <article className={`task-card accordion-card ${expanded ? 'accordion-open' : ''}`}>
+    <article className={`task-card accordion-card ${expanded ? 'accordion-open' : ''} ${isSelected ? 'project-nav-item-active' : ''}`}>
       <div className="task-card-topbar">
         <button
           aria-label={`Delete ${task.title}`}
@@ -62,7 +66,17 @@ function TaskCard({
           <Trash2 size={15} />
         </button>
       </div>
-      <button className="accordion-trigger" onClick={() => setExpanded((current) => !current)} type="button">
+      <button
+        className="accordion-trigger"
+        onClick={() => {
+          if (onSelect) {
+            onSelect(task);
+          } else {
+            setExpanded((current) => !current);
+          }
+        }}
+        type="button"
+      >
         <div className="task-heading">
           <h3>{task.title}</h3>
           <p className="muted-text">{task.description || 'No description provided.'}</p>

@@ -27,6 +27,11 @@ const getProjectNotes = async (projectId: string): Promise<Note[]> => {
   return response.data.data.notes;
 };
 
+const getEpicNotes = async (projectId: string, epicId: string): Promise<Note[]> => {
+  const response = await api.get<NoteListResponse>(`/projects/${projectId}/epics/${epicId}/notes`);
+  return response.data.data.notes;
+};
+
 const getNote = async (noteId: string): Promise<Note> => {
   const response = await api.get<NoteResponse>(`/notes/${noteId}`);
   return response.data.data.note;
@@ -34,6 +39,11 @@ const getNote = async (noteId: string): Promise<Note> => {
 
 const createNote = async (projectId: string, payload: CreateNoteInput): Promise<Note> => {
   const response = await api.post<NoteResponse>(`/projects/${projectId}/notes`, payload);
+  return response.data.data.note;
+};
+
+const createEpicNote = async (projectId: string, epicId: string, payload: CreateNoteInput): Promise<Note> => {
+  const response = await api.post<NoteResponse>(`/projects/${projectId}/epics/${epicId}/notes`, payload);
   return response.data.data.note;
 };
 
@@ -47,4 +57,4 @@ const deleteNote = async (noteId: string): Promise<string> => {
   return response.data.data.noteId;
 };
 
-export { createNote, deleteNote, getNote, getProjectNotes, updateNote };
+export { createEpicNote, createNote, deleteNote, getEpicNotes, getNote, getProjectNotes, updateNote };
