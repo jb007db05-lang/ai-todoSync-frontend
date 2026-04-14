@@ -1,29 +1,34 @@
 import { FormEvent, useState } from 'react';
 
+import type { Epic } from '@/types/epic';
 import type { Project } from '@/types/project';
 import { TASK_WORKFLOW_STATUS_OPTIONS, type TaskWorkflowStatus } from '@/types/task';
 import { flattenProjectOptions } from '@/utils/projectTree';
 
 interface AddTaskFormProps {
+  epics: Epic[];
   initialProjectId?: string | null;
   onCreateTask: (payload: {
     title: string;
     description?: string;
     status?: TaskWorkflowStatus;
     projectId?: string | null;
+    epicId?: string | null;
   }) => Promise<void>;
   projects: Project[];
 }
 
-function AddTaskForm({ initialProjectId = null, onCreateTask, projects }: AddTaskFormProps): JSX.Element {
+function AddTaskForm({ epics, initialProjectId = null, onCreateTask, projects }: AddTaskFormProps): JSX.Element {
   const [title, setTitle] = useState<string>('');
   const [description, setDescription] = useState<string>('');
   const [status, setStatus] = useState<TaskWorkflowStatus>('pending');
   const [projectId, setProjectId] = useState<string>(initialProjectId ?? '');
+  const [epicId, setEpicId] = useState<string>('');
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const projectOptions = flattenProjectOptions(projects);
+  const visibleEpics = epics.filter((epic) => epic.projectId === projectId).sort((left, right) => left.order - right.order);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
@@ -41,12 +46,14 @@ function AddTaskForm({ initialProjectId = null, onCreateTask, projects }: AddTas
         title: title.trim(),
         description: description.trim() || undefined,
         status,
-        projectId: projectId || undefined
+        projectId: projectId || undefined,
+        epicId: projectId ? epicId || null : null
       });
       setTitle('');
       setDescription('');
       setStatus('pending');
       setProjectId(initialProjectId ?? '');
+      setEpicId('');
     } catch {
       setErrorMessage('Unable to create the task right now.');
     } finally {
@@ -87,11 +94,28 @@ function AddTaskForm({ initialProjectId = null, onCreateTask, projects }: AddTas
       </label>
       <label>
         <span>Project</span>
-        <select onChange={(event) => setProjectId(event.target.value)} value={projectId}>
+        <select
+          onChange={(event) => {
+            setProjectId(event.target.value);
+            setEpicId('');
+          }}
+          value={projectId}
+        >
           <option value="">No project</option>
           {projectOptions.map((project) => (
             <option key={project.id} value={project.id}>
               {project.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        <span>Epic</span>
+        <select disabled={!projectId} onChange={(event) => setEpicId(event.target.value)} value={epicId}>
+          <option value="">{projectId ? 'No epic' : 'Select a project first'}</option>
+          {visibleEpics.map((epic) => (
+            <option key={epic.id} value={epic.id}>
+              {epic.name}
             </option>
           ))}
         </select>

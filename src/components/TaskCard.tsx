@@ -4,6 +4,7 @@ import { Check, FilePenLine, NotebookPen, Plus, Rows3, Trash2 } from 'lucide-rea
 import ActionGroup from '@/components/ActionGroup';
 import EmptyState from '@/components/EmptyState';
 import SourceBadge from '@/components/SourceBadge';
+import type { Epic } from '@/types/epic';
 import {
   TASK_WORKFLOW_STATUS_OPTIONS,
   type Subtask,
@@ -13,26 +14,32 @@ import {
 
 interface TaskCardProps {
   actionTaskId: string | null;
+  availableEpics: Epic[];
   onCreateSubtask: (task: Task) => void;
   onDelete: (taskId: string) => void;
   onDeleteSubtask: (task: Task, subtask: Subtask) => void;
   onOpenSubtaskNote: (task: Task, subtask: Subtask) => void;
   onOpenTaskNote: (task: Task) => void;
+  onUpdateEpic: (task: Task, epicId: string | null) => void;
   onUpdateStatus: (task: Task, status: TaskWorkflowStatus) => void;
   onUpdateSubtaskStatus: (task: Task, subtask: Subtask, status: TaskWorkflowStatus) => void;
+  epicName?: string;
   projectName?: string;
   task: Task;
 }
 
 function TaskCard({
   actionTaskId,
+  availableEpics,
   onCreateSubtask,
   onDelete,
   onDeleteSubtask,
   onOpenSubtaskNote,
   onOpenTaskNote,
+  onUpdateEpic,
   onUpdateStatus,
   onUpdateSubtaskStatus,
+  epicName,
   projectName,
   task
 }: TaskCardProps): JSX.Element {
@@ -60,6 +67,7 @@ function TaskCard({
           <h3>{task.title}</h3>
           <p className="muted-text">{task.description || 'No description provided.'}</p>
           {projectName ? <p className="task-project-label">Project: {projectName}</p> : null}
+          {epicName ? <p className="task-project-label">Epic: {epicName}</p> : null}
         </div>
         <div className="accordion-summary-meta">
           <span className={`status-pill status-${task.status}`}>{task.status.replace('_', ' ')}</span>
@@ -82,6 +90,21 @@ function TaskCard({
               {TASK_WORKFLOW_STATUS_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="status-editor">
+            <span>Epic</span>
+            <select
+              disabled={actionTaskId === task.id || !task.projectId}
+              onChange={(event) => onUpdateEpic(task, event.target.value || null)}
+              value={task.epicId ?? ''}
+            >
+              <option value="">{task.projectId ? 'No epic' : 'No project assigned'}</option>
+              {availableEpics.map((epic) => (
+                <option key={epic.id} value={epic.id}>
+                  {epic.name}
                 </option>
               ))}
             </select>
