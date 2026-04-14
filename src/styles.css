@@ -2584,6 +2584,22 @@ button:disabled {
   gap: 18px;
 }
 
+.epic-group {
+  display: grid;
+  gap: 16px;
+}
+
+.epic-group-header {
+  align-items: start;
+  background: linear-gradient(135deg, rgba(21, 94, 239, 0.08), rgba(15, 118, 110, 0.08));
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 18px;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  padding: 18px 20px;
+}
+
 .task-card {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(247, 249, 252, 0.98));
   border: 1px solid rgba(15, 23, 42, 0.08);
@@ -2673,6 +2689,39 @@ button:disabled {
   padding: 16px;
 }
 
+.epic-manager-list {
+  display: grid;
+  gap: 14px;
+}
+
+.epic-manager-card {
+  align-items: stretch;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 248, 252, 0.98));
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 16px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 18px;
+}
+
+.epic-manager-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.epic-manager-copy strong {
+  color: var(--heading-color);
+  font-size: 1.05rem;
+}
+
+.epic-manager-actions {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, auto));
+}
+
 .project-list-main strong {
   letter-spacing: -0.02em;
 }
@@ -2695,18 +2744,30 @@ button:disabled {
     border-top: 1px solid rgba(15, 23, 42, 0.06);
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .epic-group-header,
+  .epic-manager-card {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .epic-manager-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 :root[data-theme='dark'] .dashboard-shell,
 :root[data-theme='dark'] .workspace-card,
 :root[data-theme='dark'] .workspace-notices,
 :root[data-theme='dark'] .dashboard-hero-simple,
+:root[data-theme='dark'] .epic-group-header,
 :root[data-theme='dark'] .task-card,
 :root[data-theme='dark'] .task-meta,
 :root[data-theme='dark'] .status-editor,
 :root[data-theme='dark'] .subtask-list,
 :root[data-theme='dark'] .subtask-row,
-:root[data-theme='dark'] .project-list-card {
+:root[data-theme='dark'] .project-list-card,
+:root[data-theme='dark'] .epic-manager-card {
   background: rgba(17, 25, 40, 0.84);
   border-color: rgba(148, 163, 184, 0.12);
 }

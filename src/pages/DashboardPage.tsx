@@ -3,6 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import AddTaskForm from '@/components/AddTaskForm';
 import DateNavigator from '@/components/DateNavigator';
 import EmptyState from '@/components/EmptyState';
+import EpicForm from '@/components/EpicForm';
+import EpicManager from '@/components/EpicManager';
 import Modal from '@/components/Modal';
 import Navbar from '@/components/Navbar';
 import NoteModal from '@/components/NoteModal';
@@ -14,9 +16,11 @@ import SectionCard from '@/components/SectionCard';
 import SubtaskForm from '@/components/SubtaskForm';
 import TaskList from '@/components/TaskList';
 import { ClipboardList } from 'lucide-react';
+import { createEpic, deleteEpic, getEpics, reorderEpics, updateEpic } from '@/services/epics';
 import { createNote, deleteNote, getNote, getProjectNotes, updateNote } from '@/services/notes';
 import { createProject, deleteProject, getProjects, updateProject } from '@/services/projects';
 import { createTask, deleteTask, getTasks, updateTask } from '@/services/tasks';
+import type { Epic, EpicStatus } from '@/types/epic';
 import type { Note } from '@/types/note';
 import type { Project } from '@/types/project';
 import type { Task, TaskWorkflowStatus } from '@/types/task';
@@ -82,20 +86,27 @@ function DashboardPage(): JSX.Element {
   const [selectedDate, setSelectedDate] = useState<string>(getTodayDate);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [epics, setEpics] = useState<Epic[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [actionTaskId, setActionTaskId] = useState<string | null>(null);
   const [actionProjectId, setActionProjectId] = useState<string | null>(null);
+  const [actionEpicId, setActionEpicId] = useState<string | null>(null);
   const [actionNoteId, setActionNoteId] = useState<string | null>(null);
   const [taskMutationError, setTaskMutationError] = useState<string | null>(null);
   const [taskMutationSuccess, setTaskMutationSuccess] = useState<string | null>(null);
   const [projectMutationError, setProjectMutationError] = useState<string | null>(null);
   const [projectMutationSuccess, setProjectMutationSuccess] = useState<string | null>(null);
+  const [epicMutationError, setEpicMutationError] = useState<string | null>(null);
+  const [epicMutationSuccess, setEpicMutationSuccess] = useState<string | null>(null);
   const [noteMutationError, setNoteMutationError] = useState<string | null>(null);
   const [noteMutationSuccess, setNoteMutationSuccess] = useState<string | null>(null);
   const [isProjectCreateModalOpen, setIsProjectCreateModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [isProjectManagerOpen, setIsProjectManagerOpen] = useState(false);
+  const [isEpicManagerOpen, setIsEpicManagerOpen] = useState(false);
+  const [isEpicCreateModalOpen, setIsEpicCreateModalOpen] = useState(false);
+  const [editingEpic, setEditingEpic] = useState<Epic | null>(null);
   const [isProjectNotesModalOpen, setIsProjectNotesModalOpen] = useState(false);
   const [isTaskCreateModalOpen, setIsTaskCreateModalOpen] = useState(false);
   const [selectedProjectView, setSelectedProjectView] = useState<string>(ALL_PROJECTS_VALUE);
@@ -111,12 +122,15 @@ function DashboardPage(): JSX.Element {
 
     try {
       const [taskList, projectList] = await Promise.all([getTasks(selectedDate), getProjects()]);
+      const epicGroups = await Promise.all(projectList.map((project) => getEpics(project.id)));
       setTasks(taskList);
       setProjects(projectList);
+      setEpics(epicGroups.flat());
     } catch {
       setError('Unable to load tasks for the selected day.');
       setTasks([]);
       setProjects([]);
+      setEpics([]);
     } finally {
       setLoading(false);
     }
@@ -131,6 +145,7 @@ function DashboardPage(): JSX.Element {
     description?: string;
     status?: TaskWorkflowStatus;
     projectId?: string | null;
+    epicId?: string | null;
   }): Promise<void> => {
     await createTask({
       title: payload.title,
@@ -138,10 +153,122 @@ function DashboardPage(): JSX.Element {
       date: selectedDate,
       status: payload.status,
       source: 'manual',
-      projectId: payload.projectId
+      projectId: payload.projectId,
+      epicId: payload.epicId
     });
     await loadDashboard();
     setIsTaskCreateModalOpen(false);
+  };
+
+  const handleCreateEpic = async (payload: {
+    description?: string;
+    name: string;
+    status: EpicStatus;
+  }): Promise<void> => {
+    if (activeProject == null) {
+      return;
+    }
+
+    setActionEpicId('new');
+    setEpicMutationError(null);
+    setEpicMutationSuccess(null);
+
+    try {
+      await createEpic(activeProject.id, payload);
+      await loadDashboard();
+      setEpicMutationSuccess('Epic created.');
+      setIsEpicCreateModalOpen(false);
+    } catch {
+      setEpicMutationError('Unable to create the epic.');
+      throw new Error('Unable to create epic');
+    } finally {
+      setActionEpicId(null);
+    }
+  };
+
+  const handleUpdateEpic = async (payload: {
+    description?: string;
+    name: string;
+    status: EpicStatus;
+  }): Promise<void> => {
+    if (activeProject == null || editingEpic == null) {
+      return;
+    }
+
+    setActionEpicId(editingEpic.id);
+    setEpicMutationError(null);
+    setEpicMutationSuccess(null);
+
+    try {
+      await updateEpic(activeProject.id, editingEpic.id, payload);
+      await loadDashboard();
+      setEpicMutationSuccess('Epic updated.');
+      setEditingEpic(null);
+    } catch {
+      setEpicMutationError('Unable to update the epic.');
+      throw new Error('Unable to update epic');
+    } finally {
+      setActionEpicId(null);
+    }
+  };
+
+  const handleDeleteEpic = async (epic: Epic): Promise<void> => {
+    if (!requestConfirmation(`Delete epic "${epic.name}"? Tasks will remain and move to "No Epic".`)) {
+      return;
+    }
+
+    setActionEpicId(epic.id);
+    setEpicMutationError(null);
+    setEpicMutationSuccess(null);
+
+    try {
+      await deleteEpic(epic.projectId, epic.id);
+      await loadDashboard();
+      setEpicMutationSuccess('Epic deleted. Related tasks were preserved and unassigned.');
+
+      if (editingEpic?.id === epic.id) {
+        setEditingEpic(null);
+      }
+    } catch {
+      setEpicMutationError('Unable to delete the epic.');
+    } finally {
+      setActionEpicId(null);
+    }
+  };
+
+  const handleMoveEpic = async (epic: Epic, direction: 'up' | 'down'): Promise<void> => {
+    const projectEpics = epics
+      .filter((currentEpic) => currentEpic.projectId === epic.projectId)
+      .sort((left, right) => left.order - right.order);
+    const index = projectEpics.findIndex((currentEpic) => currentEpic.id === epic.id);
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+
+    if (index < 0 || targetIndex < 0 || targetIndex >= projectEpics.length) {
+      return;
+    }
+
+    const reordered = [...projectEpics];
+    const [movedEpic] = reordered.splice(index, 1);
+
+    if (!movedEpic) {
+      return;
+    }
+
+    reordered.splice(targetIndex, 0, movedEpic);
+
+    setActionEpicId(epic.id);
+    setEpicMutationError(null);
+    setEpicMutationSuccess(null);
+
+    try {
+      await reorderEpics(epic.projectId, reordered.map((item) => item.id));
+      await loadDashboard();
+      setEpicMutationSuccess('Epic order updated.');
+    } catch {
+      setEpicMutationError('Unable to reorder epics.');
+    } finally {
+      setActionEpicId(null);
+    }
   };
 
   const handleCreateProject = async (payload: { name: string }): Promise<void> => {
@@ -211,6 +338,7 @@ function DashboardPage(): JSX.Element {
         delete next[projectId];
         return next;
       });
+      setEpics((current) => current.filter((epic) => epic.projectId !== projectId));
 
       if (selectedProjectView === projectId) {
         setSelectedProjectView(ALL_PROJECTS_VALUE);
@@ -228,6 +356,12 @@ function DashboardPage(): JSX.Element {
         return current.task.projectId === projectId ? null : current;
       });
       setSubtaskModalTask((current) => (current?.projectId === projectId ? null : current));
+      setEditingEpic((current) => (current?.projectId === projectId ? null : current));
+
+      if (activeProject?.id === projectId) {
+        setIsEpicManagerOpen(false);
+        setIsEpicCreateModalOpen(false);
+      }
 
       setProjectMutationSuccess('Project deleted. Related tasks and notes were removed.');
     } catch {
@@ -265,6 +399,25 @@ function DashboardPage(): JSX.Element {
       setTaskMutationSuccess('Task status updated.');
     } catch {
       setTaskMutationError('Unable to update the task status.');
+    } finally {
+      setActionTaskId(null);
+    }
+  };
+
+  const handleUpdateTaskEpic = async (task: Task, epicId: string | null): Promise<void> => {
+    setActionTaskId(task.id);
+    setTaskMutationError(null);
+    setTaskMutationSuccess(null);
+
+    try {
+      await updateTask(task.id, {
+        projectId: task.projectId,
+        epicId
+      });
+      await loadDashboard();
+      setTaskMutationSuccess(epicId ? 'Task epic updated.' : 'Task moved to No Epic.');
+    } catch {
+      setTaskMutationError('Unable to update the task epic.');
     } finally {
       setActionTaskId(null);
     }
@@ -688,6 +841,15 @@ function DashboardPage(): JSX.Element {
 
     return `${activeProject?.name ?? 'Project'} tasks for ${selectedDate}`;
   }, [activeProject?.name, selectedDate, selectedProjectView]);
+  const activeProjectEpics = useMemo(
+    () =>
+      activeProject == null
+        ? []
+        : epics
+            .filter((epic) => epic.projectId === activeProject.id)
+            .sort((left, right) => left.order - right.order),
+    [activeProject, epics]
+  );
   const activeProjectNotes = activeProject ? projectNotes[activeProject.id] ?? [] : [];
   const activeProjectNotesModalTitle = activeProject ? `Notes for ${activeProject.name}` : 'Project Notes';
 
@@ -725,6 +887,15 @@ function DashboardPage(): JSX.Element {
             {activeProject ? (
               <button
                 className="secondary-button"
+                onClick={() => setIsEpicManagerOpen(true)}
+                type="button"
+              >
+                Manage epics
+              </button>
+            ) : null}
+            {activeProject ? (
+              <button
+                className="secondary-button"
                 onClick={() => {
                   if (projectNotes[activeProject.id] == null) {
                     void loadNotesForProject(activeProject.id);
@@ -753,6 +924,8 @@ function DashboardPage(): JSX.Element {
         
           {projectMutationSuccess ? <p className="success-text">{projectMutationSuccess}</p> : null}
           {projectMutationError ? <p className="error-text">{projectMutationError}</p> : null}
+          {epicMutationSuccess ? <p className="success-text">{epicMutationSuccess}</p> : null}
+          {epicMutationError ? <p className="error-text">{epicMutationError}</p> : null}
           {taskMutationSuccess ? <p className="success-text">{taskMutationSuccess}</p> : null}
           {taskMutationError ? <p className="error-text">{taskMutationError}</p> : null}
           {noteMutationSuccess ? <p className="success-text">{noteMutationSuccess}</p> : null}
@@ -770,11 +943,13 @@ function DashboardPage(): JSX.Element {
         {!loading && visibleTasks.length > 0 ? (
           <TaskList
             actionTaskId={actionTaskId}
+            epics={epics}
             onDeleteSubtask={(task, subtask) => void handleDeleteSubtask(task, subtask)}
             onCreateSubtask={(task) => setSubtaskModalTask(task)}
             onDelete={(taskId) => void handleDeleteTask(taskId)}
             onOpenSubtaskNote={(task, subtask) => handleOpenSubtaskNote(task, subtask)}
             onOpenTaskNote={(task) => handleOpenTaskNote(task)}
+            onUpdateEpic={(task, epicId) => void handleUpdateTaskEpic(task, epicId)}
             onUpdateStatus={(task, status) => void handleUpdateTaskStatus(task, status)}
             onUpdateSubtaskStatus={(task, subtask, status) => void handleUpdateSubtaskStatus(task, subtask, status)}
             projects={projects}
@@ -803,6 +978,13 @@ function DashboardPage(): JSX.Element {
             actionProjectId={actionProjectId}
             loading={loading}
             onOpenCreateProject={() => setIsProjectCreateModalOpen(true)}
+            onOpenEpicManager={(project) => {
+              setSelectedProjectView(project.id);
+              setEditingEpic(null);
+              setIsEpicCreateModalOpen(false);
+              setIsProjectManagerOpen(false);
+              setIsEpicManagerOpen(true);
+            }}
             onOpenProject={(projectId) => {
               setSelectedProjectView(projectId ?? ALL_PROJECTS_VALUE);
               setIsProjectManagerOpen(false);
@@ -816,9 +998,38 @@ function DashboardPage(): JSX.Element {
           />
         </Modal>
       ) : null}
+      {isEpicManagerOpen && activeProject ? (
+        <Modal onClose={() => setIsEpicManagerOpen(false)} title={`Manage Epics for ${activeProject.name}`}>
+          <EpicManager
+            actionEpicId={actionEpicId}
+            epics={activeProjectEpics}
+            onCreateEpic={() => setIsEpicCreateModalOpen(true)}
+            onDeleteEpic={handleDeleteEpic}
+            onEditEpic={(epic) => setEditingEpic(epic)}
+            onMoveEpic={handleMoveEpic}
+            projectName={activeProject.name}
+          />
+        </Modal>
+      ) : null}
+      {isEpicCreateModalOpen && activeProject ? (
+        <Modal onClose={() => setIsEpicCreateModalOpen(false)} title={`Create Epic for ${activeProject.name}`}>
+          <EpicForm onSubmit={handleCreateEpic} submitLabel="Create epic" />
+        </Modal>
+      ) : null}
+      {editingEpic && activeProject ? (
+        <Modal onClose={() => setEditingEpic(null)} title={`Update Epic for ${activeProject.name}`}>
+          <EpicForm
+            initialDescription={editingEpic.description}
+            initialName={editingEpic.name}
+            initialStatus={editingEpic.status}
+            onSubmit={handleUpdateEpic}
+            submitLabel="Update epic"
+          />
+        </Modal>
+      ) : null}
       {isTaskCreateModalOpen ? (
         <Modal onClose={() => setIsTaskCreateModalOpen(false)} title="Create Task">
-          <AddTaskForm initialProjectId={taskModalProjectId} onCreateTask={handleCreateTask} projects={projects} />
+          <AddTaskForm epics={epics} initialProjectId={taskModalProjectId} onCreateTask={handleCreateTask} projects={projects} />
         </Modal>
       ) : null}
       {isProjectNotesModalOpen && activeProject ? (

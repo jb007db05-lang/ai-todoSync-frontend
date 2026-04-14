@@ -30,6 +30,7 @@ export interface Task {
   rolloverCount: number;
   source?: TaskSource;
   projectId: string | null;
+  epicId: string | null;
   subtasks: Subtask[];
 }
 
@@ -51,6 +52,7 @@ export interface CreateTaskInput {
   status?: TaskStatus;
   source?: TaskSource;
   projectId?: string | null;
+  epicId?: string | null;
   subtasks?: Array<{
     title: string;
     note?: string;
@@ -66,6 +68,7 @@ export interface UpdateTaskInput {
   date?: string;
   status?: TaskStatus;
   projectId?: string | null;
+  epicId?: string | null;
   subtasks?: Array<{
     title: string;
     note?: string;

@@ -1,5 +1,5 @@
 import type { Project } from '@/types/project';
-import { FolderKanban, Pencil, Plus, Trash2 } from 'lucide-react';
+import { FolderKanban, Layers3, Pencil, Plus, Trash2 } from 'lucide-react';
 
 import EmptyState from '@/components/EmptyState';
 
@@ -7,6 +7,7 @@ interface ProjectPanelProps {
   actionProjectId: string | null;
   loading: boolean;
   onOpenCreateProject: () => void;
+  onOpenEpicManager: (project: Project) => void;
   onOpenProject: (projectId: string | null) => void;
   onOpenUpdateProject: (project: Project) => void;
   onDeleteProject: (projectId: string) => Promise<void>;
@@ -18,6 +19,7 @@ function ProjectPanel({
   actionProjectId,
   loading,
   onOpenCreateProject,
+  onOpenEpicManager,
   onOpenProject,
   onOpenUpdateProject,
   onDeleteProject,
@@ -66,6 +68,15 @@ function ProjectPanel({
                 <span>{tasksByProject.get(project.id) ?? 0} task(s)</span>
               </button>
               <div className="project-list-actions">
+                <button
+                  className="secondary-button ghost-button"
+                  disabled={actionProjectId === project.id}
+                  onClick={() => onOpenEpicManager(project)}
+                  type="button"
+                >
+                  <Layers3 size={16} />
+                  Epics
+                </button>
                 <button
                   className="secondary-button ghost-button"
                   disabled={actionProjectId === project.id}
