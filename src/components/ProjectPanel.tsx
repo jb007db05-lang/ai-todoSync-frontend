@@ -239,16 +239,16 @@ function ProjectPanel({
         <div className="flex items-center gap-1.5">
           <button
             className="w-7 h-7 p-0 flex items-center justify-center bg-white dark:bg-slate-700 border border-zinc-200 dark:border-slate-600 rounded text-zinc-500 dark:text-slate-400 hover:bg-zinc-50 dark:hover:bg-slate-600 disabled:opacity-50 transition-colors"
-            disabled={currentPage === 1}
-            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage <= 1}
+            onClick={() => onPageChange(Math.max(1, currentPage - 1))}
             type="button"
           >
             <ChevronLeft size={16} />
           </button>
           <button
             className="w-7 h-7 p-0 flex items-center justify-center bg-white dark:bg-slate-700 border border-zinc-200 dark:border-slate-600 rounded text-zinc-500 dark:text-slate-400 hover:bg-zinc-50 dark:hover:bg-slate-600 disabled:opacity-50 transition-colors"
-            disabled={currentPage === totalPages}
-            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage >= totalPages || totalPages === 0}
+            onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
             type="button"
           >
             <ChevronRight size={16} />
