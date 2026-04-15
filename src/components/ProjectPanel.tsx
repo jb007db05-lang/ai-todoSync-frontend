@@ -53,10 +53,8 @@ function ProjectPanel({
 
   const handleSelectRow = (projectId: string, e: React.MouseEvent | React.ChangeEvent) => {
     if (e.type === 'change' || (e as React.MouseEvent).target instanceof HTMLInputElement) {
-      // Don't propagate or prevent default if it's the checkbox itself being clicked
-      // but we need to manage state
+      // managed below
     }
-    
     const next = new Set(selectedIds);
     if (next.has(projectId)) {
       next.delete(projectId);
@@ -75,32 +73,37 @@ function ProjectPanel({
   const isAllSelected = projects.length > 0 && selectedIds.size === projects.length;
   const isSomeSelected = selectedIds.size > 0 && selectedIds.size < projects.length;
 
-  return (
-    <div className="project-panel">
-      <div className="project-toolbar-refined">
-        <div className="pane-header-content">
-          <h4 className="pane-section-title" style={{ margin: 0 }}>Project Directory</h4>
-          <span className="user-email" style={{ fontSize: '0.75rem' }}>Full Workspace Management</span>
-        </div>
-        
-        <div className="divider-h" style={{ height: 24, margin: '0 8px' }} />
+  const thCls = 'text-left px-4 py-3 text-[0.72rem] font-bold uppercase tracking-[0.05em] text-zinc-500 dark:text-slate-400 bg-zinc-50 dark:bg-slate-800 border-b border-zinc-200 dark:border-slate-700 sticky top-0 z-10';
+  const rowActionCls = 'flex items-center justify-center w-7 h-7 rounded text-zinc-400 dark:text-slate-500 transition-all duration-150 hover:-translate-y-px';
 
-        <div className="search-group">
-          <Search size={14} className="search-icon" />
+  return (
+    <div className="flex flex-col h-full bg-white dark:bg-slate-900">
+      {/* Toolbar */}
+      <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-zinc-200 dark:border-slate-700 bg-zinc-50 dark:bg-slate-800">
+        <div className="grid gap-0.5">
+          <h4 className="m-0 font-bold text-zinc-900 dark:text-slate-100 text-[0.95rem]">Project Directory</h4>
+          <span className="text-zinc-400 dark:text-slate-500 text-[0.75rem]">Full Workspace Management</span>
+        </div>
+
+        {/* Divider */}
+        <div className="h-6 w-px bg-zinc-200 dark:bg-slate-700 opacity-60 mx-2" />
+
+        {/* Search */}
+        <div className="relative flex-1 flex items-center">
+          <Search className="absolute left-2.5 text-zinc-400 dark:text-slate-500" size={14} />
           <input
-            className="search-input"
+            className="w-full h-9 pl-[38px] pr-3 text-[0.85rem] bg-white dark:bg-slate-700 border border-zinc-200 dark:border-slate-600 rounded-md shadow-inner transition-all duration-200 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/12 text-zinc-900 dark:text-slate-100"
             onChange={handleSearchChange}
             placeholder="Filter projects..."
             type="text"
             value={searchTerm}
           />
         </div>
-        
+
         {selectedIds.size > 0 && (
-          <button 
-            className="danger-button" 
-            onClick={handleDeleteSelected} 
-            style={{ height: 36, padding: '0 16px', gap: 8 }} 
+          <button
+            className="inline-flex items-center gap-2 h-9 px-4 bg-white dark:bg-slate-700 border border-red-200 dark:border-red-800 rounded text-red-600 dark:text-red-400 text-sm hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+            onClick={handleDeleteSelected}
             type="button"
           >
             <Trash2 size={16} />
@@ -108,72 +111,86 @@ function ProjectPanel({
           </button>
         )}
 
-        <button className="primary-button" onClick={onOpenCreateProject} style={{ height: 36, padding: '0 16px', gap: 8 }} type="button">
+        <button
+          className="inline-flex items-center gap-2 h-9 px-4 bg-zinc-900 dark:bg-blue-600 text-white rounded text-sm font-medium hover:bg-zinc-700 dark:hover:bg-blue-500 transition-colors"
+          onClick={onOpenCreateProject}
+          type="button"
+        >
           <Plus size={16} />
           <span>New project</span>
         </button>
       </div>
 
-      <div className="project-table-container">
-        <table className="project-data-table">
+      {/* Table */}
+      <div className="flex-1 overflow-y-auto py-2">
+        <table className="w-full border-collapse text-[0.85rem]">
           <thead>
             <tr>
-              <th style={{ width: '40px' }}>
-                <input 
+              <th className={thCls} style={{ width: 40 }}>
+                <input
                   checked={isAllSelected}
-                  className="project-checkbox"
+                  className="w-4 h-4 cursor-pointer accent-blue-600"
                   onChange={handleSelectAll}
                   ref={el => el && (el.indeterminate = isSomeSelected)}
                   type="checkbox"
                 />
               </th>
-              <th style={{ width: '50%' }}>Project</th>
-              <th style={{ width: '25%' }}>Tasks</th>
-              <th style={{ width: '25%', textAlign: 'right' }}>Actions</th>
+              <th className={thCls} style={{ width: '70%' }}>Project</th>
+              {/* <th className={thCls} style={{ width: '25%' }}>Tasks</th> */}
+              <th className={`${thCls} text-right`} style={{ width: '25%' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td className="muted-text" colSpan={3} style={{ textAlign: 'center', padding: '32px 0' }}>Refreshing projects...</td>
+                <td className="text-zinc-400 dark:text-slate-500 text-center py-8" colSpan={4}>Refreshing projects...</td>
               </tr>
             ) : projects.length === 0 ? (
               <tr>
-                <td className="muted-text" colSpan={3} style={{ textAlign: 'center', padding: '32px 0' }}>
+                <td className="text-zinc-400 dark:text-slate-500 text-center py-8" colSpan={4}>
                   {searchTerm ? 'No projects match your search.' : 'No projects found.'}
                 </td>
               </tr>
             ) : (
               projects.map((project) => (
-                <tr 
-                  className={selectedIds.has(project.id) ? 'row-selected' : ''}
-                  key={project.id} 
+                <tr
+                  className={[
+                    'border-b border-transparent cursor-pointer transition-colors relative',
+                    selectedIds.has(project.id)
+                      ? 'bg-blue-600/2 dark:bg-blue-500/5'
+                      : 'hover:bg-indigo-600/3 dark:hover:bg-indigo-400/5'
+                  ].join(' ')}
+                  key={project.id}
                   onClick={() => onOpenProject(project.id)}
                 >
-                  <td onClick={(e) => e.stopPropagation()}>
-                    <input 
+                  <td className="px-5 py-3.5 align-middle" onClick={(e) => e.stopPropagation()}>
+                    <input
                       checked={selectedIds.has(project.id)}
-                      className="project-checkbox"
+                      className="w-4 h-4 cursor-pointer accent-blue-600"
                       onChange={() => handleSelectRow(project.id, { type: 'change' } as any)}
                       type="checkbox"
                     />
                   </td>
-                  <td>
-                    <div className="project-name-cell">
-                      <FolderKanban size={14} className="accent-blue" />
-                      <div className="stack" style={{ gap: '2px' }}>
-                        <strong>{project.name}</strong>
-                        {project.description && <span className="muted-text small-text truncate" style={{ fontSize: '0.75rem' }}>{project.description}</span>}
+                  <td className="px-5 py-3.5 align-middle">
+                    <div className="flex items-center gap-3">
+                      <FolderKanban className="text-blue-600 dark:text-blue-400 shrink-0" size={14} />
+                      <div className="grid gap-0.5">
+                        <strong className="text-zinc-800 dark:text-slate-100 font-semibold text-[0.9rem]">{project.name}</strong>
+                        {project.description && (
+                          <span className="text-zinc-400 dark:text-slate-500 text-[0.75rem] truncate max-w-[300px]">{project.description}</span>
+                        )}
                       </div>
                     </div>
                   </td>
-                  <td>
-                    <span className="status-pill status-pending">{tasksByProject.get(project.id) ?? 0}</span>
-                  </td>
-                  <td>
-                    <div className="action-cell">
+                  {/* <td className="px-5 py-3.5 align-middle">
+                    <span className="inline-block border rounded text-[0.72rem] font-semibold px-2 py-0.5 bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800">
+                      {tasksByProject.get(project.id) ?? 0}
+                    </span>
+                  </td> */}
+                  <td className="px-5 py-3.5 align-middle">
+                    <div className="flex items-center justify-end gap-1.5">
                       <button
-                        className="row-action-btn btn-epics"
+                        className={`${rowActionCls} hover:bg-indigo-100 dark:hover:bg-indigo-900/30 hover:text-blue-600 dark:hover:text-blue-400`}
                         onClick={(e) => { e.stopPropagation(); onOpenEpicManager(project); }}
                         title="Epics"
                         type="button"
@@ -181,7 +198,7 @@ function ProjectPanel({
                         <Layers3 size={14} />
                       </button>
                       <button
-                        className="row-action-btn btn-edit"
+                        className={`${rowActionCls} hover:bg-zinc-100 dark:hover:bg-slate-700 hover:text-zinc-800 dark:hover:text-slate-100`}
                         onClick={(e) => { e.stopPropagation(); onOpenUpdateProject(project); }}
                         title="Edit project"
                         type="button"
@@ -189,7 +206,7 @@ function ProjectPanel({
                         <Pencil size={14} />
                       </button>
                       <button
-                        className="row-action-btn btn-delete"
+                        className={`${rowActionCls} hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 dark:hover:text-red-400 disabled:opacity-50`}
                         disabled={actionProjectId === project.id}
                         onClick={(e) => { e.stopPropagation(); void onDeleteProject(project.id); }}
                         title="Delete project"
@@ -206,27 +223,29 @@ function ProjectPanel({
         </table>
       </div>
 
-      <div className="pagination-footer">
-        <div className="pagination-info">
-          Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong>
+      {/* Pagination */}
+      <div className="flex items-center justify-between gap-3 px-4 py-3 border-t border-zinc-200 dark:border-slate-700 bg-zinc-50 dark:bg-slate-800">
+        <div className="text-[0.75rem] text-zinc-400 dark:text-slate-500">
+          Page <strong className="text-zinc-700 dark:text-slate-300">{currentPage}</strong> of{' '}
+          <strong className="text-zinc-700 dark:text-slate-300">{totalPages}</strong>
         </div>
-        <div className="pagination-controls">
-            <button
-              className="secondary-button"
-              disabled={currentPage === 1}
-              onClick={() => onPageChange(currentPage - 1)}
-              type="button"
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <button
-              className="secondary-button"
-              disabled={currentPage === totalPages}
-              onClick={() => onPageChange(currentPage + 1)}
-              type="button"
-            >
-              <ChevronRight size={16} />
-            </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            className="w-7 h-7 p-0 flex items-center justify-center bg-white dark:bg-slate-700 border border-zinc-200 dark:border-slate-600 rounded text-zinc-500 dark:text-slate-400 hover:bg-zinc-50 dark:hover:bg-slate-600 disabled:opacity-50 transition-colors"
+            disabled={currentPage === 1}
+            onClick={() => onPageChange(currentPage - 1)}
+            type="button"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <button
+            className="w-7 h-7 p-0 flex items-center justify-center bg-white dark:bg-slate-700 border border-zinc-200 dark:border-slate-600 rounded text-zinc-500 dark:text-slate-400 hover:bg-zinc-50 dark:hover:bg-slate-600 disabled:opacity-50 transition-colors"
+            disabled={currentPage === totalPages}
+            onClick={() => onPageChange(currentPage + 1)}
+            type="button"
+          >
+            <ChevronRight size={16} />
+          </button>
         </div>
       </div>
     </div>

@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import AddTaskForm from '@/components/AddTaskForm';
 import DateNavigator from '@/components/DateNavigator';
+import EditTaskForm from '@/components/EditTaskForm';
 import EmptyState from '@/components/EmptyState';
 import EpicForm from '@/components/EpicForm';
 import EpicManager from '@/components/EpicManager';
 import Modal from '@/components/Modal';
+import SubtaskInlineEdit from '@/components/SubtaskInlineEdit';
 import Navbar from '@/components/Navbar';
 import NoteModal from '@/components/NoteModal';
 import PageHeader from '@/components/PageHeader';
@@ -16,7 +18,8 @@ import SectionCard from '@/components/SectionCard';
 import SettingsPanel from '@/components/SettingsPanel';
 import SubtaskForm from '@/components/SubtaskForm';
 import TaskList from '@/components/TaskList';
-import { Calendar, CheckCircle, Folder, Layout, List, LogOut, MessageSquare, Plus, Settings } from 'lucide-react';
+import SourceBadge from '@/components/SourceBadge';
+import { Calendar, CheckCircle, ChevronDown, Folder, Layout, List, LogOut, MessageSquare, Plus, Settings } from 'lucide-react';
 import { createEpic, deleteEpic, getEpics, reorderEpics, updateEpic } from '@/services/epics';
 import { createEpicNote, createNote, deleteNote, getEpicNotes, getNote, getProjectNotes, updateNote } from '@/services/notes';
 import { createProject, deleteProject, deleteProjects, getProjects, updateProject } from '@/services/projects';
@@ -31,27 +34,27 @@ import { findProjectByName } from '@/utils/projectTree';
 
 type ActiveNoteEditor =
   | {
-      kind: 'project';
-      note: Note | null;
-      projectId: string;
-      projectName: string;
-    }
+    kind: 'project';
+    note: Note | null;
+    projectId: string;
+    projectName: string;
+  }
   | {
-      kind: 'epic';
-      epicId: string;
-      epicName: string;
-      note: Note | null;
-      projectId: string;
-    }
+    kind: 'epic';
+    epicId: string;
+    epicName: string;
+    note: Note | null;
+    projectId: string;
+  }
   | {
-      kind: 'task';
-      task: Task;
-    }
+    kind: 'task';
+    task: Task;
+  }
   | {
-      kind: 'subtask';
-      subtask: Task['subtasks'][number];
-      task: Task;
-    };
+    kind: 'subtask';
+    subtask: Task['subtasks'][number];
+    task: Task;
+  };
 
 const getTodayDate = (): string => {
   const today = new Date();
@@ -125,6 +128,8 @@ function DashboardPage(): JSX.Element {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [taskModalProjectId, setTaskModalProjectId] = useState<string | null>(null);
   const [subtaskModalTask, setSubtaskModalTask] = useState<Task | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [editingSubtask, setEditingSubtask] = useState<{ task: Task; subtask: Task['subtasks'][number] } | null>(null);
   const [projectNotes, setProjectNotes] = useState<Record<string, Note[]>>({});
   const [epicNotes, setEpicNotes] = useState<Record<string, Note[]>>({});
   const [notesLoadingKey, setNotesLoadingKey] = useState<string | null>(null);
@@ -234,6 +239,68 @@ function DashboardPage(): JSX.Element {
       throw new Error('Unable to update epic');
     } finally {
       setActionEpicId(null);
+    }
+  };
+
+  const handleUpdateTask = async (payload: {
+    title: string;
+    description?: string;
+    date: string;
+    status: TaskWorkflowStatus;
+    projectId: string | null;
+    epicId: string | null;
+  }): Promise<void> => {
+    if (editingTask == null) return;
+
+    setActionTaskId(editingTask.id);
+    setTaskMutationError(null);
+    setTaskMutationSuccess(null);
+
+    try {
+      // Preserve existing subtasks
+      await updateTask(editingTask.id, {
+        title: payload.title,
+        description: payload.description,
+        date: payload.date,
+        status: payload.status,
+        projectId: payload.projectId,
+        epicId: payload.epicId,
+      });
+      await loadDashboard();
+      setTaskMutationSuccess('Task updated.');
+      setEditingTask(null);
+    } catch {
+      setTaskMutationError('Unable to update the task.');
+      throw new Error('Unable to update task');
+    } finally {
+      setActionTaskId(null);
+    }
+  };
+
+  const handleUpdateSubtask = async (
+    task: Task,
+    targetSubtask: Task['subtasks'][number],
+    patch: { title: string; description?: string }
+  ): Promise<void> => {
+    setActionTaskId(task.id);
+    setTaskMutationError(null);
+    setTaskMutationSuccess(null);
+
+    try {
+      const subtasks = task.subtasks.map((subtask) => (
+        subtask.id === targetSubtask.id
+          ? { title: patch.title.trim(), note: subtask.note, status: subtask.status, completedAt: subtask.completedAt }
+          : { title: subtask.title, note: subtask.note, status: subtask.status, completedAt: subtask.completedAt }
+      ));
+
+      await updateTask(task.id, { status: task.status as TaskWorkflowStatus, subtasks });
+      await loadDashboard();
+      setTaskMutationSuccess('Subtask updated.');
+      setEditingSubtask(null);
+    } catch {
+      setTaskMutationError('Unable to update the subtask.');
+    } finally {
+      setActionTaskId(null);
     }
   };
 
@@ -455,14 +522,14 @@ function DashboardPage(): JSX.Element {
       const updates =
         status === 'completed'
           ? {
-              status,
-              subtasks: task.subtasks.map((subtask) => ({
-                title: subtask.title,
-                note: subtask.note,
-                status: 'completed' as const,
-                completedAt: subtask.completedAt ?? new Date().toISOString()
-              }))
-            }
+            status,
+            subtasks: task.subtasks.map((subtask) => ({
+              title: subtask.title,
+              note: subtask.note,
+              status: 'completed' as const,
+              completedAt: subtask.completedAt ?? new Date().toISOString()
+            }))
+          }
           : { status };
 
       await updateTask(task.id, updates);
@@ -750,9 +817,9 @@ function DashboardPage(): JSX.Element {
           ? `project note "${editor.note?.title ?? ''}"`
           : editor.kind === 'epic'
             ? `epic note "${editor.note?.title ?? ''}"`
-          : editor.kind === 'task'
-            ? `task note for "${editor.task.title}"`
-            : `sub-task note for "${editor.subtask.title}"`;
+            : editor.kind === 'task'
+              ? `task note for "${editor.task.title}"`
+              : `sub-task note for "${editor.subtask.title}"`;
       const actionLabel = payload.appendContent ? 'append to' : 'update';
 
       if (!requestConfirmation(`Confirm ${actionLabel} ${label}?`)) {
@@ -1004,8 +1071,8 @@ function DashboardPage(): JSX.Element {
       activeProject == null
         ? []
         : epics
-            .filter((epic) => epic.projectId === activeProject.id)
-            .sort((left, right) => left.order - right.order),
+          .filter((epic) => epic.projectId === activeProject.id)
+          .sort((left, right) => left.order - right.order),
     [activeProject, epics]
   );
   const activeProjectNotes = activeProjectForNotes ? projectNotes[activeProjectForNotes.id] ?? [] : [];
@@ -1046,298 +1113,370 @@ function DashboardPage(): JSX.Element {
     return tasks.find(t => t.id === selectedTaskId) ?? null;
   }, [selectedTaskId, tasks]);
 
+  const sideNavItem = 'flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-[0.9rem] font-medium text-slate-400 hover:text-slate-100 hover:bg-white/10 transition-all duration-200';
+  const sideNavItemActive = 'bg-white/16 text-white';
+
+  const statusPillCls: Record<string, string> = {
+    planned: 'bg-blue-500/20 text-blue-300',
+    active: 'bg-amber-500/20 text-amber-300',
+    completed: 'bg-emerald-500/20 text-emerald-300',
+    archived: 'bg-zinc-500/20 text-zinc-400',
+  };
+
   return (
-    <div className="dashboard-root">
-      {/* Sidebar - Projects */}
-      <aside className="sidebar-nav">
-        <div className="sidebar-logo">
-          <Layout className="accent-blue" size={24} />
-          <span className="logo-text">TodoSync</span>
+    <div className="flex h-screen overflow-hidden bg-zinc-100 dark:bg-[#0b1220]">
+      {/* Sidebar */}
+      <aside className="flex flex-col w-[240px] shrink-0 bg-zinc-900 dark:bg-[#0c1525] border-r border-white/8 h-full">
+        {/* Logo */}
+        <div className="flex items-center gap-2.5 px-5 py-4.5 border-b border-white/8">
+          <Layout className="text-blue-400" size={22} />
+          <span className="font-['Outfit'] font-bold text-white text-[1.1rem] tracking-tight">Task Manager</span>
         </div>
-        <div className="sidebar-projects">
-          <p className="eyebrow">Workspace</p>
+
+        {/* Project nav */}
+        <div className="flex flex-col gap-1 p-3 flex-1 overflow-y-auto">
+          <p className="text-[0.65rem] uppercase tracking-[0.1em] text-slate-500 font-bold px-3 pt-2 pb-1">Workspace</p>
           <button
-            className={`project-nav-item ${selectedProjectView === ALL_PROJECTS_VALUE ? 'project-nav-item-active' : ''}`}
+            className={`${sideNavItem} ${selectedProjectView === ALL_PROJECTS_VALUE ? sideNavItemActive : ''}`}
             onClick={() => handleProjectSelect(ALL_PROJECTS_VALUE)}
             type="button"
           >
-            <Folder size={18} />
+            <Folder size={16} />
             <span>All Projects</span>
           </button>
-          
+
           <button
-            className="project-nav-item project-nav-item-new"
+            className={`${sideNavItem} text-blue-400 hover:text-blue-200 hover:bg-blue-600/15`}
             onClick={() => setIsProjectCreateModalOpen(true)}
             type="button"
           >
-            <Plus size={18} />
+            <Plus size={16} />
             <span>New Project</span>
           </button>
         </div>
-        
-        <div className="sidebar-footer" style={{ marginTop: 'auto', padding: '16px', borderTop: '1px solid var(--card-border)' }}>
-          <button 
-            className={`project-nav-item ${activeView === 'settings' ? 'project-nav-item-active' : ''}`}
+
+        {/* Footer */}
+        <div className="flex flex-col gap-1 p-3 border-t border-white/8">
+          <button
+            className={`${sideNavItem} ${activeView === 'settings' ? sideNavItemActive : ''}`}
             onClick={() => setActiveView('settings')}
             title="Settings"
             type="button"
           >
-            <Settings size={18} />
+            <Settings size={16} />
             <span>Settings</span>
           </button>
-          <button className="project-nav-item" onClick={logout} title="Sign out" type="button">
-            <LogOut size={18} />
+          <button className={sideNavItem} onClick={logout} title="Sign out" type="button">
+            <LogOut size={16} />
             <span>Sign out</span>
           </button>
         </div>
       </aside>
 
-      {/* Top Bar - User & Global Actions */}
-      <header className="top-bar-nav">
-        <div className="top-bar-user">
-          <div className="user-avatar">
-            {user?.email?.[0].toUpperCase()}
+      {/* Right side wrapper */}
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+        {/* Top bar */}
+        <header className="flex items-center justify-between gap-4 px-6 h-14 shrink-0 bg-white/92 dark:bg-slate-900/92 border-b border-zinc-200 dark:border-slate-700 backdrop-blur-md">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white text-sm font-bold">
+              {user?.email?.[0].toUpperCase()}
+            </div>
+            <span className="text-zinc-600 dark:text-slate-400 text-sm">{user?.email}</span>
           </div>
-          <span className="user-email">{user?.email}</span>
-        </div>
-        
-        <div className="top-bar-actions">
-          <DateNavigator date={selectedDate} disabled={loading} onChange={setSelectedDate} />
-        </div>
-      </header>
 
-      {/* Main Content Area */}
-      <main className="dashboard-main">
-        {activeView === 'settings' ? (
-          <div className="full-width-pane">
-            <div className="pane-header">
-              <div className="pane-header-content">
-                <h3 className="pane-header-title">Settings</h3>
-                <p className="pane-header-subtitle">Account & Preferences</p>
+          <div className="flex items-center gap-3">
+            <DateNavigator date={selectedDate} disabled={loading} onChange={setSelectedDate} />
+          </div>
+        </header>
+
+        {/* Main */}
+        <main className="flex-1 overflow-hidden">
+          {activeView === 'settings' ? (
+            <div className="h-full overflow-y-auto">
+              <div className="px-8 py-6 border-b border-zinc-200 dark:border-slate-700 bg-white/60 dark:bg-slate-900/60">
+                <h3 className="text-xl font-semibold text-zinc-900 dark:text-slate-100 m-0">Settings</h3>
+                <p className="text-zinc-500 dark:text-slate-400 m-0 text-sm mt-0.5">Account &amp; Preferences</p>
+              </div>
+              <div className="p-8">
+                <SettingsPanel />
               </div>
             </div>
-            <div className="pane-content">
-              <SettingsPanel />
+          ) : !activeProject ? (
+            <div className="h-full overflow-y-auto">
+              <ProjectPanel
+                actionProjectId={actionProjectId}
+                currentPage={projectPage}
+                loading={loading}
+                onDeleteProject={handleDeleteProject}
+                onDeleteProjects={handleDeleteProjects}
+                onOpenCreateProject={() => setIsProjectCreateModalOpen(true)}
+                onOpenEpicManager={(project) => {
+                  handleProjectSelect(project.id);
+                }}
+                onOpenProject={(projectId) => {
+                  handleProjectSelect(projectId ?? ALL_PROJECTS_VALUE);
+                }}
+                onOpenUpdateProject={(project) => {
+                  setEditingProject(project);
+                }}
+                projects={projects}
+                tasksByProject={tasksByProject}
+                totalPages={projectTotalPages}
+                onPageChange={handleProjectPageChange}
+                onSearch={handleProjectSearch}
+                searchTerm={projectSearchTerm}
+              />
             </div>
-          </div>
-        ) : !activeProject ? (
-          <div className="full-width-pane">
-            <ProjectPanel
-              actionProjectId={actionProjectId}
-              currentPage={projectPage}
-              loading={loading}
-              onDeleteProject={handleDeleteProject}
-              onDeleteProjects={handleDeleteProjects}
-              onOpenCreateProject={() => setIsProjectCreateModalOpen(true)}
-              onOpenEpicManager={(project) => {
-                handleProjectSelect(project.id);
-              }}
-              onOpenProject={(projectId) => {
-                handleProjectSelect(projectId ?? ALL_PROJECTS_VALUE);
-              }}
-              onOpenUpdateProject={(project) => {
-                setEditingProject(project);
-              }}
-              projects={projects}
-              tasksByProject={tasksByProject}
-              totalPages={projectTotalPages}
-              onPageChange={handleProjectPageChange}
-              onSearch={handleProjectSearch}
-              searchTerm={projectSearchTerm}
-            />
-          </div>
-        ) : (
-          <div className="workspace-columns">
-            {/* Column 1: Epics */}
-            <div className="pane-column">
-              <div className="pane-header">
-                <div className="pane-header-content">
-                  <h3 className="pane-header-title">Epics</h3>
-                  <p className="pane-header-subtitle">{activeProject.name}</p>
-                </div>
-                <button className="subtask-add-button primary-button" onClick={() => setIsEpicCreateModalOpen(true)} type="button">
-                  <Plus size={16} />
-                </button>
-              </div>
-              <div className="pane-content">
-                <div className="stack">
-                  {activeProjectEpics.map(epic => (
-                    <button
-                      key={epic.id}
-                      className={`selectable-card ${selectedEpicId === epic.id ? 'selectable-card-active' : ''}`}
-                      onClick={() => setSelectedEpicId(epic.id === selectedEpicId ? null : epic.id)}
-                      type="button"
+          ) : (
+            /* 3-column workspace */
+            <div className="flex flex-col h-full overflow-hidden bg-zinc-50 dark:bg-slate-900/40">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200 dark:border-slate-700 bg-white/40 dark:bg-slate-900/40 shrink-0">
+                <div className="flex items-center gap-3">
+                  <Folder className="text-blue-500 shrink-0" size={20} />
+                  <div className="relative flex items-center">
+                    <select
+                      className="appearance-none bg-transparent border-none text-lg font-bold text-zinc-900 dark:text-slate-100 focus:outline-none focus:ring-0 cursor-pointer pr-6 m-0 p-0"
+                      onChange={(e) => handleProjectSelect(e.target.value)}
+                      value={activeProject.id}
                     >
-                      <div className="card-title-row">
-                        <h4>{epic.name}</h4>
-                        <span className={`status-pill status-${epic.status.toLowerCase()}`}>
-                          {epic.status}
-                        </span>
-                      </div>
-                      {epic.description && (
-                        <p className="card-description">{epic.description}</p>
-                      )}
-                      <div className="card-actions-row-compact">
-                        <button
-                          className="ghost-button"
-                          onClick={(e) => { e.stopPropagation(); handleOpenEpicNotesPanel(epic); }}
-                          style={{ padding: '0', fontSize: '0.75rem' }}
-                          type="button"
+                      {projects.map((project) => (
+                        <option
+                          className="text-zinc-900 dark:text-slate-100 bg-white dark:bg-slate-800 text-base font-normal"
+                          key={project.id}
+                          value={project.id}
                         >
-                          <MessageSquare size={14} style={{ marginRight: 4 }} /> Notes
-                        </button>
-                        <button
-                          className="ghost-button"
-                          onClick={(e) => { e.stopPropagation(); setEditingEpic(epic); }}
-                          style={{ padding: '0', fontSize: '0.75rem' }}
-                          type="button"
-                        >
-                          Edit
-                        </button>
-                      </div>
-                    </button>
-                  ))}
-                  {activeProjectEpics.length === 0 && (
-                    <EmptyState description="Create an epic to group your tasks." icon={List} title="No epics found" />
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Column 2: Tasks */}
-            {selectedEpicId && (
-              <div className="pane-column">
-                <div className="pane-header">
-                  <div className="pane-header-content">
-                    <h3 className="pane-header-title">Tasks</h3>
-                    <p className="pane-header-subtitle">{epics.find(e => e.id === selectedEpicId)?.name}</p>
+                          {project.name}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center">
+                      <ChevronDown className="text-zinc-500 dark:text-slate-400" size={16} />
+                    </div>
                   </div>
-                  <button
-                    className="subtask-add-button primary-button"
-                  onClick={() => {
-                    setTaskModalProjectId(activeProject?.id ?? null);
-                    setIsTaskCreateModalOpen(true);
-                  }}
+                </div>
+                <button
+                  className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded-lg text-sm font-medium text-zinc-600 dark:text-slate-300 hover:bg-zinc-50 dark:hover:bg-slate-700 shadow-sm transition-colors"
+                  onClick={() => handleOpenProjectNotesPanel(activeProject)}
                   type="button"
                 >
-                  <Plus size={16} />
+                  <MessageSquare size={16} />
+                  Project Notes
                 </button>
               </div>
-              <div className="pane-content">
-                <TaskList
-                  actionTaskId={actionTaskId}
-                  epics={epics}
-                  onDeleteSubtask={(task, subtask) => void handleDeleteSubtask(task, subtask)}
-                  onCreateSubtask={(task) => setSubtaskModalTask(task)}
-                  onDelete={(taskId) => void handleDeleteTask(taskId)}
-                  onOpenEpicNotes={(epic) => handleOpenEpicNotesPanel(epic)}
-                  onOpenProjectNotes={(project) => handleOpenProjectNotesPanel(project)}
-                  onOpenSubtaskNote={(task, subtask) => handleOpenSubtaskNote(task, subtask)}
-                  onOpenTaskNote={(task) => handleOpenTaskNote(task)}
-                  onUpdateEpic={(task, epicId) => void handleUpdateTaskEpic(task, epicId)}
-                  onUpdateStatus={(task, status) => void handleUpdateTaskStatus(task, status)}
-                  onUpdateSubtaskStatus={(task, subtask, status) => void handleUpdateSubtaskStatus(task, subtask, status)}
-                  projects={projects}
-                  tasks={activeEpicTasks}
-                  onSelectTask={(task) => setSelectedTaskId(task.id)}
-                  selectedTaskId={selectedTaskId}
-                />
-                {activeEpicTasks.length === 0 && (
-                  <EmptyState description="No tasks scheduled for this epic today." icon={Calendar} title="Empty workspace" />
+              <div className="flex flex-1 min-h-0 overflow-hidden divide-x divide-zinc-200 dark:divide-slate-700">
+                {/* Column 1 — Epics */}
+                <div className="flex flex-col w-1/4 shrink-0 h-full">
+                  <div className="flex items-center justify-between px-5 py-3.5 border-b border-zinc-200 dark:border-slate-700 bg-white/60 dark:bg-slate-900/60">
+                    <div>
+                      <h3 className="text-sm font-bold text-zinc-900 dark:text-slate-100 m-0">Epics</h3>
+                      <p className="text-zinc-400 dark:text-slate-500 text-[0.75rem] m-0">{activeProject.name}</p>
+                    </div>
+                    <button
+                      className="flex items-center justify-center w-7 h-7 bg-blue-600 text-white rounded hover:bg-blue-500 transition-colors"
+                      onClick={() => setIsEpicCreateModalOpen(true)}
+                      type="button"
+                    >
+                      <Plus size={14} />
+                    </button>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-3 grid gap-2 content-start">
+                    {activeProjectEpics.map(epic => (
+                      <button
+                        key={epic.id}
+                        className={[
+                          'w-full text-start rounded-xl border px-4 py-3 flex flex-col gap-1.5 transition-all',
+                          selectedEpicId === epic.id
+                            ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700 shadow-sm'
+                            : 'bg-white dark:bg-slate-800/60 border-zinc-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-700'
+                        ].join(' ')}
+                        onClick={() => setSelectedEpicId(epic.id === selectedEpicId ? null : epic.id)}
+                        type="button"
+                      >
+                        <div className="flex items-center justify-between gap-2 w-full">
+                          <h4 className="text-zinc-900 dark:text-slate-100 text-sm font-semibold m-0 truncate">{epic.name}</h4>
+                          <span className={`text-[0.65rem] font-bold px-1.5 py-0.5 rounded uppercase ${statusPillCls[epic.status] ?? statusPillCls.planned}`}>
+                            {epic.status}
+                          </span>
+                        </div>
+                        {epic.description && (
+                          <p className="text-zinc-400 dark:text-slate-500 text-[0.78rem] m-0 line-clamp-2 w-full">{epic.description}</p>
+                        )}
+                        <div className="flex items-start gap-2 mt-1 w-full">
+                          <button
+                            className="text-[0.75rem] text-zinc-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                            onClick={(e) => { e.stopPropagation(); handleOpenEpicNotesPanel(epic); }}
+                            type="button"
+                          >
+                            Notes
+                          </button>
+                          <button
+                            className="text-[0.75rem] text-zinc-400 dark:text-slate-500 hover:text-zinc-700 dark:hover:text-slate-200 transition-colors"
+                            onClick={(e) => { e.stopPropagation(); setEditingEpic(epic); }}
+                            type="button"
+                          >
+                            Edit
+                          </button>
+                        </div>
+                      </button>
+                    ))}
+                    {activeProjectEpics.length === 0 && (
+                      <EmptyState description="Create an epic to group your tasks." icon={List} title="No epics found" />
+                    )}
+                  </div>
+                </div>
+
+                {/* Column 2 — Tasks */}
+                {selectedEpicId && (
+                  <div className="flex flex-col w-1/3 shrink-0 h-full">
+                    <div className="flex items-center justify-between px-5 py-3.5 border-b border-zinc-200 dark:border-slate-700 bg-white/60 dark:bg-slate-900/60">
+                      <div>
+                        <h3 className="text-sm font-bold text-zinc-900 dark:text-slate-100 m-0">Tasks</h3>
+                        <p className="text-zinc-400 dark:text-slate-500 text-[0.75rem] m-0">{epics.find(e => e.id === selectedEpicId)?.name}</p>
+                      </div>
+                      <button
+                        className="flex items-center justify-center w-7 h-7 bg-blue-600 text-white rounded hover:bg-blue-500 transition-colors"
+                        onClick={() => {
+                          setTaskModalProjectId(activeProject?.id ?? null);
+                          setIsTaskCreateModalOpen(true);
+                        }}
+                        type="button"
+                      >
+                        <Plus size={14} />
+                      </button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-3 grid gap-2 content-start">
+                      <TaskList
+                        actionTaskId={actionTaskId}
+                        epics={epics}
+                        onDeleteSubtask={(task, subtask) => void handleDeleteSubtask(task, subtask)}
+                        onCreateSubtask={(task) => setSubtaskModalTask(task)}
+                        onDelete={(taskId) => void handleDeleteTask(taskId)}
+                        onEditTask={(task) => setEditingTask(task)}
+                        onEditSubtask={(task, subtask) => setEditingSubtask({ task, subtask })}
+                        onOpenEpicNotes={(epic) => handleOpenEpicNotesPanel(epic)}
+                        onOpenProjectNotes={(project) => handleOpenProjectNotesPanel(project)}
+                        onOpenSubtaskNote={(task, subtask) => handleOpenSubtaskNote(task, subtask)}
+                        onOpenTaskNote={(task) => handleOpenTaskNote(task)}
+                        onUpdateEpic={(task, epicId) => void handleUpdateTaskEpic(task, epicId)}
+                        onUpdateStatus={(task, status) => void handleUpdateTaskStatus(task, status)}
+                        onUpdateSubtaskStatus={(task, subtask, status) => void handleUpdateSubtaskStatus(task, subtask, status)}
+                        projects={projects}
+                        tasks={activeEpicTasks}
+                        onSelectTask={(task) => setSelectedTaskId(task.id)}
+                        selectedTaskId={selectedTaskId}
+                      />
+                      {activeEpicTasks.length === 0 && (
+                        <EmptyState description="No tasks scheduled for this epic today." icon={Calendar} title="Empty workspace" />
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Column 3 — Subtasks */}
+                {selectedTaskId && activeTask && (
+                  <div className="flex flex-col flex-1 min-w-0 h-full">
+                    <div className="flex items-center justify-between px-5 py-3.5 border-b border-zinc-200 dark:border-slate-700 bg-white/60 dark:bg-slate-900/60">
+                      <div>
+                        <h3 className="text-sm font-bold text-zinc-900 dark:text-slate-100 m-0">Subtasks</h3>
+                        <p className="text-zinc-400 dark:text-slate-500 text-[0.75rem] m-0 truncate max-w-[220px]">{activeTask.title}</p>
+                      </div>
+                      <button
+                        className="flex items-center justify-center w-7 h-7 bg-blue-600 text-white rounded hover:bg-blue-500 transition-colors"
+                        onClick={() => setSubtaskModalTask(activeTask)}
+                        type="button"
+                      >
+                        <Plus size={14} />
+                      </button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-4 grid gap-3 content-start">
+                      {activeTask.subtasks.map(subtask => {
+                        const isEditingThisSubtask = editingSubtask?.task.id === activeTask.id && editingSubtask?.subtask.id === subtask.id;
+                        return (
+                          <div key={subtask.id} className="bg-white dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 rounded-xl px-4 py-3 grid gap-1.5">
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-3">
+                                <input
+                                  checked={subtask.status === 'completed'}
+                                  className="w-4 h-4 accent-blue-600 cursor-pointer"
+                                  onChange={() => void handleUpdateSubtaskStatus(activeTask, subtask, subtask.status === 'completed' ? 'pending' : 'completed')}
+                                  type="checkbox"
+                                />
+                                <span className={subtask.status === 'completed' ? 'text-zinc-400 dark:text-slate-500 line-through text-sm' : 'text-zinc-800 dark:text-slate-200 text-sm'}>
+                                  {subtask.title}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  className="text-zinc-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 text-xs transition-colors"
+                                  onClick={() => setEditingSubtask(isEditingThisSubtask ? null : { task: activeTask, subtask })}
+                                  type="button"
+                                >
+                                  {isEditingThisSubtask ? 'Cancel' : 'Edit'}
+                                </button>
+                                <button
+                                  className="text-zinc-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                                  onClick={() => handleOpenSubtaskNote(activeTask, subtask)}
+                                  type="button"
+                                >
+                                  <MessageSquare size={14} />
+                                </button>
+                                <button
+                                  className="text-zinc-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 text-xs transition-colors"
+                                  onClick={() => void handleDeleteSubtask(activeTask, subtask)}
+                                  type="button"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
+                            {/* Inline subtask edit form */}
+                            {isEditingThisSubtask && (
+                              <SubtaskInlineEdit
+                                subtask={subtask}
+                                onSave={(patch) => void handleUpdateSubtask(activeTask, subtask, patch)}
+                                onCancel={() => setEditingSubtask(null)}
+                                isSaving={actionTaskId === activeTask.id}
+                              />
+                            )}
+                            {!isEditingThisSubtask && subtask.description && (
+                              <p className="text-zinc-400 dark:text-slate-500 text-xs italic pl-7 m-0">{subtask.description}</p>
+                            )}
+                            {!isEditingThisSubtask && subtask.note && (
+                              <p className="text-zinc-500 dark:text-slate-400 text-xs pl-7 m-0">{subtask.note}</p>
+                            )}
+                          </div>
+                        );
+                      })}
+                      {activeTask.subtasks.length === 0 && (
+                        <EmptyState description="Break down your task into smaller steps." icon={CheckCircle} title="All clear" />
+                      )}
+
+                      {/* Task detail footer */}
+                      <div className="mt-auto pt-6 border-t border-zinc-200 dark:border-slate-700">
+                        <h4 className="text-sm font-bold text-zinc-700 dark:text-slate-300 m-0 mb-3">Task Detail</h4>
+                        {activeTask.description && <p className="text-zinc-500 dark:text-slate-400 text-sm mb-3">{activeTask.description}</p>}
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className={`text-[0.7rem] font-bold px-2 py-0.5 rounded border ${statusPillCls[activeTask.status] ?? statusPillCls.planned}`}>
+                            {activeTask.status.replace('_', ' ')}
+                          </span>
+                          <SourceBadge source={activeTask.source} />
+                        </div>
+                        <button
+                          className="w-full flex items-center justify-center gap-1.5 px-4 py-2 bg-white dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded text-zinc-600 dark:text-slate-300 text-sm hover:bg-zinc-50 dark:hover:bg-slate-700 transition-colors"
+                          onClick={() => handleOpenTaskNote(activeTask)}
+                          type="button"
+                        >
+                          <MessageSquare size={14} /> Task Note
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
           )}
-
-          {/* Column 3: Subtasks */}
-          {selectedTaskId && activeTask && (
-            <div className="pane-column">
-              <div className="pane-header">
-                <div className="pane-header-content">
-                  <h3 className="pane-header-title">Subtasks</h3>
-                  <p className="pane-header-subtitle">{activeTask.title}</p>
-                </div>
-                <button
-                  className="subtask-add-button primary-button"
-                  onClick={() => setSubtaskModalTask(activeTask)}
-                  type="button"
-                >
-                  <Plus size={16} />
-                </button>
-              </div>
-              <div className="pane-content">
-                <div className="stack" style={{ gap: '12px' }}>
-                  {activeTask.subtasks.map(subtask => (
-                    <div key={subtask.id} className="task-card" style={{ padding: '12px' }}>
-                      <div className="subtask-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <input
-                            checked={subtask.status === 'completed'}
-                            className="custom-checkbox"
-                            onChange={() => void handleUpdateSubtaskStatus(activeTask, subtask, subtask.status === 'completed' ? 'pending' : 'completed')}
-                            type="checkbox"
-                          />
-                          <span className={subtask.status === 'completed' ? 'subtask-title-done' : 'subtask-title'}>
-                            {subtask.title}
-                          </span>
-                        </div>
-                        <div className="card-actions-row-compact" style={{ marginTop: 0 }}>
-                          <button
-                            className="ghost-button"
-                            onClick={() => handleOpenSubtaskNote(activeTask, subtask)}
-                            style={{ padding: '0' }}
-                            type="button"
-                          >
-                            <MessageSquare size={14} />
-                          </button>
-                          <button
-                            className="ghost-button danger-text"
-                            onClick={() => void handleDeleteSubtask(activeTask, subtask)}
-                            style={{ padding: '0', fontSize: '0.75rem' }}
-                            type="button"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                      {subtask.description && (
-                         <p className="card-description" style={{ marginTop: 4, paddingLeft: 28, fontStyle: 'italic', fontSize: '0.8rem' }}>
-                           {subtask.description}
-                         </p>
-                      )}
-                      {subtask.note && (
-                        <p className="card-description" style={{ marginTop: 8, paddingLeft: 28 }}>
-                          {subtask.note}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                  {activeTask.subtasks.length === 0 && (
-                    <EmptyState description="Break down your task into smaller steps." icon={CheckCircle} title="All clear" />
-                  )}
-                  
-                  <div style={{ marginTop: 'auto', paddingTop: 24 }}>
-                    <div className="pane-header-content" style={{ marginBottom: 16 }}>
-                      <h4 className="pane-header-title" style={{ fontSize: '0.9rem' }}>Task Detail</h4>
-                    </div>
-                    {activeTask.description && <p className="card-description" style={{ marginBottom: 16 }}>{activeTask.description}</p>}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                      <span className={`status-pill status-${activeTask.status}`}>{activeTask.status.replace('_', ' ')}</span>
-                      <span className="source-badge">{activeTask.source}</span>
-                    </div>
-                    <div className="card-actions-row">
-                      <button className="secondary-button" onClick={() => handleOpenTaskNote(activeTask)} style={{ flex: 1 }} type="button">
-                        <MessageSquare size={16} /> Task Note
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-       )}
-      </main>
+        </main>
+      </div>
 
       {/* Modals & Overlays */}
       {isProjectCreateModalOpen ? (
@@ -1400,10 +1539,18 @@ function DashboardPage(): JSX.Element {
           />
         </Modal>
       ) : null}
+      {editingTask ? (
+        <Modal onClose={() => setEditingTask(null)} title={`Edit Task: ${editingTask.title}`}>
+          <EditTaskForm
+            epics={epics}
+            onSubmit={handleUpdateTask}
+            projects={projects}
+            task={editingTask}
+          />
+        </Modal>
+      ) : null}
       {subtaskModalTask ? (
         <Modal
-          backdropClassName="subtask-modal-backdrop"
-          panelClassName="subtask-modal-panel"
           onClose={() => setSubtaskModalTask(null)}
           title={`Create Subtask for ${subtaskModalTask.title}`}
         >
@@ -1425,18 +1572,18 @@ function DashboardPage(): JSX.Element {
               ? 'Delete Note'
               : activeNoteEditor.kind === 'epic'
                 ? 'Delete Epic Note'
-              : activeNoteEditor.kind === 'task'
-                ? 'Delete Task Note'
-                : 'Delete Sub-task Note'
+                : activeNoteEditor.kind === 'task'
+                  ? 'Delete Task Note'
+                  : 'Delete Sub-task Note'
           }
           entityLabel={
             activeNoteEditor.kind === 'project'
               ? activeNoteEditor.projectName
               : activeNoteEditor.kind === 'epic'
                 ? activeNoteEditor.epicName
-              : activeNoteEditor.kind === 'task'
-                ? activeNoteEditor.task.title
-                : `${activeNoteEditor.task.title} / ${activeNoteEditor.subtask.title}`
+                : activeNoteEditor.kind === 'task'
+                  ? activeNoteEditor.task.title
+                  : `${activeNoteEditor.task.title} / ${activeNoteEditor.subtask.title}`
           }
           modalTitle={
             activeNoteEditor.kind === 'project'
@@ -1447,22 +1594,22 @@ function DashboardPage(): JSX.Element {
                 ? activeNoteEditor.note
                   ? 'Edit Epic Note'
                   : 'Create Epic Note'
-              : activeNoteEditor.kind === 'task'
-                ? activeNoteEditor.task.note?.trim()
-                  ? 'Edit Task Note'
-                  : 'Create Task Note'
-                : activeNoteEditor.subtask.note?.trim()
-                  ? 'Edit Sub-task Note'
-                  : 'Create Sub-task Note'
+                : activeNoteEditor.kind === 'task'
+                  ? activeNoteEditor.task.note?.trim()
+                    ? 'Edit Task Note'
+                    : 'Create Task Note'
+                  : activeNoteEditor.subtask.note?.trim()
+                    ? 'Edit Sub-task Note'
+                    : 'Create Sub-task Note'
           }
           note={
             activeNoteEditor.kind === 'project'
               ? activeNoteEditor.note
               : activeNoteEditor.kind === 'epic'
                 ? activeNoteEditor.note
-              : activeNoteEditor.kind === 'task'
-                ? { title: '', content: activeNoteEditor.task.note ?? '' }
-                : { title: '', content: activeNoteEditor.subtask.note ?? '' }
+                : activeNoteEditor.kind === 'task'
+                  ? { title: '', content: activeNoteEditor.task.note ?? '' }
+                  : { title: '', content: activeNoteEditor.subtask.note ?? '' }
           }
           onClose={() => {
             setActiveNoteEditor(null);

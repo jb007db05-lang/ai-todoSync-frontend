@@ -4,6 +4,9 @@ import { KeyRound, Smartphone } from 'lucide-react';
 
 import { useAuth } from '@/context/AuthContext';
 
+const inputCls = 'w-full bg-white/82 dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded-md text-zinc-900 dark:text-slate-100 px-4 py-3.5 transition-all duration-200 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10';
+const labelCls = 'grid gap-2 font-medium text-[0.95rem] text-zinc-900 dark:text-slate-100';
+
 function LoginPage(): JSX.Element {
   const navigate = useNavigate();
   const location = useLocation();
@@ -45,69 +48,82 @@ function LoginPage(): JSX.Element {
   };
 
   return (
-    <main className="auth-page">
-      <section className="card">
-        <h1>Login</h1>
-        <p>Sign in to access your synced tasks.</p>
-        <button className="oauth-trigger" disabled={loading} onClick={startGoogleSignIn} type="button">
+    <main className="min-h-screen flex items-start justify-center gap-5 py-20 px-5">
+      {/* Login card */}
+      <section className="bg-white dark:bg-slate-900 border border-zinc-200 dark:border-slate-700 rounded-lg shadow-[0_10px_24px_rgba(15,23,42,0.06)] p-8 w-full max-w-[480px] grid gap-5">
+        <div>
+          <h1 className="text-2xl font-semibold text-zinc-900 dark:text-slate-100 m-0">Login</h1>
+          <p className="text-zinc-500 dark:text-slate-400 mt-1">Sign in to access your synced tasks.</p>
+        </div>
+
+        {/* Google OAuth */}
+        <button
+          className="w-full py-3 bg-white dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded-md text-zinc-700 dark:text-slate-200 font-medium hover:bg-zinc-50 dark:hover:bg-slate-700 flex items-center justify-center gap-2.5 shadow-sm transition-colors disabled:opacity-50"
+          disabled={loading}
+          onClick={startGoogleSignIn}
+          type="button"
+        >
           Sign in with Google
         </button>
-        <p className="oauth-divider">or choose a login method</p>
-        <div className="auth-mode-switch" role="tablist" aria-label="Login method">
-          <button
-            aria-selected={loginMode === 'account'}
-            className={`auth-mode-button${loginMode === 'account' ? ' auth-mode-button-active' : ''}`}
-            onClick={() => setLoginMode('account')}
-            type="button"
-          >
-            <KeyRound size={14} />
-            Account login
-          </button>
-          <button
-            aria-selected={loginMode === 'companion'}
-            className={`auth-mode-button${loginMode === 'companion' ? ' auth-mode-button-active' : ''}`}
-            onClick={() => setLoginMode('companion')}
-            type="button"
-          >
-            <Smartphone size={14} />
-            Companion device
-          </button>
+
+        <p className="text-center text-zinc-400 dark:text-slate-500 text-sm m-0">or choose a login method</p>
+
+        {/* Mode switch */}
+        <div
+          aria-label="Login method"
+          className="flex p-1 bg-zinc-100 dark:bg-slate-800 rounded-lg gap-1"
+          role="tablist"
+        >
+          {(
+            [
+              { key: 'account',   label: 'Account login',   Icon: KeyRound },
+              { key: 'companion', label: 'Companion device', Icon: Smartphone }
+            ] as const
+          ).map(({ key, label, Icon }) => (
+            <button
+              key={key}
+              aria-selected={loginMode === key}
+              className={[
+                'flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200',
+                loginMode === key
+                  ? 'bg-white dark:bg-slate-700 text-zinc-900 dark:text-slate-100 shadow-sm'
+                  : 'text-zinc-500 dark:text-slate-400 hover:text-zinc-700 dark:hover:text-slate-200'
+              ].join(' ')}
+              onClick={() => setLoginMode(key)}
+              type="button"
+            >
+              <Icon size={14} /> {label}
+            </button>
+          ))}
         </div>
+
+        {/* Account form */}
         {loginMode === 'account' ? (
-          <form className="form" onSubmit={(event) => void handleSubmit(event)}>
-            <label>
+          <form className="grid gap-[18px]" onSubmit={(event) => void handleSubmit(event)}>
+            <label className={labelCls}>
               <span>Email</span>
-              <input
-                autoComplete="email"
-                name="email"
-                onChange={(event) => setEmail(event.target.value)}
-                required
-                type="email"
-                value={email}
-              />
+              <input autoComplete="email" className={inputCls} name="email" onChange={(event) => setEmail(event.target.value)} required type="email" value={email} />
             </label>
-            <label>
+            <label className={labelCls}>
               <span>Password</span>
-              <input
-                autoComplete="current-password"
-                name="password"
-                onChange={(event) => setPassword(event.target.value)}
-                required
-                type="password"
-                value={password}
-              />
+              <input autoComplete="current-password" className={inputCls} name="password" onChange={(event) => setPassword(event.target.value)} required type="password" value={password} />
             </label>
-            {user != null ? <p className="muted-text">You already have an active session. Redirecting...</p> : null}
-            {error ? <p className="error-text">{error}</p> : null}
-            <button disabled={loading} type="submit">
+            {user != null ? <p className="text-zinc-400 dark:text-slate-500 m-0 text-sm">You already have an active session. Redirecting...</p> : null}
+            {error ? <p className="text-red-600 dark:text-red-400 m-0 text-[0.9rem]">{error}</p> : null}
+            <button
+              className="bg-zinc-900 dark:bg-blue-600 text-white rounded-md px-4 py-2.5 text-[0.9rem] font-medium hover:bg-zinc-700 dark:hover:bg-blue-500 disabled:opacity-50 transition-colors"
+              disabled={loading}
+              type="submit"
+            >
               {loading ? 'Signing in...' : 'Login'}
             </button>
           </form>
         ) : (
-          <form className="form" onSubmit={(event) => void handleCompanionSubmit(event)}>
-            <label>
+          <form className="grid gap-[18px]" onSubmit={(event) => void handleCompanionSubmit(event)}>
+            <label className={labelCls}>
               <span>Companion device ID</span>
               <input
+                className={inputCls}
                 name="companion-key"
                 onChange={(event) => setCompanionKey(event.target.value)}
                 placeholder="Paste the companion device ID"
@@ -116,22 +132,23 @@ function LoginPage(): JSX.Element {
                 value={companionKey}
               />
             </label>
-            <p className="muted-text">
+            <p className="text-zinc-500 dark:text-slate-400 m-0 text-sm">
               Use the companion device ID generated from the primary device in Settings.
             </p>
-            {error ? <p className="error-text">{error}</p> : null}
-            <button disabled={loading} type="submit">
+            {error ? <p className="text-red-600 dark:text-red-400 m-0 text-[0.9rem]">{error}</p> : null}
+            <button
+              className="bg-zinc-900 dark:bg-blue-600 text-white rounded-md px-4 py-2.5 text-[0.9rem] font-medium hover:bg-zinc-700 dark:hover:bg-blue-500 disabled:opacity-50 transition-colors"
+              disabled={loading}
+              type="submit"
+            >
               {loading ? 'Authorizing device...' : 'Login as companion device'}
             </button>
           </form>
         )}
-        <p className="muted-text">
-          Need an account? <Link to="/register">Create one</Link>
+
+        <p className="text-zinc-500 dark:text-slate-400 m-0 text-sm">
+          Need an account? <Link className="text-blue-600 dark:text-blue-400 hover:underline" to="/register">Create one</Link>
         </p>
-      </section>
-      <section className="card">
-        <h2>Next up</h2>
-        <p>Task list widgets, daily grouping, and sync history will be added after auth is stable.</p>
       </section>
     </main>
   );

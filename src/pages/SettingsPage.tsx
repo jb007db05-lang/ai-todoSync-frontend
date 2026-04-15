@@ -439,6 +439,8 @@ components:
       properties:
         title:
           type: string
+        description:
+          type: string
         note:
           type: string
         status:
@@ -488,6 +490,8 @@ components:
           type: string
         title:
           type: string
+        description:
+          type: string
         note:
           type: string
         status:
@@ -508,6 +512,8 @@ components:
         id:
           type: string
         name:
+          type: string
+        description:
           type: string
         userId:
           type: string
@@ -569,9 +575,11 @@ components:
     SyncTaskResponseItem:
       type: object
       additionalProperties: false
-      required: [id, title, date, status, projectId, epicId, subtasks]
+      required: [id, userId, title, date, status, rolledOver, rolloverCount, projectId, epicId, subtasks]
       properties:
         id:
+          type: string
+        userId:
           type: string
         title:
           type: string
@@ -585,6 +593,10 @@ components:
         status:
           type: string
           enum: [pending, in_progress, in_review, completed, rolled_over]
+        rolledOver:
+          type: boolean
+        rolloverCount:
+          type: integer
         source:
           type: string
         projectId:

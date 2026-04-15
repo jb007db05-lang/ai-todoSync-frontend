@@ -30,7 +30,7 @@ function ProjectForm({
     setErrorMessage(null);
 
     try {
-      await onSubmit({ 
+      await onSubmit({
         name: name.trim(),
         description: description.trim() || undefined
       });
@@ -43,25 +43,32 @@ function ProjectForm({
     }
   };
 
+  const inputCls = 'w-full bg-white/82 dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded-md text-zinc-900 dark:text-slate-100 px-4 py-3.5 transition-all duration-200 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 dark:focus:ring-blue-400/16';
+
   return (
-    <form className="form" onSubmit={(event) => void handleSubmit(event)}>
-      <label>
+    <form className="grid gap-[18px] mt-6" onSubmit={(event) => void handleSubmit(event)}>
+      <label className="grid gap-2 font-medium text-[0.95rem] text-zinc-900 dark:text-slate-100">
         <span>Project name</span>
-        <input onChange={(event) => setName(event.target.value)} placeholder="Backend" type="text" value={name} />
+        <input className={inputCls} onChange={(event) => setName(event.target.value)} placeholder="Backend" type="text" value={name} />
       </label>
-      <label>
+      <label className="grid gap-2 font-medium text-[0.95rem] text-zinc-900 dark:text-slate-100">
         <span>Description</span>
         <textarea
+          className={`${inputCls} min-h-[112px] resize-y`}
           onChange={(event) => setDescription(event.target.value)}
           placeholder="Optional project context"
           rows={3}
           value={description}
         />
       </label>
-      <button disabled={submitting} type="submit">
+      <button
+        className="bg-zinc-900 dark:bg-blue-600 text-white rounded-md px-4 py-2.5 text-[0.9rem] font-medium hover:bg-zinc-700 dark:hover:bg-blue-500 disabled:opacity-50 transition-colors"
+        disabled={submitting}
+        type="submit"
+      >
         {submitting ? 'Saving...' : submitLabel}
       </button>
-      {errorMessage ? <p className="error-text">{errorMessage}</p> : null}
+      {errorMessage ? <p className="text-red-600 dark:text-red-400 m-0 text-[0.9rem]">{errorMessage}</p> : null}
     </form>
   );
 }

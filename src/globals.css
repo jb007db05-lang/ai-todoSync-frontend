@@ -1,0 +1,161 @@
+/* ============================================================
+   GLOBALS — thin residual file after Tailwind migration
+   Only contains:
+     1. Tailwind v4 import
+     2. Google Fonts
+     3. A few base resets that can't be done in JSX
+     4. Keyframe animations referenced by Tailwind arbitrary values
+     5. Webkit/pseudo-element hacks that Tailwind can't express
+   ============================================================ */
+
+/* Google Fonts must come first — before all rule-generating imports */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap');
+
+@import "tailwindcss";
+
+/* Dark-mode selector strategy — used by dark: variant */
+@variant dark (&:is(.dark *));
+
+/* ---- Global box-sizing & font inheritance ---- */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    line-height: 1.6;
+    min-height: 100vh;
+    background-attachment: fixed;
+    /* light-mode background */
+    background-image:
+      radial-gradient(circle at 8% 10%, rgba(21, 94, 239, 0.12), transparent 24%),
+      radial-gradient(circle at 88% 14%, rgba(124, 58, 237, 0.08), transparent 20%),
+      radial-gradient(circle at 50% 100%, rgba(15, 118, 110, 0.06), transparent 24%),
+      linear-gradient(180deg, #f8fafc 0%, #f3f5f8 48%, #edf1f5 100%);
+  }
+
+  .dark body {
+    background-image:
+      radial-gradient(circle at 12% 14%, rgba(59, 130, 246, 0.18), transparent 24%),
+      radial-gradient(circle at 88% 16%, rgba(167, 139, 250, 0.1), transparent 18%),
+      radial-gradient(circle at 50% 100%, rgba(45, 212, 191, 0.08), transparent 26%),
+      linear-gradient(180deg, #09111f 0%, #0b1220 46%, #111827 100%);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    margin-top: 0;
+    letter-spacing: -0.01em;
+  }
+
+  button, input, select, textarea {
+    font: inherit;
+  }
+
+  button {
+    all: unset;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    box-sizing: border-box;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  a {
+    color: #3d6d63;
+    text-decoration: none;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  a:hover { color: #214d45; }
+
+  .dark a { color: #9cdbc9; }
+  .dark a:hover { color: #fff2e5; }
+}
+
+/* ---- Custom scrollbar ---- */
+@layer base {
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #e4e4e7; border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: #a1a1aa; }
+  .dark ::-webkit-scrollbar-thumb { background: #334155; }
+}
+
+/* ---- Keyframe animations ---- */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes modalScaleIn {
+  from { opacity: 0; transform: scale(0.95) translateY(10px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ---- Note editor contenteditable placeholder ---- */
+.note-editor-surface:empty::before {
+  color: #94a3b8;
+  content: 'Write your note here...';
+}
+
+.note-editor-surface:focus { outline: none; }
+
+/* ---- Webkit color-swatch for toolbar color picker ---- */
+.note-toolbar-color::-webkit-color-swatch-wrapper { padding: 0; }
+.note-toolbar-color::-webkit-color-swatch { border: none; border-radius: 5px; }
+
+/* ---- Gradient text (webkit-text-fill-color) ---- */
+.gradient-text {
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ---- Custom checkbox checkmark (pure CSS ::after) ---- */
+input[type="checkbox"].custom-check:checked {
+  background-color: #0969da;
+  border-color: #0969da;
+}
+
+input[type="checkbox"].custom-check:checked::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 2px;
+  width: 4px;
+  height: 8px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+/* ---- Tailwind animation utilities ---- */
+@layer utilities {
+  .animate-fadeIn    { animation: fadeIn    0.6s ease-out; }
+  .animate-slideUp   { animation: slideUp   0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  .animate-modalIn   { animation: modalScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
+  .animate-slideInRight { animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+}

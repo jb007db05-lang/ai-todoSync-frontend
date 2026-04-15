@@ -27,6 +27,24 @@ const shiftDate = (date: string, days: number): string => {
   return `${year}-${month}-${day}`;
 };
 
+/** Shared small secondary button used inside the date navigator */
+const NavBtn = ({ children, disabled, onClick, title }: {
+  children: React.ReactNode;
+  disabled?: boolean;
+  onClick: () => void;
+  title?: string;
+}): JSX.Element => (
+  <button
+    className="flex items-center justify-center w-7 h-7 rounded bg-white dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 text-zinc-500 dark:text-slate-400 hover:bg-zinc-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
+    disabled={disabled}
+    onClick={onClick}
+    title={title}
+    type="button"
+  >
+    {children}
+  </button>
+);
+
 function DateNavigator({ date, disabled = false, onChange }: DateNavigatorProps): JSX.Element {
   const handleInputChange = (event: ChangeEvent<HTMLInputElement>): void => {
     onChange(event.target.value);
@@ -35,51 +53,34 @@ function DateNavigator({ date, disabled = false, onChange }: DateNavigatorProps)
   const today = getTodayDate();
 
   return (
-    <div className="date-navigator-group">
-      <button
-        className="secondary-button"
-        disabled={disabled}
-        onClick={() => onChange(shiftDate(date, -1))}
-        title="Previous Day"
-        type="button"
-      >
+    <div className="flex items-center gap-0.5 bg-zinc-100 dark:bg-slate-800 p-0.5 rounded-md border border-zinc-200 dark:border-slate-600">
+      <NavBtn disabled={disabled} onClick={() => onChange(shiftDate(date, -1))} title="Previous Day">
         <ChevronLeft size={18} />
-      </button>
+      </NavBtn>
 
-      <div className="date-display-pill">
-        <CalendarDays className="muted-icon" size={16} />
-        <input 
-          disabled={disabled} 
-          onChange={handleInputChange} 
-          type="date" 
-          value={date} 
-          className="date-input-hidden"
+      {/* Date pill */}
+      <div className="relative flex items-center gap-2 px-2.5 h-7 bg-white dark:bg-slate-700 rounded border border-zinc-200 dark:border-slate-600 min-w-[140px] cursor-pointer">
+        <CalendarDays className="text-zinc-400 dark:text-slate-400 shrink-0" size={16} />
+        <input
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+          disabled={disabled}
+          onChange={handleInputChange}
+          type="date"
+          value={date}
         />
-        <span className="date-text-display">
+        <span className="text-[0.75rem] font-semibold text-blue-600 dark:text-blue-400 whitespace-nowrap">
           {new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
         </span>
       </div>
 
-      <button
-        className="secondary-button"
-        disabled={disabled}
-        onClick={() => onChange(shiftDate(date, 1))}
-        title="Next Day"
-        type="button"
-      >
+      <NavBtn disabled={disabled} onClick={() => onChange(shiftDate(date, 1))} title="Next Day">
         <ChevronRight size={18} />
-      </button>
+      </NavBtn>
 
-      <button
-        className="secondary-button"
-        disabled={disabled || date === today}
-        onClick={() => onChange(today)}
-        title="Go to Today"
-        type="button"
-      >
+      <NavBtn disabled={disabled || date === today} onClick={() => onChange(today)} title="Go to Today">
         <RotateCcw size={16} />
-        <span style={{ fontSize: '0.8rem' }}>Today</span>
-      </button>
+        {/* <span className="text-[0.8rem] ml-0.5">Today</span> */}
+      </NavBtn>
     </div>
   );
 }

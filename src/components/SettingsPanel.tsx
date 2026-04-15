@@ -923,57 +923,77 @@ function SettingsPanel(): JSX.Element {
     }));
   };
 
+  const inputCls = 'w-full bg-white/82 dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded-md text-zinc-900 dark:text-slate-100 px-4 py-3.5 transition-all focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10';
+  const ghostBtn = 'inline-flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded text-zinc-600 dark:text-slate-300 text-sm hover:bg-zinc-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors';
+  const dangerBtn = 'inline-flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-slate-800 border border-red-200 dark:border-red-800 rounded text-red-600 dark:text-red-400 text-sm hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 transition-colors';
+  const primaryBtn = 'inline-flex items-center gap-1.5 px-4 py-2 bg-zinc-900 dark:bg-blue-600 text-white rounded text-sm font-medium hover:bg-zinc-700 dark:hover:bg-blue-500 disabled:opacity-50 transition-colors';
+
   return (
-    <div className="settings-panel-content">
-      <div className="settings-grid">
-        <SectionCard className="settings-security-card">
-          <div className="settings-card-head">
+    <div className="grid gap-8 p-1">
+      {/* Top grid: Security + Devices */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Sync API Key card */}
+        <SectionCard>
+          <div className="flex items-start justify-between gap-4 mb-6">
             <div>
-              <span className="eyebrow">Security</span>
-              <h2>Sync API Key</h2>
-              <p className="muted-text">Your unique key for connecting external task tools.</p>
+              <span className="text-blue-600 dark:text-blue-400 text-[0.72rem] tracking-[0.12em] uppercase font-semibold">Security</span>
+              <h2 className="mt-1 mb-1 text-zinc-900 dark:text-slate-100">Sync API Key</h2>
+              <p className="text-zinc-500 dark:text-slate-400 m-0 text-sm">Your unique key for connecting external task tools.</p>
             </div>
-            <span className="settings-card-icon"><Shield size={18} /></span>
+            <span className="flex items-center justify-center w-10 h-10 bg-blue-600/8 dark:bg-blue-400/12 rounded-xl text-blue-600 dark:text-blue-400 shrink-0">
+              <Shield size={18} />
+            </span>
           </div>
-          <div className="settings-key-container">
-            <div className="settings-key-display">
-              <KeyRound className="muted-text" size={16} />
-              <code>{user?.syncApiKey || 'No key generated'}</code>
-              <button className="copy-button" onClick={() => user?.syncApiKey && handleCopy(user.syncApiKey, -1)} type="button">
-                {copiedIndex === -1 ? <Check size={14} /> : <Copy size={14} />}
-              </button>
-            </div>
+
+          {/* Key display */}
+          <div className="flex items-center gap-2 bg-zinc-50 dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 rounded-xl px-4 py-3 mb-4">
+            <KeyRound className="text-zinc-400 dark:text-slate-500 shrink-0" size={16} />
+            <code className="flex-1 text-[0.85rem] text-zinc-700 dark:text-slate-300 break-all">{user?.syncApiKey || 'No key generated'}</code>
             <button
-              className="secondary-button"
-              disabled={isRegenerating}
-              onClick={() => void handleRegenerateKey()}
+              className="flex items-center justify-center w-7 h-7 rounded text-zinc-400 dark:text-slate-500 hover:text-zinc-700 dark:hover:text-slate-200 transition-colors"
+              onClick={() => user?.syncApiKey && handleCopy(user.syncApiKey, -1)}
               type="button"
             >
-              <RefreshCcw className={isRegenerating ? 'spin' : ''} size={14} />
-              {isRegenerating ? 'Regenerating...' : 'Regenerate Key'}
+              {copiedIndex === -1 ? <Check size={14} /> : <Copy size={14} />}
             </button>
           </div>
-          {successMessage && <p className="success-text">{successMessage}</p>}
-          {errorMessage && <p className="error-text">{errorMessage}</p>}
+
+          <button
+            className={ghostBtn}
+            disabled={isRegenerating}
+            onClick={() => void handleRegenerateKey()}
+            type="button"
+          >
+            <RefreshCcw className={isRegenerating ? 'animate-spin' : ''} size={14} />
+            {isRegenerating ? 'Regenerating...' : 'Regenerate Key'}
+          </button>
+
+          {successMessage && <p className="text-teal-600 dark:text-teal-400 m-0 text-sm mt-3">{successMessage}</p>}
+          {errorMessage && <p className="text-red-600 dark:text-red-400 m-0 text-sm mt-3">{errorMessage}</p>}
         </SectionCard>
 
-        <SectionCard className="settings-companion-card">
-          <div className="settings-card-head">
+        {/* Companion Access card */}
+        <SectionCard>
+          <div className="flex items-start justify-between gap-4 mb-6">
             <div>
-              <span className="eyebrow">Devices</span>
-              <h2>Companion Access</h2>
-              <p className="muted-text">Manage secure keys for mobile, desktop, or voice apps.</p>
+              <span className="text-blue-600 dark:text-blue-400 text-[0.72rem] tracking-[0.12em] uppercase font-semibold">Devices</span>
+              <h2 className="mt-1 mb-1 text-zinc-900 dark:text-slate-100">Companion Access</h2>
+              <p className="text-zinc-500 dark:text-slate-400 m-0 text-sm">Manage secure keys for mobile, desktop, or voice apps.</p>
             </div>
-            <span className="settings-card-icon"><Smartphone size={18} /></span>
+            <span className="flex items-center justify-center w-10 h-10 bg-blue-600/8 dark:bg-blue-400/12 rounded-xl text-blue-600 dark:text-blue-400 shrink-0">
+              <Smartphone size={18} />
+            </span>
           </div>
 
           {canManagePrimarySecurity ? (
             <>
-              <div className="settings-companion-setup">
-                <div className="form-row">
-                  <label>
+              {/* Generate key form */}
+              <div className="bg-zinc-50 dark:bg-slate-800/50 border border-zinc-200 dark:border-slate-700 rounded-xl p-4 mb-4 grid gap-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="grid gap-1.5 text-sm font-medium text-zinc-700 dark:text-slate-300">
                     <span>Target Device Name</span>
                     <input
+                      className={inputCls}
                       disabled={isGeneratingCompanionKey}
                       onChange={(e) => setDeviceName(e.target.value)}
                       placeholder="My iPhone 15"
@@ -981,9 +1001,10 @@ function SettingsPanel(): JSX.Element {
                       value={deviceName}
                     />
                   </label>
-                  <label>
+                  <label className="grid gap-1.5 text-sm font-medium text-zinc-700 dark:text-slate-300">
                     <span>Category</span>
                     <select
+                      className={inputCls}
                       disabled={isGeneratingCompanionKey}
                       onChange={(e) => setDeviceType(e.target.value)}
                       value={deviceType}
@@ -996,6 +1017,7 @@ function SettingsPanel(): JSX.Element {
                   </label>
                 </div>
                 <button
+                  className={primaryBtn}
                   disabled={isGeneratingCompanionKey || !deviceName.trim()}
                   onClick={() => void handleGenerateCompanionKey()}
                   type="button"
@@ -1004,27 +1026,30 @@ function SettingsPanel(): JSX.Element {
                 </button>
               </div>
 
-              <div className="companion-device-list">
-                {isLoadingDevices && <p className="muted-text">Loading secure sessions...</p>}
-                {devicesError && <p className="error-text">{devicesError}</p>}
+              {/* Device list */}
+              <div className="grid gap-3">
+                {isLoadingDevices && <p className="text-zinc-400 dark:text-slate-500 m-0 text-sm">Loading secure sessions...</p>}
+                {devicesError && <p className="text-red-600 dark:text-red-400 m-0 text-sm">{devicesError}</p>}
                 {!isLoadingDevices && devices.length === 0 && (
-                  <div className="empty-state-mini">
-                    <p className="muted-text">No companion devices active.</p>
-                  </div>
+                  <p className="text-zinc-400 dark:text-slate-500 m-0 text-sm">No companion devices active.</p>
                 )}
                 {devices.map((device) => {
                   const draft = renameDrafts[device.id] || { deviceName: device.deviceName, deviceType: device.deviceType };
                   const isWorking = activeDeviceActionId === device.id;
 
                   return (
-                    <article className="companion-device-item" key={device.id}>
-                      <div className="device-info">
+                    <article
+                      key={device.id}
+                      className="bg-white dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 rounded-xl p-4 grid gap-3"
+                    >
+                      <div className="grid grid-cols-2 gap-3">
                         <input
-                          className="device-rename-input"
+                          className={inputCls}
                           onChange={(event) => handleRenameDraftChange(device.id, 'deviceName', event.target.value)}
                           value={draft.deviceName}
                         />
                         <select
+                          className={inputCls}
                           onChange={(event) => handleRenameDraftChange(device.id, 'deviceType', event.target.value)}
                           value={draft.deviceType}
                         >
@@ -1034,114 +1059,129 @@ function SettingsPanel(): JSX.Element {
                           <option value="assistant">Assistant</option>
                         </select>
                       </div>
-                      <ActionGroup>
-                        <button
-                          className="secondary-button"
-                          disabled={isWorking}
-                          onClick={() => void handleUpdateDevice(device.id)}
-                          type="button"
-                        >
+                      <div className="flex gap-2">
+                        <button className={ghostBtn} disabled={isWorking} onClick={() => void handleUpdateDevice(device.id)} type="button">
                           {isWorking ? 'Saving...' : 'Update device'}
                         </button>
-                        <button
-                          className="danger-button"
-                          disabled={isWorking}
-                          onClick={() => void handleRevokeDevice(device.id)}
-                          type="button"
-                        >
-                          <Trash2 size={14} />
-                          Revoke
+                        <button className={dangerBtn} disabled={isWorking} onClick={() => void handleRevokeDevice(device.id)} type="button">
+                          <Trash2 size={14} /> Revoke
                         </button>
-                      </ActionGroup>
+                      </div>
                     </article>
                   );
                 })}
               </div>
             </>
           ) : (
-            <div className="settings-restricted-card">
-              <span className="settings-stat-label">Restricted on companion devices</span>
-              <strong>Only the main device can manage companion devices.</strong>
+            <div className="bg-zinc-50 dark:bg-slate-800/50 border border-zinc-200 dark:border-slate-700 rounded-xl p-5 text-center">
+              <span className="text-zinc-400 dark:text-slate-500 text-sm">Restricted on companion devices</span>
+              <strong className="block mt-1.5 text-zinc-700 dark:text-slate-300">Only the main device can manage companion devices.</strong>
             </div>
           )}
         </SectionCard>
       </div>
 
-      <SectionCard className="settings-integration-card">
-        <div className="settings-card-head">
+      {/* ChatGPT Integration */}
+      <SectionCard>
+        <div className="flex items-start justify-between gap-4 mb-6">
           <div>
-            <span className="eyebrow">A.I.</span>
-            <h2>ChatGPT Integration</h2>
-            <p className="muted-text">Configure a custom GPT to manage your tasks via voice or chat.</p>
+            <span className="text-blue-600 dark:text-blue-400 text-[0.72rem] tracking-[0.12em] uppercase font-semibold">A.I.</span>
+            <h2 className="mt-1 mb-1 text-zinc-900 dark:text-slate-100">ChatGPT Integration</h2>
+            <p className="text-zinc-500 dark:text-slate-400 m-0 text-sm">Configure a custom GPT to manage your tasks via voice or chat.</p>
           </div>
-          <span className="settings-card-icon"><Sparkles size={18} /></span>
+          <span className="flex items-center justify-center w-10 h-10 bg-blue-600/8 dark:bg-blue-400/12 rounded-xl text-blue-600 dark:text-blue-400 shrink-0">
+            <Sparkles size={18} />
+          </span>
         </div>
-        <div className="accordion-list settings-accordion-list">
+
+        {/* Accordion steps */}
+        <div className="grid gap-3">
           {chatGptIntegrationSteps.map((step, index) => {
             const isOpen = openStepIndex === index;
             const panelId = `chatgpt-step-panel-${index}`;
 
             return (
-              <article className={`accordion-item settings-accordion-item${isOpen ? ' accordion-item-open' : ''}`} key={step.title}>
+              <article
+                key={step.title}
+                className={[
+                  'border border-zinc-200 dark:border-slate-700 rounded-xl overflow-hidden transition-all',
+                  isOpen ? 'bg-zinc-50 dark:bg-slate-800/50' : 'bg-white dark:bg-slate-900'
+                ].join(' ')}
+              >
+                {/* Trigger */}
                 <button
                   aria-controls={panelId}
                   aria-expanded={isOpen}
-                  className="accordion-trigger"
+                  className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left"
                   onClick={() => setOpenStepIndex(isOpen ? null : index)}
                   type="button"
                 >
-                  <span className="accordion-copy">
-                    <strong>{step.title}</strong>
-                    <span>{step.summary}</span>
+                  <span className="grid gap-0.5">
+                    <strong className="text-zinc-900 dark:text-slate-100 text-[0.95rem]">{step.title}</strong>
+                    <span className="text-zinc-500 dark:text-slate-400 text-sm">{step.summary}</span>
                   </span>
-                  <span className="accordion-icon">{isOpen ? '−' : '+'}</span>
+                  <span className="flex items-center justify-center w-6 h-6 text-zinc-400 dark:text-slate-500 text-lg shrink-0">
+                    {isOpen ? '−' : '+'}
+                  </span>
                 </button>
-                <div className={`accordion-panel${isOpen ? ' accordion-panel-open' : ''}`} id={panelId}>
-                  <div className="accordion-content">
-                    <div className="accordion-main">
-                      <div className="accordion-image">
-                        <img src={step.image} alt={step.title} />
-                      </div>
-                      <ol className="accordion-steps">
+
+                {/* Panel */}
+                {isOpen && (
+                  <div className="px-5 pb-5 grid gap-4" id={panelId}>
+                    <div className="grid grid-cols-[1fr_280px] gap-6">
+                      <ol className="text-zinc-700 dark:text-slate-300 text-sm list-decimal pl-4 grid gap-2">
                         {step.details.map((detail) => (
                           <li key={detail}>{detail}</li>
                         ))}
                       </ol>
+                      <img
+                        alt={step.title}
+                        className="rounded-lg border border-zinc-200 dark:border-slate-700 w-full object-cover"
+                        src={step.image}
+                      />
                     </div>
                     {step.code && (
-                      <div className="code-container">
-                        <button className="copy-button" onClick={() => handleCopy(step.code!, index)} type="button">
-                          {copiedIndex === index ? <Check size={14} /> : <Copy size={14} />}
+                      <div className="relative">
+                        <button
+                          className="absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1.5 text-xs bg-white dark:bg-slate-700 border border-zinc-200 dark:border-slate-600 rounded text-zinc-600 dark:text-slate-300 hover:bg-zinc-50 dark:hover:bg-slate-600 transition-colors"
+                          onClick={() => handleCopy(step.code!, index)}
+                          type="button"
+                        >
+                          {copiedIndex === index ? <Check size={12} /> : <Copy size={12} />}
+                          {copiedIndex === index ? 'Copied!' : 'Copy'}
                         </button>
-                        <pre className="code-block">
+                        <pre className="bg-zinc-900 dark:bg-[#0d1117] text-zinc-100 text-[0.8rem] leading-relaxed rounded-xl p-5 overflow-x-auto whitespace-pre-wrap max-h-[400px] overflow-y-auto">
                           <code>{step.code}</code>
                         </pre>
                       </div>
                     )}
                   </div>
-                </div>
+                )}
               </article>
             );
           })}
         </div>
       </SectionCard>
 
+      {/* Generated key modal */}
       {generatedCompanionKey && (
         <Modal onClose={() => setGeneratedCompanionKey(null)} title="Companion Device Key">
-          <div className="settings-secret-modal-body">
-            <p className="muted-text">
-              Key for <strong>{generatedCompanionKey.deviceName}</strong>. Copy it now; it won't be shown again.
+          <div className="grid gap-4">
+            <p className="text-zinc-500 dark:text-slate-400 m-0 text-sm">
+              Key for <strong className="text-zinc-800 dark:text-slate-200">{generatedCompanionKey.deviceName}</strong>. Copy it now; it won't be shown again.
             </p>
-            <code className="settings-secret-value">{generatedCompanionKey.key}</code>
-            <ActionGroup>
-              <button onClick={() => void handleCopy(generatedCompanionKey.key, -2)} type="button">
+            <code className="block bg-zinc-900 dark:bg-[#0d1117] text-zinc-100 text-[0.85rem] rounded-xl p-4 break-all">
+              {generatedCompanionKey.key}
+            </code>
+            <div className="flex gap-3">
+              <button className={primaryBtn} onClick={() => void handleCopy(generatedCompanionKey.key, -2)} type="button">
                 {copiedIndex === -2 ? <Check size={14} /> : <Copy size={14} />}
                 Copy Key
               </button>
-              <button className="secondary-button" onClick={() => setGeneratedCompanionKey(null)} type="button">
+              <button className={ghostBtn} onClick={() => setGeneratedCompanionKey(null)} type="button">
                 Close
               </button>
-            </ActionGroup>
+            </div>
           </div>
         </Modal>
       )}

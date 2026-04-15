@@ -13,6 +13,8 @@ interface TaskListProps {
   onDeleteSubtask: (task: Task, subtask: Subtask) => void;
   onCreateSubtask: (task: Task) => void;
   onDelete: (taskId: string) => void;
+  onEditTask?: (task: Task) => void;
+  onEditSubtask?: (task: Task, subtask: Subtask) => void;
   onOpenEpicNotes: (epic: Epic) => void;
   onOpenProjectNotes: (project: Project) => void;
   onOpenSubtaskNote: (task: Task, subtask: Subtask) => void;
@@ -32,6 +34,8 @@ function TaskList({
   onDeleteSubtask,
   onCreateSubtask,
   onDelete,
+  onEditTask,
+  onEditSubtask,
   onOpenEpicNotes,
   onOpenProjectNotes,
   onOpenSubtaskNote,
@@ -109,7 +113,7 @@ function TaskList({
   })();
 
   return (
-    <div className="task-list-shell">
+    <div className="grid gap-3.5">
       {tasks.length === 0 ? (
         <EmptyState
           description="Create a task or switch the active project to start planning work for this date."
@@ -117,7 +121,7 @@ function TaskList({
           title="No tasks in this view"
         />
       ) : (
-        <div className="task-list" style={{ marginTop: 0 }}>
+        <div className="grid gap-[18px]">
           {projectSections.length > 0 ? (
             projectSections.map((section) => {
               const tasksByEpicId = new Map<string | null, Task[]>();
@@ -163,43 +167,20 @@ function TaskList({
               ];
 
               return (
-                <section className="project-group" key={section.id}>
-                  <div className="project-group-header">
-                    <div>
-                      <span className="project-list-kicker">Project</span>
-                      <h3>{section.title}</h3>
-                      <p className="muted-text">{section.description}</p>
-                    </div>
-                    <div className="project-group-meta">
-                      <span className="accordion-count">{section.tasks.length} task(s)</span>
-                      {section.project ? (
-                        <button className="secondary-button" onClick={() => onOpenProjectNotes(section.project as Project)} type="button">
-                          Project notes
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
-                  <div className="task-list">
+                <section className="grid gap-[18px]" key={section.id}>
+
+                  {/* Epic groups */}
+                  <div className="grid gap-[18px]">
                     {sectionGroups.map((group) => (
-                      <section className="epic-group" key={group.id}>
-                        <div className="epic-group-header">
-                          <div>
-                            <span className="project-list-kicker">Epic</span>
-                            <h3>{group.title}</h3>
-                            <p className="muted-text">{group.description}</p>
-                          </div>
-                          <div className="project-group-meta">
-                            <span className="accordion-count">{group.tasks.length} task(s)</span>
-                            {group.epic ? (
-                              <button className="secondary-button" onClick={() => onOpenEpicNotes(group.epic as Epic)} type="button">
-                                Epic notes
-                              </button>
-                            ) : null}
-                          </div>
-                        </div>
-                        <div className="task-list">
+                      <section
+                        key={group.id}
+                        className="flex flex-col gap-4"
+                      >
+                        
+                        {/* Task cards */}
+                        <div className="grid gap-4">
                           {group.tasks.map((task) => (
-                            <TaskCard
+                          <TaskCard
                               actionTaskId={actionTaskId}
                               availableEpics={task.projectId ? orderedProjectEpics.get(task.projectId) ?? [] : []}
                               epicName={task.epicId ? epicById.get(task.epicId)?.name : undefined}
@@ -207,6 +188,8 @@ function TaskList({
                               onCreateSubtask={onCreateSubtask}
                               onDelete={onDelete}
                               onDeleteSubtask={onDeleteSubtask}
+                              onEditTask={onEditTask}
+                              onEditSubtask={onEditSubtask}
                               onOpenSubtaskNote={onOpenSubtaskNote}
                               onOpenTaskNote={onOpenTaskNote}
                               onUpdateEpic={onUpdateEpic}
@@ -226,7 +209,7 @@ function TaskList({
               );
             })
           ) : (
-            <div className="task-list">
+            <div className="grid gap-4">
               {tasks.map((task) => (
                 <TaskCard
                   actionTaskId={actionTaskId}
@@ -235,6 +218,8 @@ function TaskList({
                   onCreateSubtask={onCreateSubtask}
                   onDelete={onDelete}
                   onDeleteSubtask={onDeleteSubtask}
+                  onEditTask={onEditTask}
+                  onEditSubtask={onEditSubtask}
                   onOpenSubtaskNote={onOpenSubtaskNote}
                   onOpenTaskNote={onOpenTaskNote}
                   onUpdateEpic={onUpdateEpic}
