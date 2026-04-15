@@ -42,6 +42,7 @@ import type { Note } from '@/types/note';
 import type { Project } from '@/types/project';
 import type { Task, TaskWorkflowStatus } from '@/types/task';
 import { findProjectByName } from '@/utils/projectTree';
+import { useConfirm } from '@/context/ConfirmationContext';
 
 type ActiveNoteEditor =
   | {
@@ -76,7 +77,6 @@ const getTodayDate = (): string => {
   return `${year}-${month}-${day}`;
 };
 
-const requestConfirmation = (message: string): boolean => window.confirm(message);
 const ALL_PROJECTS_VALUE = '__all__';
 
 const deriveTaskStatusFromSubtasks = (
@@ -107,6 +107,8 @@ const deriveTaskStatusFromSubtasks = (
 };
 
 function DashboardPage(): JSX.Element {
+  const { user, logout } = useAuth();
+  const confirm = useConfirm();
   const [selectedDate, setSelectedDate] = useState<string>(getTodayDate);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -313,10 +315,18 @@ function DashboardPage(): JSX.Element {
     }
   };
 
-  const handleDeleteEpic = async (epic: Epic): Promise<void> => {
-    if (!requestConfirmation(`Delete epic "${epic.name}"? Tasks will remain and move to "No Epic".`)) {
-      return;
-    }
+  const handleDeleteEpic = async (epicId: string) => {
+    const epic = epics.find((e) => e.id === epicId);
+    if (!epic) return;
+
+    const isConfirmed = await confirm({
+      title: 'Delete Epic',
+      message: `Delete epic "${epic.name}"? Tasks will remain and move to "No Epic".`,
+      confirmText: 'Delete Epic',
+      type: 'danger'
+    });
+
+    if (!isConfirmed) return;
 
     setActionEpicId(epic.id);
     setEpicMutationError(null);
@@ -428,10 +438,15 @@ function DashboardPage(): JSX.Element {
     }
   };
 
-  const handleDeleteProject = async (projectId: string): Promise<void> => {
-    if (!requestConfirmation('Are you sure you want to delete this project? All associated tasks, epics, and notes will be permanently removed.')) {
-      return;
-    }
+  const handleDeleteProject = async (projectId: string) => {
+    const isConfirmed = await confirm({
+      title: 'Delete Project',
+      message: 'Are you sure you want to delete this project? All associated tasks, epics, and notes will be permanently removed.',
+      confirmText: 'Delete Project',
+      type: 'danger'
+    });
+
+    if (!isConfirmed) return;
 
     setActionProjectId(projectId);
     try {
@@ -497,10 +512,15 @@ function DashboardPage(): JSX.Element {
     }
   };
 
-  const handleDeleteProjects = async (projectIds: string[]): Promise<void> => {
-    if (!requestConfirmation(`Are you sure you want to delete ${projectIds.length} projects? All associated tasks, epics, and notes will be permanently removed.`)) {
-      return;
-    }
+  const handleDeleteProjects = async (projectIds: string[]) => {
+    const isConfirmed = await confirm({
+      title: 'Delete Multiple Projects',
+      message: `Are you sure you want to delete ${projectIds.length} projects? All associated tasks, epics, and notes will be permanently removed.`,
+      confirmText: 'Delete Projects',
+      type: 'danger'
+    });
+
+    if (!isConfirmed) return;
 
     setActionProjectId('bulk');
     try {
@@ -516,11 +536,15 @@ function DashboardPage(): JSX.Element {
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleUpdateTaskStatus = async (task: Task, status: TaskWorkflowStatus): Promise<void> => {
-    if (!requestConfirmation(`Update the status for "${task.title}" to "${status.replace('_', ' ')}"?`)) {
-      return;
-    }
+  const handleUpdateTaskStatus = async (task: Task, status: TaskWorkflowStatus) => {
+    const isConfirmed = await confirm({
+      title: 'Update Task Status',
+      message: `Update the status for "${task.title}" to "${status.replace('_', ' ')}"?`,
+      confirmText: 'Update Status',
+      type: 'info'
+    });
+
+    if (!isConfirmed) return;
 
     setActionTaskId(task.id);
     setTaskMutationError(null);
@@ -550,7 +574,6 @@ function DashboardPage(): JSX.Element {
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleUpdateTaskEpic = async (task: Task, epicId: string | null): Promise<void> => {
     setActionTaskId(task.id);
     setTaskMutationError(null);
@@ -570,12 +593,15 @@ function DashboardPage(): JSX.Element {
     }
   };
 
-  const handleDeleteTask = async (taskId: string): Promise<void> => {
-    const taskTitle = tasks.find((task) => task.id === taskId)?.title ?? 'this task';
+  const handleDeleteTask = async (taskId: string, taskTitle: string) => {
+    const isConfirmed = await confirm({
+      title: 'Delete Task',
+      message: `Delete "${taskTitle}"?`,
+      confirmText: 'Delete Task',
+      type: 'danger'
+    });
 
-    if (!requestConfirmation(`Delete "${taskTitle}"?`)) {
-      return;
-    }
+    if (!isConfirmed) return;
 
     setActionTaskId(taskId);
     setTaskMutationError(null);
@@ -597,13 +623,14 @@ function DashboardPage(): JSX.Element {
     targetSubtask: Task['subtasks'][number],
     status: TaskWorkflowStatus
   ): Promise<void> => {
-    if (
-      !requestConfirmation(
-        `Update the status for sub-task "${targetSubtask.title}" in "${task.title}" to "${status.replace('_', ' ')}"?`
-      )
-    ) {
-      return;
-    }
+    const isConfirmed = await confirm({
+      title: 'Update Subtask Status',
+      message: `Update the status for sub-task "${targetSubtask.title}" in "${task.title}" to "${status.replace('_', ' ')}"?`,
+      confirmText: 'Update Status',
+      type: 'info'
+    });
+
+    if (!isConfirmed) return;
 
     setActionTaskId(task.id);
     setTaskMutationError(null);
@@ -681,13 +708,18 @@ function DashboardPage(): JSX.Element {
     }
   };
 
-  const handleDeleteSubtask = async (
-    task: Task,
-    targetSubtask: Task['subtasks'][number]
-  ): Promise<void> => {
-    if (!requestConfirmation(`Remove sub-task "${targetSubtask.title}" from "${task.title}"?`)) {
-      return;
-    }
+  const handleDeleteSubtask = async (task: Task, subtaskId: string) => {
+    const targetSubtask = task.subtasks.find((s) => s.id === subtaskId);
+    if (!targetSubtask) return;
+
+    const isConfirmed = await confirm({
+      title: 'Delete Subtask',
+      message: `Remove sub-task "${targetSubtask.title}" from "${task.title}"?`,
+      confirmText: 'Delete Subtask',
+      type: 'danger'
+    });
+
+    if (!isConfirmed) return;
 
     setActionTaskId(task.id);
     setTaskMutationError(null);
@@ -830,10 +862,16 @@ function DashboardPage(): JSX.Element {
               ? `task note for "${editor.task.title}"`
               : `sub-task note for "${editor.subtask.title}"`;
       const actionLabel = payload.appendContent ? 'append to' : 'update';
+      const isDestructive = false;
 
-      if (!requestConfirmation(`Confirm ${actionLabel} ${label}?`)) {
-        return;
-      }
+      const isConfirmed = await confirm({
+        title: `${actionLabel} ${label}`,
+        message: `Confirm ${actionLabel} ${label}?`,
+        confirmText: actionLabel,
+        type: isDestructive ? 'danger' : 'info'
+      });
+
+      if (!isConfirmed) return;
     }
 
     setActionNoteId(editor.kind === 'project' || editor.kind === 'epic' ? editor.note?.id ?? 'new' : null);
@@ -917,10 +955,15 @@ function DashboardPage(): JSX.Element {
     }
   };
 
-  const handleDeleteNote = async (note: Note): Promise<void> => {
-    if (!requestConfirmation(`Delete note "${note.title}"?`)) {
-      return;
-    }
+  const handleDeleteNote = async (note: Note) => {
+    const isConfirmed = await confirm({
+      title: 'Delete Note',
+      message: `Delete note "${note.title}"?`,
+      confirmText: 'Delete Note',
+      type: 'danger'
+    });
+
+    if (!isConfirmed) return;
 
     setActionNoteId(note.id);
     setNoteMutationError(null);
@@ -957,15 +1000,18 @@ function DashboardPage(): JSX.Element {
       return;
     }
 
-    if (
-      !requestConfirmation(
-        activeNoteEditor.kind === 'task'
-          ? `Delete task note for "${activeNoteEditor.task.title}"?`
-          : `Delete sub-task note for "${activeNoteEditor.subtask.title}"?`
-      )
-    ) {
-      return;
-    }
+    const label = activeNoteEditor.kind === 'task'
+      ? `task note for "${activeNoteEditor.task.title}"`
+      : `sub-task note for "${activeNoteEditor.subtask.title}"`;
+
+    const isConfirmed = await confirm({
+      title: 'Delete Note',
+      message: `Delete ${label}?`,
+      confirmText: 'Delete Note',
+      type: 'danger'
+    });
+
+    if (!isConfirmed) return;
 
     setActionNoteId(
       activeNoteEditor.kind === 'task'
@@ -1089,7 +1135,18 @@ function DashboardPage(): JSX.Element {
   const activeProjectNotesModalTitle = activeProjectForNotes ? `Notes for ${activeProjectForNotes.name}` : 'Project Notes';
   const activeEpicNotesModalTitle = activeEpicForNotes ? `Notes for ${activeEpicForNotes.name}` : 'Epic Notes';
 
-  const { user, logout } = useAuth();
+  const handleLogout = async () => {
+    const isConfirmed = await confirm({
+      title: 'Sign Out',
+      message: 'Are you sure you want to sign out of your account?',
+      confirmText: 'LOGOUT',
+      type: 'danger'
+    });
+
+    if (isConfirmed) {
+      logout();
+    }
+  };
 
   const handleProjectSelect = (projectId: string): void => {
     setActiveView('dashboard');
@@ -1222,7 +1279,7 @@ function DashboardPage(): JSX.Element {
             <Settings size={16} />
             <span>Settings</span>
           </button>
-          <button className={sideNavItem} onClick={logout} title="Sign out" type="button">
+          <button className={sideNavItem} onClick={handleLogout} title="Sign out" type="button">
             <LogOut size={16} />
             <span>Sign out</span>
           </button>
@@ -1403,7 +1460,7 @@ function DashboardPage(): JSX.Element {
                             <button
                               className="p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 text-zinc-400 hover:text-red-500 transition-colors"
                               disabled={actionEpicId === epic.id}
-                              onClick={(e) => { e.stopPropagation(); handleDeleteEpic(epic); }}
+                              onClick={(e) => { e.stopPropagation(); handleDeleteEpic(epic.id); }}
                               title="Delete"
                             >
                               <Trash2 size={14} />
@@ -1443,8 +1500,13 @@ function DashboardPage(): JSX.Element {
                     <div className="flex-1 overflow-y-auto p-6 content-start">
                       <TaskList
                         epics={epics}
-                        onDelete={(taskId) => void handleDeleteTask(taskId)}
+                        onDelete={(taskId) => {
+                          const task = tasks.find(t => t.id === taskId);
+                          void handleDeleteTask(taskId, task?.title ?? 'this task');
+                        }}
                         onEditTask={(task) => setEditingTask(task)}
+                        onUpdateStatus={(task, status) => void handleUpdateTaskStatus(task, status)}
+                        onUpdateEpic={(task, epicId) => void handleUpdateTaskEpic(task, epicId)}
                         projects={projects}
                         tasks={activeEpicTasks}
                         onSelectTask={(task) => setSelectedTaskId(task.id)}
@@ -1528,7 +1590,7 @@ function DashboardPage(): JSX.Element {
                                 </button>
                                 <button
                                   className="p-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-zinc-400 hover:text-red-500 dark:hover:text-red-400 transition-all"
-                                  onClick={() => void handleDeleteSubtask(activeTask, subtask)}
+                                  onClick={() => void handleDeleteSubtask(activeTask, subtask.id)}
                                   title="Delete Subtask"
                                   type="button"
                                 >

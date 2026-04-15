@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { type LucideIcon, Smartphone, Tablet, Monitor, Info, Trash2, Save, RefreshCcw } from 'lucide-react';
 import api from '@/services/api';
+import { useConfirm } from '@/context/ConfirmationContext';
 import Modal from './Modal';
 
 interface CompanionDevice {
@@ -37,6 +38,7 @@ function ManageDevicesModal({ onClose, onDevicesChanged }: ManageDevicesModalPro
   const [error, setError] = useState<string | null>(null);
   const [activeActionId, setActiveActionId] = useState<string | null>(null);
   const [renameDrafts, setRenameDrafts] = useState<Record<string, { deviceName: string; deviceType: string }>>({});
+  const confirm = useConfirm();
 
   const loadDevices = async () => {
     setLoading(true);
@@ -83,9 +85,14 @@ function ManageDevicesModal({ onClose, onDevicesChanged }: ManageDevicesModalPro
   };
 
   const handleRevoke = async (deviceId: string) => {
-    if (!confirm('Revoke this companion device immediately? It will be signed out and unable to reconnect without a new key.')) {
-      return;
-    }
+    const isConfirmed = await confirm({
+      title: 'Revoke Device',
+      message: 'Revoke this companion device immediately? It will be signed out and unable to reconnect without a new key.',
+      confirmText: 'Revoke Device',
+      type: 'danger'
+    });
+
+    if (!isConfirmed) return;
 
     setActiveActionId(deviceId);
     try {
@@ -99,7 +106,7 @@ function ManageDevicesModal({ onClose, onDevicesChanged }: ManageDevicesModalPro
   };
 
   const handleDraftChange = (deviceId: string, field: 'deviceName' | 'deviceType', value: string) => {
-    setRenameDrafts(prev => ({
+    setRenameDrafts((prev: Record<string, { deviceName: string; deviceType: string }>) => ({
       ...prev,
       [deviceId]: { ...prev[deviceId], [field]: value }
     }));
@@ -136,7 +143,7 @@ function ManageDevicesModal({ onClose, onDevicesChanged }: ManageDevicesModalPro
               No registered companion devices.
             </div>
           ) : (
-            devices.map(device => {
+            devices.map((device: CompanionDevice) => {
               const draft = renameDrafts[device.id] ?? { deviceName: device.deviceName, deviceType: device.deviceType };
               const Icon = deviceIconMap[device.deviceType] || Info;
               const isWorking = activeActionId === device.id;

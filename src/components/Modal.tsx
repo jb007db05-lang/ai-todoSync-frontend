@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { MdClose } from "react-icons/md";
 
 interface ModalProps {
   backdropClassName?: string;
@@ -58,7 +59,7 @@ function Modal({ backdropClassName, bodyClassName, children, onClose, panelClass
             onClick={onClose}
             type="button"
           >
-            Close
+            <MdClose size={20} />
           </button>
         </div>
         {/* Body */}
