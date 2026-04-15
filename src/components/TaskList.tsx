@@ -1,4 +1,4 @@
-import { Calendar, List } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 
 import EmptyState from '@/components/EmptyState';
 import TaskCard from '@/components/TaskCard';
@@ -8,20 +8,20 @@ import type { Subtask, Task, TaskWorkflowStatus } from '@/types/task';
 import { flattenProjectLabels } from '@/utils/projectTree';
 
 interface TaskListProps {
-  actionTaskId: string | null;
+  actionTaskId?: string | null;
   epics: Epic[];
-  onDeleteSubtask: (task: Task, subtask: Subtask) => void;
-  onCreateSubtask: (task: Task) => void;
+  onDeleteSubtask?: (task: Task, subtask: Subtask) => void;
+  onCreateSubtask?: (task: Task) => void;
   onDelete: (taskId: string) => void;
   onEditTask?: (task: Task) => void;
   onEditSubtask?: (task: Task, subtask: Subtask) => void;
-  onOpenEpicNotes: (epic: Epic) => void;
-  onOpenProjectNotes: (project: Project) => void;
-  onOpenSubtaskNote: (task: Task, subtask: Subtask) => void;
-  onOpenTaskNote: (task: Task) => void;
-  onUpdateEpic: (task: Task, epicId: string | null) => void;
-  onUpdateStatus: (task: Task, status: TaskWorkflowStatus) => void;
-  onUpdateSubtaskStatus: (task: Task, subtask: Subtask, status: TaskWorkflowStatus) => void;
+  onOpenEpicNotes?: (epic: Epic) => void;
+  onOpenProjectNotes?: (project: Project) => void;
+  onOpenSubtaskNote?: (task: Task, subtask: Subtask) => void;
+  onOpenTaskNote?: (task: Task) => void;
+  onUpdateEpic?: (task: Task, epicId: string | null) => void;
+  onUpdateStatus?: (task: Task, status: TaskWorkflowStatus) => void;
+  onUpdateSubtaskStatus?: (task: Task, subtask: Subtask, status: TaskWorkflowStatus) => void;
   projects: Project[];
   tasks: Task[];
   onSelectTask?: (task: Task) => void;
@@ -29,20 +29,9 @@ interface TaskListProps {
 }
 
 function TaskList({
-  actionTaskId,
   epics,
-  onDeleteSubtask,
-  onCreateSubtask,
   onDelete,
   onEditTask,
-  onEditSubtask,
-  onOpenEpicNotes,
-  onOpenProjectNotes,
-  onOpenSubtaskNote,
-  onOpenTaskNote,
-  onUpdateEpic,
-  onUpdateStatus,
-  onUpdateSubtaskStatus,
   projects,
   tasks,
   onSelectTask,
@@ -137,14 +126,14 @@ function TaskList({
                 section.project == null
                   ? []
                   : (orderedProjectEpics.get(section.project.id) ?? [])
-                      .filter((epic) => tasksByEpicId.has(epic.id))
-                      .map((epic) => ({
-                        id: epic.id,
-                        epic,
-                        title: epic.name,
-                        description: epic.description?.trim() ? epic.description : 'Grouped task execution lane.',
-                        tasks: tasksByEpicId.get(epic.id) ?? []
-                      }));
+                    .filter((epic) => tasksByEpicId.has(epic.id))
+                    .map((epic) => ({
+                      id: epic.id,
+                      epic,
+                      title: epic.name,
+                      description: epic.description?.trim() ? epic.description : 'Grouped task execution lane.',
+                      tasks: tasksByEpicId.get(epic.id) ?? []
+                    }));
 
               const noEpicTasks = tasksByEpicId.get(null) ?? [];
 
@@ -152,17 +141,17 @@ function TaskList({
                 ...sectionEpics,
                 ...(noEpicTasks.length > 0
                   ? [
-                      {
-                        id: `${section.id}-no-epic`,
-                        epic: null,
-                        title: 'No Epic',
-                        description:
-                          section.project == null
-                            ? 'Tasks without project or epic assignment.'
-                            : 'Tasks in this project that are not assigned to an epic.',
-                        tasks: noEpicTasks
-                      }
-                    ]
+                    {
+                      id: `${section.id}-no-epic`,
+                      epic: null,
+                      title: 'No Epic',
+                      description:
+                        section.project == null
+                          ? 'Tasks without project or epic assignment.'
+                          : 'Tasks in this project that are not assigned to an epic.',
+                      tasks: noEpicTasks
+                    }
+                  ]
                   : [])
               ];
 
@@ -176,25 +165,15 @@ function TaskList({
                         key={group.id}
                         className="flex flex-col gap-4"
                       >
-                        
+
                         {/* Task cards */}
                         <div className="grid gap-4">
                           {group.tasks.map((task) => (
-                          <TaskCard
-                              actionTaskId={actionTaskId}
-                              availableEpics={task.projectId ? orderedProjectEpics.get(task.projectId) ?? [] : []}
+                            <TaskCard
                               epicName={task.epicId ? epicById.get(task.epicId)?.name : undefined}
                               key={task.id}
-                              onCreateSubtask={onCreateSubtask}
                               onDelete={onDelete}
-                              onDeleteSubtask={onDeleteSubtask}
                               onEditTask={onEditTask}
-                              onEditSubtask={onEditSubtask}
-                              onOpenSubtaskNote={onOpenSubtaskNote}
-                              onOpenTaskNote={onOpenTaskNote}
-                              onUpdateEpic={onUpdateEpic}
-                              onUpdateStatus={onUpdateStatus}
-                              onUpdateSubtaskStatus={onUpdateSubtaskStatus}
                               projectName={task.projectId ? projectNames.get(task.projectId) : undefined}
                               task={task}
                               onSelect={onSelectTask}
@@ -212,19 +191,9 @@ function TaskList({
             <div className="grid gap-4">
               {tasks.map((task) => (
                 <TaskCard
-                  actionTaskId={actionTaskId}
-                  availableEpics={[]}
                   key={task.id}
-                  onCreateSubtask={onCreateSubtask}
                   onDelete={onDelete}
-                  onDeleteSubtask={onDeleteSubtask}
                   onEditTask={onEditTask}
-                  onEditSubtask={onEditSubtask}
-                  onOpenSubtaskNote={onOpenSubtaskNote}
-                  onOpenTaskNote={onOpenTaskNote}
-                  onUpdateEpic={onUpdateEpic}
-                  onUpdateStatus={onUpdateStatus}
-                  onUpdateSubtaskStatus={onUpdateSubtaskStatus}
                   task={task}
                   onSelect={onSelectTask}
                   isSelected={selectedTaskId === task.id}

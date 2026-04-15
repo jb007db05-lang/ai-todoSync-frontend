@@ -3,7 +3,6 @@ import {
   Check,
   Copy,
   KeyRound,
-  ListChecks,
   RefreshCcw,
   Shield,
   Smartphone,
@@ -11,7 +10,6 @@ import {
   Trash2
 } from 'lucide-react';
 
-import ActionGroup from '@/components/ActionGroup';
 import Modal from '@/components/Modal';
 import SectionCard from '@/components/SectionCard';
 import { useAuth } from '@/context/AuthContext';
@@ -824,6 +822,7 @@ function SettingsPanel(): JSX.Element {
 
     try {
       const response = await api.post<RegenerateSyncKeyResponse>('/auth/regenerate-api-key');
+      console.log('Sync key regenerated:', response.data);
       await refreshUser();
       setSuccessMessage('Sync API key regenerated successfully.');
     } catch {

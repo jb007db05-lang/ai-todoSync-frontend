@@ -2,7 +2,7 @@ import { FormEvent, useState } from 'react';
 
 import type { Epic } from '@/types/epic';
 import type { Project } from '@/types/project';
-import { TASK_WORKFLOW_STATUS_OPTIONS, type Task, type TaskStatus, type TaskWorkflowStatus } from '@/types/task';
+import { TASK_WORKFLOW_STATUS_OPTIONS, type Task, type TaskWorkflowStatus } from '@/types/task';
 
 interface EditTaskFormProps {
   epics: Epic[];

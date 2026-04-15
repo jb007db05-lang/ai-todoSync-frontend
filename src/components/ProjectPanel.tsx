@@ -135,8 +135,8 @@ function ProjectPanel({
                   type="checkbox"
                 />
               </th>
-              <th className={thCls} style={{ width: '70%' }}>Project</th>
-              {/* <th className={thCls} style={{ width: '25%' }}>Tasks</th> */}
+              <th className={thCls} style={{ width: '50%' }}>Project</th>
+              <th className={thCls} style={{ width: '20%' }}>Tasks</th>
               <th className={`${thCls} text-right`} style={{ width: '25%' }}>Actions</th>
             </tr>
           </thead>
@@ -167,7 +167,7 @@ function ProjectPanel({
                     <input
                       checked={selectedIds.has(project.id)}
                       className="w-4 h-4 cursor-pointer accent-blue-600"
-                      onChange={() => handleSelectRow(project.id, { type: 'change' } as any)}
+                      onChange={(e) => handleSelectRow(project.id, e)}
                       type="checkbox"
                     />
                   </td>
@@ -181,6 +181,11 @@ function ProjectPanel({
                         )}
                       </div>
                     </div>
+                  </td>
+                  <td className="px-5 py-3.5 align-middle">
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-[0.7rem] font-bold">
+                      {tasksByProject.get(project.id) ?? 0}
+                    </span>
                   </td>
                   {/* <td className="px-5 py-3.5 align-middle">
                     <span className="inline-block border rounded text-[0.72rem] font-semibold px-2 py-0.5 bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800">
