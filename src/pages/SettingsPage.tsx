@@ -793,7 +793,7 @@ function SettingsPage(): JSX.Element {
   const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [openStepIndex, setOpenStepIndex] = useState<number | null>(0);
+  const [openStepIndex, setOpenStepIndex] = useState<number | null>(null);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [devices, setDevices] = useState<CompanionDevice[]>([]);
   const [isLoadingDevices, setIsLoadingDevices] = useState<boolean>(false);
@@ -815,7 +815,8 @@ function SettingsPage(): JSX.Element {
 
     try {
       const response = await api.get<CompanionDevicesResponse>('/auth/devices');
-      const nextDevices = response.data.data.devices;
+      console.log('Fetched companion devices:', response.data);
+      const nextDevices = response.data.data?.devices ?? [];
       setDevices(nextDevices);
       setRenameDrafts(
         nextDevices.reduce<Record<string, { deviceName: string; deviceType: string }>>((accumulator, current) => {
@@ -1184,6 +1185,7 @@ function SettingsPage(): JSX.Element {
         <div className="accordion-list settings-accordion-list">
           {chatGptIntegrationSteps.map((step, index) => {
             const isOpen = openStepIndex === index;
+            console.log("Open : ", isOpen);
             const panelId = `chatgpt-step-panel-${index}`;
 
             return (

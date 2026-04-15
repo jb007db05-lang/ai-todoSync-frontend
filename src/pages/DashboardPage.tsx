@@ -1122,7 +1122,7 @@ function DashboardPage(): JSX.Element {
     return tasks.find(t => t.id === selectedTaskId) ?? null;
   }, [selectedTaskId, tasks]);
 
-  const sideNavItem = 'flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-[0.9rem] font-medium text-slate-400 hover:text-slate-100 hover:bg-white/10 transition-all duration-200';
+  const sideNavItem = 'flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-[0.9rem] font-medium text-slate-400 hover:text-slate-100 hover:bg-white/10 transition-all duration-200 justify-start';
   const sideNavItemActive = 'bg-white/16 text-white';
 
   const statusPillCls: Record<string, string> = {
@@ -1241,7 +1241,9 @@ function DashboardPage(): JSX.Element {
           </div>
 
           <div className="flex items-center gap-3">
-            <DateNavigator date={selectedDate} disabled={loading} onChange={setSelectedDate} />
+            {activeView !== 'settings' && (
+              <DateNavigator date={selectedDate} disabled={loading} onChange={setSelectedDate} />
+            )}
           </div>
         </header>
 
@@ -1344,8 +1346,8 @@ function DashboardPage(): JSX.Element {
                         <div
                           key={epic.id}
                           className={`relative flex flex-col gap-3 p-5 rounded-xl border transition-all cursor-pointer ${isActive
-                              ? 'bg-blue-50/30 dark:bg-blue-500/5 border-blue-400/50 dark:border-blue-500/40 ring-1 ring-blue-500/20 shadow-sm'
-                              : 'bg-white dark:bg-slate-800/40 border-zinc-200 dark:border-slate-800 hover:border-zinc-300 dark:hover:border-slate-700 hover:bg-zinc-50 dark:hover:bg-slate-800/60'
+                            ? 'bg-blue-50/30 dark:bg-blue-500/5 border-blue-400/50 dark:border-blue-500/40 ring-1 ring-blue-500/20 shadow-sm'
+                            : 'bg-white dark:bg-slate-800/40 border-zinc-200 dark:border-slate-800 hover:border-zinc-300 dark:hover:border-slate-700 hover:bg-zinc-50 dark:hover:bg-slate-800/60'
                             }`}
                           onClick={() => handleEpicSelect(isActive ? null : epic.id)}
                         >
