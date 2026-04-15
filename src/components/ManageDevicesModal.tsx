@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Smartphone, Tablet, Monitor, Info, Trash2, Save, RefreshCcw } from 'lucide-react';
+import { type LucideIcon, Smartphone, Tablet, Monitor, Info, Trash2, Save, RefreshCcw } from 'lucide-react';
 import api from '@/services/api';
 import Modal from './Modal';
 
@@ -24,7 +24,7 @@ interface ManageDevicesModalProps {
   onDevicesChanged?: (count: number) => void;
 }
 
-const deviceIconMap: Record<string, any> = {
+const deviceIconMap: Record<string, LucideIcon> = {
   mobile: Smartphone,
   tablet: Tablet,
   desktop: Monitor,

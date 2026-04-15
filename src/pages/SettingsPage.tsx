@@ -8,7 +8,6 @@ import {
   Shield,
   Smartphone,
   Sparkles,
-  Trash2,
   Settings2
 } from 'lucide-react';
 
@@ -798,8 +797,6 @@ function SettingsPage(): JSX.Element {
   const [openStepIndex, setOpenStepIndex] = useState<number | null>(null);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [devices, setDevices] = useState<CompanionDevice[]>([]);
-  const [isLoadingDevices, setIsLoadingDevices] = useState<boolean>(false);
-  const [devicesError, setDevicesError] = useState<string | null>(null);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
   const [isGeneratingCompanionKey, setIsGeneratingCompanionKey] = useState<boolean>(false);
   const [deviceName, setDeviceName] = useState<string>('');
@@ -811,18 +808,13 @@ function SettingsPage(): JSX.Element {
   const canManagePrimarySecurity = session?.deviceType === 'primary';
 
   const loadDevices = async (): Promise<void> => {
-    setIsLoadingDevices(true);
-    setDevicesError(null);
-
     try {
       const response = await api.get<CompanionDevicesResponse>('/auth/devices');
       console.log('Fetched companion devices:', response.data);
       const nextDevices = response.data.data?.devices ?? [];
       setDevices(nextDevices);
     } catch {
-      setDevicesError('Unable to load companion devices.');
-    } finally {
-      setIsLoadingDevices(false);
+      // Error handled silently
     }
   };
 
@@ -870,7 +862,6 @@ function SettingsPage(): JSX.Element {
 
   const handleGenerateCompanionKey = async (): Promise<void> => {
     setIsGeneratingCompanionKey(true);
-    setDevicesError(null);
     setSuccessMessage(null);
     setErrorMessage(null);
 
@@ -886,7 +877,7 @@ function SettingsPage(): JSX.Element {
       setSuccessMessage('Companion login key generated. It stays valid until it is used.');
       setDeviceName('');
     } catch {
-      setDevicesError('Unable to generate a companion device key.');
+      setErrorMessage('Unable to generate a companion device key.');
     } finally {
       setIsGeneratingCompanionKey(false);
     }

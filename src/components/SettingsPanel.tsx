@@ -7,7 +7,6 @@ import {
   Shield,
   Smartphone,
   Sparkles,
-  Trash2,
   Settings2
 } from 'lucide-react';
 
@@ -1345,8 +1344,6 @@ function SettingsPanel(): JSX.Element {
   const [openStepIndex, setOpenStepIndex] = useState<number | null>(0);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [devices, setDevices] = useState<CompanionDevice[]>([]);
-  const [isLoadingDevices, setIsLoadingDevices] = useState<boolean>(false);
-  const [devicesError, setDevicesError] = useState<string | null>(null);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
   const [isGeneratingCompanionKey, setIsGeneratingCompanionKey] = useState<boolean>(false);
   const [deviceName, setDeviceName] = useState<string>('');
@@ -1358,8 +1355,6 @@ function SettingsPanel(): JSX.Element {
   const canManagePrimarySecurity = session?.deviceType === 'primary';
 
   const loadDevices = async (): Promise<void> => {
-    setIsLoadingDevices(true);
-    setDevicesError(null);
     try {
       const response = await api.get<CompanionDevicesResponse>('/auth/devices');
       console.log('[SettingsPanel] Raw API Response:', JSON.stringify(response.data, null, 2));
@@ -1368,9 +1363,6 @@ function SettingsPanel(): JSX.Element {
       setDevices(fetched);
     } catch (err) {
       console.error('[SettingsPanel] Error loading devices:', err);
-      setDevicesError('Unable to load companion devices.');
-    } finally {
-      setIsLoadingDevices(false);
     }
   };
 
@@ -1443,9 +1435,7 @@ function SettingsPanel(): JSX.Element {
     }
   };
 
-  const inputCls = 'w-full bg-white/82 dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded-md text-zinc-900 dark:text-slate-100 px-4 py-3.5 transition-all focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10';
   const ghostBtn = 'inline-flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded text-zinc-600 dark:text-slate-300 text-sm hover:bg-zinc-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors';
-  const dangerBtn = 'inline-flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-slate-800 border border-red-200 dark:border-red-800 rounded text-red-600 dark:text-red-400 text-sm hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 transition-colors';
   const primaryBtn = 'inline-flex items-center gap-1.5 px-4 py-2 bg-zinc-900 dark:bg-blue-600 text-white rounded text-sm font-medium hover:bg-zinc-700 dark:hover:bg-blue-500 disabled:opacity-50 transition-colors';
 
   return (
