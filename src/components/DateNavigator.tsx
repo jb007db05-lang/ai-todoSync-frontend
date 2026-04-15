@@ -1,4 +1,4 @@
-import type { ChangeEvent } from 'react';
+import { useRef, type ChangeEvent } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
 
 interface DateNavigatorProps {
@@ -46,8 +46,22 @@ const NavBtn = ({ children, disabled, onClick, title }: {
 );
 
 function DateNavigator({ date, disabled = false, onChange }: DateNavigatorProps): JSX.Element {
+  const inputRef = useRef<HTMLInputElement>(null);
+
   const handleInputChange = (event: ChangeEvent<HTMLInputElement>): void => {
     onChange(event.target.value);
+  };
+
+  const handleContainerClick = (): void => {
+    if (disabled) return;
+    try {
+      // Modern browsers support showPicker() on input[type="date"]
+      inputRef.current?.showPicker();
+    } catch {
+      // Fallback for older browsers
+      inputRef.current?.focus();
+      inputRef.current?.click();
+    }
   };
 
   const today = getTodayDate();
@@ -59,10 +73,14 @@ function DateNavigator({ date, disabled = false, onChange }: DateNavigatorProps)
       </NavBtn>
 
       {/* Date pill */}
-      <div className="relative flex items-center gap-2 px-2.5 h-7 bg-white dark:bg-slate-700 rounded border border-zinc-200 dark:border-slate-600 min-w-[140px] cursor-pointer">
+      <div
+        className="relative flex items-center gap-2 px-2.5 h-7 bg-white dark:bg-slate-700 rounded border border-zinc-200 dark:border-slate-600 min-w-[140px] cursor-pointer"
+        onClick={handleContainerClick}
+      >
         <CalendarDays className="text-zinc-400 dark:text-slate-400 shrink-0" size={16} />
         <input
-          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+          ref={inputRef}
+          className="absolute inset-0 w-full h-full opacity-0 pointer-events-none"
           disabled={disabled}
           onChange={handleInputChange}
           type="date"
