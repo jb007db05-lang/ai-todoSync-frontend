@@ -1,5 +1,4 @@
-import React from 'react';
-import { AlertCircle, HelpCircle, X } from 'lucide-react';
+import { AlertCircle, HelpCircle } from 'lucide-react';
 import Modal from './Modal';
 
 interface ConfirmationModalProps {

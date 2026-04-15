@@ -107,7 +107,7 @@ const deriveTaskStatusFromSubtasks = (
 };
 
 function DashboardPage(): JSX.Element {
-  const { refreshUser, user, logout } = useAuth();
+  const { user, logout } = useAuth();
   const confirm = useConfirm();
   const [selectedDate, setSelectedDate] = useState<string>(getTodayDate);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -1505,6 +1505,8 @@ function DashboardPage(): JSX.Element {
                           void handleDeleteTask(taskId, task?.title ?? 'this task');
                         }}
                         onEditTask={(task) => setEditingTask(task)}
+                        onUpdateStatus={(task, status) => void handleUpdateTaskStatus(task, status)}
+                        onUpdateEpic={(task, epicId) => void handleUpdateTaskEpic(task, epicId)}
                         projects={projects}
                         tasks={activeEpicTasks}
                         onSelectTask={(task) => setSelectedTaskId(task.id)}
