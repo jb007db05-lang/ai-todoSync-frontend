@@ -61,7 +61,7 @@ function EpicManager({
           {epics.map((epic, index) => (
             <div
               key={epic.id}
-              className="flex items-stretch bg-gradient-to-b from-white/98 to-slate-50/98 dark:from-slate-800/84 dark:to-slate-800/84 border border-zinc-200/60 dark:border-slate-700 rounded-2xl grid gap-3 grid-cols-[1fr_auto] p-[18px]"
+              className="flex items-stretch bg-gradient-to-b from-white/98 to-slate-50/98 dark:from-slate-800/84 dark:to-slate-800/84 border border-zinc-200/60 dark:border-slate-700 rounded-lg grid gap-3 grid-cols-[1fr_auto] p-[18px]"
             >
               {/* Copy */}
               <div className="grid gap-1.5">

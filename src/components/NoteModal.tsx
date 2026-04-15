@@ -254,7 +254,6 @@ function NoteModal({
             <button
               className="inline-flex items-center gap-1.5 px-4 py-2 bg-zinc-900 dark:bg-blue-600 text-white rounded text-sm font-medium hover:bg-zinc-700 dark:hover:bg-blue-500 disabled:opacity-50 transition-colors"
               disabled={submitting}
-              onClick={(event) => void handleSubmit(event, 'replace')}
               type="submit"
             >
               {submitting ? 'Saving...' : 'Save'}

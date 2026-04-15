@@ -31,7 +31,7 @@ function RegisterPage(): JSX.Element {
   return (
     <main className="min-h-screen flex items-start justify-center gap-5 py-20 px-5">
       {/* Register card */}
-      <section className="bg-white dark:bg-slate-900 border border-zinc-200 dark:border-slate-700 rounded-lg shadow-[0_10px_24px_rgba(15,23,42,0.06)] p-8 w-full max-w-[480px] grid gap-5">
+      <section className="bg-white dark:bg-slate-900 border border-zinc-200 dark:border-slate-700 rounded-lg shadow-sm p-8 w-full max-w-[480px] grid gap-5">
         <div>
           <h1 className="text-2xl font-semibold text-zinc-900 dark:text-slate-100 m-0">Create account</h1>
           <p className="text-zinc-500 dark:text-slate-400 mt-1">Register with the same backend auth contract used by the API.</p>

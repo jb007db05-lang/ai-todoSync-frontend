@@ -11,8 +11,10 @@ import NoteModal from '@/components/NoteModal';
 import ProjectForm from '@/components/ProjectForm';
 import ProjectNotes from '@/components/ProjectNotes';
 import ProjectPanel from '@/components/ProjectPanel';
+import ProjectTeamPanel from '@/components/ProjectTeamPanel';
 import SettingsPanel from '@/components/SettingsPanel';
 import SubtaskForm from '@/components/SubtaskForm';
+import ChatPanel from '@/components/ChatPanel';
 import TaskList from '@/components/TaskList';
 import SourceBadge from '@/components/SourceBadge';
 import {
@@ -26,20 +28,32 @@ import {
   Layout,
   List,
   LogOut,
+  MessageCircle,
   MessageSquare,
   NotebookPen,
   Plus,
   Settings,
+  Users,
   Trash2
 } from 'lucide-react';
 import { createEpic, deleteEpic, getEpics, reorderEpics, updateEpic } from '@/services/epics';
 import { createEpicNote, createNote, deleteNote, getEpicNotes, getNote, getProjectNotes, updateNote } from '@/services/notes';
-import { createProject, deleteProject, deleteProjects, getProjects, updateProject } from '@/services/projects';
-import { createTask, deleteTask, getTasks, updateTask } from '@/services/tasks';
+import {
+  addProjectMember,
+  createProject,
+  deleteProject,
+  deleteProjects,
+  getProjectMembers,
+  getProjects,
+  removeProjectMember,
+  updateProject
+} from '@/services/projects';
+import { assignTask, createTask, deleteTask, getTasks, updateTask } from '@/services/tasks';
+import { searchUsersByEmail } from '@/services/users';
 import { useAuth } from '@/context/AuthContext';
 import type { Epic, EpicStatus } from '@/types/epic';
 import type { Note } from '@/types/note';
-import type { Project } from '@/types/project';
+import type { Project, ProjectMember, UserSearchResult } from '@/types/project';
 import type { Task, TaskWorkflowStatus } from '@/types/task';
 import { findProjectByName } from '@/utils/projectTree';
 import { useConfirm } from '@/context/ConfirmationContext';
@@ -134,6 +148,7 @@ function DashboardPage(): JSX.Element {
   const [isProjectNotesModalOpen, setIsProjectNotesModalOpen] = useState(false);
   const [isEpicNotesModalOpen, setIsEpicNotesModalOpen] = useState(false);
   const [isTaskCreateModalOpen, setIsTaskCreateModalOpen] = useState(false);
+  const [isProjectTeamModalOpen, setIsProjectTeamModalOpen] = useState(false);
   const [selectedProjectView, setSelectedProjectView] = useState<string>(ALL_PROJECTS_VALUE);
   const [selectedEpicId, setSelectedEpicId] = useState<string | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -143,14 +158,19 @@ function DashboardPage(): JSX.Element {
   const [editingSubtask, setEditingSubtask] = useState<{ task: Task; subtask: Task['subtasks'][number] } | null>(null);
   const [projectNotes, setProjectNotes] = useState<Record<string, Note[]>>({});
   const [epicNotes, setEpicNotes] = useState<Record<string, Note[]>>({});
+  const [projectMembersByProject, setProjectMembersByProject] = useState<Record<string, ProjectMember[]>>({});
   const [notesLoadingKey, setNotesLoadingKey] = useState<string | null>(null);
   const [projectPage, setProjectPage] = useState(1);
   const [projectTotalPages, setProjectTotalPages] = useState<number>(1);
   const [projectSearchTerm, setProjectSearchTerm] = useState<string>('');
+  const [memberSearchTerm, setMemberSearchTerm] = useState<string>('');
+  const [memberSearchResults, setMemberSearchResults] = useState<UserSearchResult[]>([]);
+  const [teamMutationLoading, setTeamMutationLoading] = useState<boolean>(false);
   const [activeView, setActiveView] = useState<'dashboard' | 'settings'>('dashboard');
   const [activeProjectForNotes, setActiveProjectForNotes] = useState<Project | null>(null);
   const [activeEpicForNotes, setActiveEpicForNotes] = useState<Epic | null>(null);
   const [activeNoteEditor, setActiveNoteEditor] = useState<ActiveNoteEditor | null>(null);
+  const [isChatPanelOpen, setIsChatPanelOpen] = useState(false);
 
   const loadDashboard = useCallback(async (): Promise<void> => {
     setLoading(true);
@@ -180,6 +200,18 @@ function DashboardPage(): JSX.Element {
   useEffect(() => {
     void loadDashboard();
   }, [loadDashboard]);
+
+  const loadProjectTeam = useCallback(async (projectId: string): Promise<void> => {
+    try {
+      const members = await getProjectMembers(projectId);
+      setProjectMembersByProject((current) => ({
+        ...current,
+        [projectId]: members
+      }));
+    } catch {
+      setProjectMutationError('Unable to load the project team.');
+    }
+  }, []);
 
   const handleCreateTask = async (payload: {
     title: string;
@@ -260,6 +292,7 @@ function DashboardPage(): JSX.Element {
     status: TaskWorkflowStatus;
     projectId: string | null;
     epicId: string | null;
+    assignedToUserId: string | null;
   }): Promise<void> => {
     if (editingTask == null) return;
 
@@ -277,6 +310,9 @@ function DashboardPage(): JSX.Element {
         projectId: payload.projectId,
         epicId: payload.epicId,
       });
+      if (editingTask.assignedToUserId !== payload.assignedToUserId) {
+        await assignTask(editingTask.id, payload.assignedToUserId);
+      }
       await loadDashboard();
       setTaskMutationSuccess('Task updated.');
       setEditingTask(null);
@@ -435,6 +471,88 @@ function DashboardPage(): JSX.Element {
       setProjectMutationError('Unable to update the project.');
     } finally {
       setActionProjectId(null);
+    }
+  };
+
+  const handleProjectMemberSearch = async (term: string): Promise<void> => {
+    setMemberSearchTerm(term);
+
+    if (term.trim().length < 2) {
+      setMemberSearchResults([]);
+      return;
+    }
+
+    try {
+      const results = await searchUsersByEmail(term.trim());
+      setMemberSearchResults(results);
+    } catch {
+      setMemberSearchResults([]);
+    }
+  };
+
+  const handleAddProjectMember = async (userId: string): Promise<void> => {
+    if (activeProject == null) {
+      return;
+    }
+
+    setTeamMutationLoading(true);
+    setProjectMutationError(null);
+    setProjectMutationSuccess(null);
+
+    try {
+      await addProjectMember(activeProject.id, userId);
+      await Promise.all([loadDashboard(), loadProjectTeam(activeProject.id)]);
+      setMemberSearchResults([]);
+      setMemberSearchTerm('');
+      setProjectMutationSuccess('Project member added.');
+    } catch {
+      setProjectMutationError('Unable to add the project member.');
+    } finally {
+      setTeamMutationLoading(false);
+    }
+  };
+
+  const handleRemoveProjectMember = async (userId: string): Promise<void> => {
+    if (activeProject == null) {
+      return;
+    }
+
+    const member = (projectMembersByProject[activeProject.id] ?? []).find((entry) => entry.userId === userId);
+
+    if (member?.role === 'ADMIN') {
+      setProjectMutationError('Project admins cannot be removed from the team.');
+      setProjectMutationSuccess(null);
+      return;
+    }
+
+    const label = member?.user.name || member?.user.email || 'this member';
+    const isConfirmed = await confirm({
+      title: 'Remove Project Member',
+      message: `Remove ${label} from ${activeProject.name}? Assigned tasks will be unassigned.`,
+      confirmText: 'Remove Member',
+      type: 'danger'
+    });
+
+    if (!isConfirmed) {
+      return;
+    }
+
+    setTeamMutationLoading(true);
+    setProjectMutationError(null);
+    setProjectMutationSuccess(null);
+
+    try {
+      await removeProjectMember(activeProject.id, userId);
+      await Promise.all([loadDashboard(), loadProjectTeam(activeProject.id)]);
+      setProjectMutationSuccess('Project member removed.');
+
+      if (userId === user?.id) {
+        handleProjectSelect(ALL_PROJECTS_VALUE);
+      }
+    } catch {
+      setProjectMutationError('Unable to remove the project member.');
+    } finally {
+      setTeamMutationLoading(false);
     }
   };
 
@@ -1107,6 +1225,8 @@ function DashboardPage(): JSX.Element {
 
     return projects.find((project) => project.id === selectedProjectView) ?? null;
   }, [projects, selectedProjectView]);
+  const activeProjectMembers = activeProject ? (projectMembersByProject[activeProject.id] ?? []) : [];
+  const canManageActiveProject = activeProject?.currentUserRole === 'ADMIN';
   const visibleTasks = useMemo(() => {
     if (selectedProjectView === ALL_PROJECTS_VALUE) {
       return tasks;
@@ -1134,6 +1254,24 @@ function DashboardPage(): JSX.Element {
   const activeEpicNotes = activeEpicForNotes ? epicNotes[activeEpicForNotes.id] ?? [] : [];
   const activeProjectNotesModalTitle = activeProjectForNotes ? `Notes for ${activeProjectForNotes.name}` : 'Project Notes';
   const activeEpicNotesModalTitle = activeEpicForNotes ? `Notes for ${activeEpicForNotes.name}` : 'Epic Notes';
+
+  useEffect(() => {
+    if (activeProject == null) {
+      setMemberSearchResults([]);
+      setMemberSearchTerm('');
+      return;
+    }
+
+    if (projectMembersByProject[activeProject.id] == null) {
+      void loadProjectTeam(activeProject.id);
+    }
+  }, [activeProject, loadProjectTeam, projectMembersByProject]);
+
+  useEffect(() => {
+    if (editingTask?.projectId && projectMembersByProject[editingTask.projectId] == null) {
+      void loadProjectTeam(editingTask.projectId);
+    }
+  }, [editingTask, loadProjectTeam, projectMembersByProject]);
 
   const handleLogout = async () => {
     const isConfirmed = await confirm({
@@ -1344,13 +1482,18 @@ function DashboardPage(): JSX.Element {
             </div>
           ) : (
             /* 3-column workspace */
-            <div className="flex flex-col h-full overflow-hidden bg-zinc-50 dark:bg-slate-900/40">
-              <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200 dark:border-slate-700 bg-white/40 dark:bg-slate-900/40 shrink-0">
-                <div className="flex items-center gap-3">
-                  <Folder className="text-blue-500 shrink-0" size={20} />
-                  <div className="relative flex items-center">
+            <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-slate-900 dark:bg-white dark:bg-slate-900">
+              <div className="shrink-0 px-6 py-5 border-b border-zinc-200/80 dark:border-slate-700/80 bg-white/78 dark:bg-slate-950/38 ">
+                <div className="flex items-start justify-between gap-5">
+                  <div className="flex items-start gap-4">
+                    <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-blue-600 text-white shadow-lg shadow-blue-500/25 shrink-0">
+                      <Folder size={20} />
+                    </div>
+                    <div className="grid gap-1">
+                      <span className="text-[0.68rem] uppercase tracking-[0.18em] font-bold text-zinc-500 dark:text-slate-400">Project Workspace</span>
+                      <div className="relative flex items-center">
                     <select
-                      className="appearance-none bg-transparent border-none text-lg font-bold text-zinc-900 dark:text-slate-100 focus:outline-none focus:ring-0 cursor-pointer pr-6 m-0 p-0"
+                      className="appearance-none bg-transparent border-none text-[1.35rem] font-bold text-zinc-900 dark:text-slate-100 focus:outline-none focus:ring-0 cursor-pointer pr-6 m-0 p-0 tracking-tight"
                       onChange={(e) => handleProjectSelect(e.target.value)}
                       value={activeProject.id}
                     >
@@ -1367,27 +1510,71 @@ function DashboardPage(): JSX.Element {
                     <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center">
                       <ChevronDown className="text-zinc-500 dark:text-slate-400" size={16} />
                     </div>
+                      </div>
+                      <p className="m-0 text-[0.84rem] text-zinc-500 dark:text-slate-400">
+                        Navigate epics, manage scheduled tasks, and review execution details for {selectedDate}.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                  <button
+                    className="flex items-center gap-2 px-3.5 py-2.5 bg-white dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded-lg text-sm font-medium text-zinc-600 dark:text-slate-300 hover:bg-zinc-50 dark:hover:bg-slate-700 shadow-sm transition-colors"
+                    onClick={() => handleOpenProjectNotesPanel(activeProject)}
+                    type="button"
+                  >
+                    <MessageSquare size={16} />
+                    Project Notes
+                  </button>
+                  <button
+                    className={[
+                      'flex items-center gap-2 px-3.5 py-2.5 border rounded-lg text-sm font-medium shadow-sm transition-colors',
+                      isChatPanelOpen
+                        ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400'
+                        : 'bg-white dark:bg-slate-800 border-zinc-200 dark:border-slate-600 text-zinc-600 dark:text-slate-300 hover:bg-zinc-50 dark:hover:bg-slate-700'
+                    ].join(' ')}
+                    onClick={() => setIsChatPanelOpen(!isChatPanelOpen)}
+                    type="button"
+                  >
+                    <MessageCircle size={16} />
+                    Chat
+                  </button>
+                  <button
+                    className="flex items-center gap-2 px-3.5 py-2.5 bg-white dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded-lg text-sm font-medium text-zinc-600 dark:text-slate-300 hover:bg-zinc-50 dark:hover:bg-slate-700 shadow-sm transition-colors"
+                    onClick={() => setIsProjectTeamModalOpen(true)}
+                    type="button"
+                  >
+                    <Users size={16} />
+                    Team
+                  </button>
                   </div>
                 </div>
-                <button
-                  className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded-lg text-sm font-medium text-zinc-600 dark:text-slate-300 hover:bg-zinc-50 dark:hover:bg-slate-700 shadow-sm transition-colors"
-                  onClick={() => handleOpenProjectNotesPanel(activeProject)}
-                  type="button"
-                >
-                  <MessageSquare size={16} />
-                  Project Notes
-                </button>
+                <div className="flex flex-wrap items-center gap-3 mt-4">
+                  <div className="px-3.5 py-2 rounded-lg bg-white/82 dark:bg-slate-900/65 border border-zinc-200/80 dark:border-slate-700/80 shadow-sm">
+                    <div className="text-[0.66rem] uppercase tracking-[0.14em] font-bold text-zinc-500 dark:text-slate-400">Epics</div>
+                    <div className="text-[1rem] font-bold text-zinc-900 dark:text-slate-100">{activeProjectEpics.length}</div>
+                  </div>
+                  <div className="px-3.5 py-2 rounded-lg bg-white/82 dark:bg-slate-900/65 border border-zinc-200/80 dark:border-slate-700/80 shadow-sm">
+                    <div className="text-[0.66rem] uppercase tracking-[0.14em] font-bold text-zinc-500 dark:text-slate-400">Visible Tasks</div>
+                    <div className="text-[1rem] font-bold text-zinc-900 dark:text-slate-100">{visibleTasks.length}</div>
+                  </div>
+                  <div className="px-3.5 py-2 rounded-lg bg-white/82 dark:bg-slate-900/65 border border-zinc-200/80 dark:border-slate-700/80 shadow-sm">
+                    <div className="text-[0.66rem] uppercase tracking-[0.14em] font-bold text-zinc-500 dark:text-slate-400">Role</div>
+                    <div className="text-[1rem] font-bold text-zinc-900 dark:text-slate-100">{activeProject.currentUserRole}</div>
+                  </div>
+                </div>
               </div>
-              <div className="flex flex-1 min-h-0 overflow-hidden divide-x divide-zinc-200 dark:divide-slate-700">
+              <div className="flex flex-1 min-h-0 overflow-hidden gap-4 p-4 md:p-5">
                 {/* Column 1 — Epics */}
-                <div className="flex flex-col w-[340px] shrink-0 h-full border-r border-zinc-200 dark:border-slate-800 bg-white dark:bg-slate-900/50">
-                  <div className="flex items-center justify-between px-6 py-5 border-b border-zinc-200 dark:border-slate-800 bg-zinc-50/50 dark:bg-slate-900/80">
+                <div className="flex flex-col w-[330px] shrink-0 h-full rounded-xl border border-zinc-200/80 dark:border-slate-700/80 bg-white/82 dark:bg-slate-900/58 shadow-sm  overflow-hidden">
+                  <div className="flex items-center justify-between px-6 py-5 border-b border-zinc-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-900 dark:bg-white dark:bg-slate-900">
                     <div>
-                      <h3 className="text-[1.1rem] font-bold font-['Outfit'] text-zinc-900 dark:text-slate-100 m-0 tracking-tight">Epics</h3>
-                      <p className="text-zinc-500 dark:text-slate-400 text-[0.72rem] font-semibold m-0 uppercase tracking-wider">{activeProject.name}</p>
+                      <span className="text-[0.68rem] uppercase tracking-[0.18em] font-bold text-zinc-500 dark:text-slate-400">Column 1</span>
+                      <h3 className="text-[1.05rem] font-bold font-['Outfit'] text-zinc-900 dark:text-slate-100 m-0 mt-1 tracking-tight">Epics</h3>
+                      <p className="text-zinc-500 dark:text-slate-400 text-[0.78rem] m-0 mt-1">{activeProject.name}</p>
                     </div>
                     <button
-                      className="flex items-center justify-center w-8 h-8 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm transition-all active:scale-95"
+                      className="flex items-center justify-center w-10 h-10 bg-zinc-900 dark:bg-blue-600 hover:bg-zinc-700 dark:hover:bg-blue-500 text-white rounded-lg shadow-sm transition-all active:scale-95 disabled:opacity-40"
+                      disabled={!canManageActiveProject}
                       onClick={() => setIsEpicCreateModalOpen(true)}
                       title="New Epic"
                       type="button"
@@ -1396,15 +1583,15 @@ function DashboardPage(): JSX.Element {
                     </button>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 custom-scrollbar">
+                  <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 custom-scrollbar bg-white dark:bg-slate-900">
                     {activeProjectEpics.map(epic => {
                       const isActive = selectedEpicId === epic.id;
                       return (
                         <div
                           key={epic.id}
-                          className={`relative flex flex-col gap-3 p-5 rounded-xl border transition-all cursor-pointer ${isActive
-                            ? 'bg-blue-50/30 dark:bg-blue-500/5 border-blue-400/50 dark:border-blue-500/40 ring-1 ring-blue-500/20 shadow-sm'
-                            : 'bg-white dark:bg-slate-800/40 border-zinc-200 dark:border-slate-800 hover:border-zinc-300 dark:hover:border-slate-700 hover:bg-zinc-50 dark:hover:bg-slate-800/60'
+                          className={`relative flex flex-col gap-3 p-4 rounded-xl border transition-all cursor-pointer shadow-sm ${isActive
+                            ? 'bg-blue-50/80 dark:bg-blue-500/8 border-blue-400/60 dark:border-blue-500/40 ring-1 ring-blue-500/20'
+                            : 'bg-white/92 dark:bg-slate-800/44 border-zinc-200/80 dark:border-slate-700 hover:border-zinc-300 dark:hover:border-slate-600 hover:-translate-y-[2px]'
                             }`}
                           onClick={() => handleEpicSelect(isActive ? null : epic.id)}
                         >
@@ -1413,7 +1600,7 @@ function DashboardPage(): JSX.Element {
                               }`}>
                               {epic.name}
                             </h4>
-                            <span className={`shrink-0 text-[0.6rem] font-bold px-2 py-0.5 rounded uppercase tracking-wide border ${statusPillCls[epic.status] ?? 'bg-zinc-100 dark:bg-slate-800 text-zinc-600 dark:text-slate-400 border-zinc-200 dark:border-slate-700'
+                            <span className={`shrink-0 text-[0.6rem] font-bold px-2.5 py-1 rounded-full uppercase tracking-[0.12em] border ${statusPillCls[epic.status] ?? 'bg-zinc-100 dark:bg-slate-800 text-zinc-600 dark:text-slate-400 border-zinc-200 dark:border-slate-700'
                               }`}>
                               {epic.status}
                             </span>
@@ -1426,7 +1613,7 @@ function DashboardPage(): JSX.Element {
                           )}
 
                           {/* Action Toolbar — Always Visible & Integrated */}
-                          <div className="flex items-center gap-1.5 mt-2 pt-3 border-t border-zinc-100 dark:border-slate-800/50">
+                          <div className="flex items-center gap-1.5 mt-2 pt-3 border-t border-zinc-100/90 dark:border-slate-700/50">
                             <button
                               className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-slate-700 text-zinc-400 hover:text-blue-600 transition-colors"
                               onClick={(e) => { e.stopPropagation(); handleOpenEpicNotesPanel(epic); }}
@@ -1435,7 +1622,8 @@ function DashboardPage(): JSX.Element {
                               <FileText size={14} />
                             </button>
                             <button
-                              className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-slate-700 text-zinc-400 hover:text-indigo-600 transition-colors"
+                              className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-slate-700 text-zinc-400 hover:text-indigo-600 transition-colors disabled:opacity-40"
+                              disabled={!canManageActiveProject}
                               onClick={(e) => { e.stopPropagation(); setEditingEpic(epic); }}
                               title="Edit"
                             >
@@ -1443,14 +1631,16 @@ function DashboardPage(): JSX.Element {
                             </button>
                             <div className="flex-1" />
                             <button
-                              className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-slate-700 text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
+                              className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-slate-700 text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors disabled:opacity-40"
+                              disabled={!canManageActiveProject}
                               onClick={(e) => { e.stopPropagation(); handleMoveEpic(epic, 'up'); }}
                               title="Up"
                             >
                               <ChevronUp size={14} />
                             </button>
                             <button
-                              className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-slate-700 text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
+                              className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-slate-700 text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors disabled:opacity-40"
+                              disabled={!canManageActiveProject}
                               onClick={(e) => { e.stopPropagation(); handleMoveEpic(epic, 'down'); }}
                               title="Down"
                             >
@@ -1458,8 +1648,8 @@ function DashboardPage(): JSX.Element {
                             </button>
                             <div className="w-px h-3 bg-zinc-200 dark:bg-slate-800 mx-1" />
                             <button
-                              className="p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 text-zinc-400 hover:text-red-500 transition-colors"
-                              disabled={actionEpicId === epic.id}
+                              className="p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 text-zinc-400 hover:text-red-500 transition-colors disabled:opacity-40"
+                              disabled={actionEpicId === epic.id || !canManageActiveProject}
                               onClick={(e) => { e.stopPropagation(); handleDeleteEpic(epic.id); }}
                               title="Delete"
                             >
@@ -1477,16 +1667,18 @@ function DashboardPage(): JSX.Element {
 
                 {/* Column 2 — Tasks */}
                 {selectedEpicId && (
-                  <div className="flex flex-col w-[500px] shrink-0 h-full border-r border-zinc-200/50 dark:border-slate-800/50 animate-slideInRight">
-                    <div className="flex items-center justify-between px-6 py-5 bg-white/30 dark:bg-slate-900/40 backdrop-blur-2xl border-b border-zinc-200/50 dark:border-slate-800/50">
+                  <div className="flex flex-col w-[480px] shrink-0 h-full rounded-xl border border-zinc-200/80 dark:border-slate-700/80 bg-white/82 dark:bg-slate-900/58 shadow-sm  overflow-hidden animate-slideInRight">
+                    <div className="flex items-center justify-between px-6 py-5 bg-white dark:bg-slate-900 dark:bg-white dark:bg-slate-900 border-b border-zinc-200/80 dark:border-slate-700/80">
                       <div>
-                        <h3 className="text-[1.1rem] font-bold font-['Outfit'] text-zinc-900 dark:text-slate-100 m-0 tracking-tight">{tasksHeading}</h3>
-                        <p className="text-zinc-400 dark:text-slate-500 text-[0.72rem] font-bold m-0 truncate max-w-[280px] uppercase tracking-[0.12em] opacity-80">
+                        <span className="text-[0.68rem] uppercase tracking-[0.18em] font-bold text-zinc-500 dark:text-slate-400">Column 2</span>
+                        <h3 className="text-[1.05rem] font-bold font-['Outfit'] text-zinc-900 dark:text-slate-100 m-0 mt-1 tracking-tight">{tasksHeading}</h3>
+                        <p className="text-zinc-500 dark:text-slate-400 text-[0.78rem] m-0 mt-1 truncate max-w-[280px]">
                           {epics.find(e => e.id === selectedEpicId)?.name}
                         </p>
                       </div>
                       <button
-                        className="flex items-center justify-center w-9 h-9 bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-400 text-white rounded-xl shadow-xl shadow-blue-500/30 transition-all duration-300 hover:scale-110 active:scale-95"
+                        className="flex items-center justify-center w-10 h-10 bg-zinc-900 dark:bg-blue-600 hover:bg-zinc-700 dark:hover:bg-blue-500 text-white rounded-lg shadow-sm transition-all duration-300 hover:scale-[1.03] active:scale-95 disabled:opacity-40"
+                        disabled={!canManageActiveProject}
                         onClick={() => {
                           setTaskModalProjectId(activeProject?.id ?? null);
                           setIsTaskCreateModalOpen(true);
@@ -1497,7 +1689,7 @@ function DashboardPage(): JSX.Element {
                         <Plus size={18} />
                       </button>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-6 content-start">
+                    <div className="flex-1 overflow-y-auto p-5 content-start bg-white dark:bg-slate-900">
                       <TaskList
                         epics={epics}
                         onDelete={(taskId) => {
@@ -1521,14 +1713,16 @@ function DashboardPage(): JSX.Element {
 
                 {/* Column 3 — Subtasks */}
                 {selectedTaskId && activeTask && (
-                  <div className="flex flex-col flex-1 min-w-0 h-full animate-slideInRight">
-                    <div className="flex items-center justify-between px-6 py-5 bg-white/30 dark:bg-slate-900/40 backdrop-blur-2xl border-b border-zinc-200/50 dark:border-slate-800/50">
+                  <div className="flex flex-col flex-1 min-w-0 h-full rounded-xl border border-zinc-200/80 dark:border-slate-700/80 bg-white/82 dark:bg-slate-900/58 shadow-sm  overflow-hidden animate-slideInRight">
+                    <div className="flex items-center justify-between px-6 py-5 bg-white dark:bg-slate-900 dark:bg-white dark:bg-slate-900 border-b border-zinc-200/80 dark:border-slate-700/80">
                       <div>
-                        <h3 className="text-[1.1rem] font-bold font-['Outfit'] text-zinc-900 dark:text-slate-100 m-0 tracking-tight">Subtasks</h3>
-                        <p className="text-zinc-400 dark:text-slate-500 text-[0.72rem] font-bold m-0 truncate max-w-[280px] uppercase tracking-[0.12em] opacity-80">{activeTask.title}</p>
+                        <span className="text-[0.68rem] uppercase tracking-[0.18em] font-bold text-zinc-500 dark:text-slate-400">Column 3</span>
+                        <h3 className="text-[1.05rem] font-bold font-['Outfit'] text-zinc-900 dark:text-slate-100 m-0 mt-1 tracking-tight">Subtasks</h3>
+                        <p className="text-zinc-500 dark:text-slate-400 text-[0.78rem] m-0 mt-1 truncate max-w-[320px]">{activeTask.title}</p>
                       </div>
                       <button
-                        className="flex items-center justify-center w-9 h-9 bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-400 text-white rounded-xl shadow-xl shadow-blue-500/30 transition-all duration-300 hover:scale-110 active:scale-95"
+                        className="flex items-center justify-center w-10 h-10 bg-zinc-900 dark:bg-blue-600 hover:bg-zinc-700 dark:hover:bg-blue-500 text-white rounded-lg shadow-sm transition-all duration-300 hover:scale-[1.03] active:scale-95 disabled:opacity-40"
+                        disabled={!activeTask.permissions.canUpdate}
                         onClick={() => setSubtaskModalTask(activeTask)}
                         title="New Subtask"
                         type="button"
@@ -1537,17 +1731,18 @@ function DashboardPage(): JSX.Element {
                       </button>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-8 flex flex-col gap-6 content-start bg-slate-50/30 dark:bg-transparent">
+                    <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-5 content-start bg-white dark:bg-slate-900">
                       {activeTask.subtasks.map(subtask => {
                         const isEditingThisSubtask = editingSubtask?.task.id === activeTask.id && editingSubtask?.subtask.id === subtask.id;
                         return (
-                          <div key={subtask.id} className="group relative bg-white dark:bg-slate-800/40 border border-zinc-200/50 dark:border-slate-800/80 rounded-[1.75rem] p-6 transition-all duration-500 hover:shadow-2xl hover:shadow-indigo-500/5 hover:-translate-y-1 hover:border-indigo-100 dark:hover:border-indigo-500/30">
+                          <div key={subtask.id} className="group relative bg-white dark:bg-slate-900 dark:bg-white dark:bg-slate-900 border border-zinc-200/70 dark:border-slate-700/80 rounded-xl p-5 transition-all duration-300 shadow-sm hover:-translate-y-[2px] hover:border-zinc-300 dark:hover:border-slate-600">
                             <div className="flex items-start justify-between gap-6">
                               <div className="flex items-start gap-4.5 flex-1 min-w-0">
                                 <div className="mt-1 relative flex items-center justify-center">
                                   <input
                                     checked={subtask.status === 'completed'}
                                     className="peer w-6 h-6 accent-indigo-600 cursor-pointer rounded-lg border-zinc-300 dark:border-slate-700 transition-all shadow-sm"
+                                    disabled={!activeTask.permissions.canUpdate}
                                     onChange={() => void handleUpdateSubtaskStatus(activeTask, subtask, subtask.status === 'completed' ? 'pending' : 'completed')}
                                     type="checkbox"
                                   />
@@ -1573,7 +1768,8 @@ function DashboardPage(): JSX.Element {
 
                               <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0">
                                 <button
-                                  className="p-2 rounded-xl hover:bg-indigo-50 dark:hover:bg-slate-700/50 text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all"
+                                  className="p-2 rounded-xl hover:bg-indigo-50 dark:hover:bg-slate-700/50 text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all disabled:opacity-40"
+                                  disabled={!activeTask.permissions.canUpdate}
                                   onClick={() => setEditingSubtask(isEditingThisSubtask ? null : { task: activeTask, subtask })}
                                   title={isEditingThisSubtask ? 'Cancel' : 'Edit Subtask'}
                                   type="button"
@@ -1589,7 +1785,8 @@ function DashboardPage(): JSX.Element {
                                   <FileText size={16} />
                                 </button>
                                 <button
-                                  className="p-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-zinc-400 hover:text-red-500 dark:hover:text-red-400 transition-all"
+                                  className="p-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-zinc-400 hover:text-red-500 dark:hover:text-red-400 transition-all disabled:opacity-40"
+                                  disabled={!activeTask.permissions.canUpdate}
                                   onClick={() => void handleDeleteSubtask(activeTask, subtask.id)}
                                   title="Delete Subtask"
                                   type="button"
@@ -1619,13 +1816,13 @@ function DashboardPage(): JSX.Element {
                       )}
 
                       {/* Task detail footer */}
-                      <div className="mt-12 mb-8">
-                        <div className="bg-white dark:bg-slate-800/30 border border-zinc-200/50 dark:border-slate-800 rounded-[2.5rem] p-10 shadow-2xl shadow-zinc-200/40 dark:shadow-none relative overflow-hidden group/detail">
+                      <div className="mt-8 mb-4">
+                        <div className="bg-white dark:bg-slate-900 dark:bg-white dark:bg-slate-900 border border-zinc-200/70 dark:border-slate-700/80 rounded-xl p-8 shadow-sm relative overflow-hidden group/detail">
                           {/* Decorative Glow */}
                           <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-500/5 rounded-full blur-3xl group-hover/detail:bg-blue-500/10 transition-all duration-700" />
 
-                          <h4 className="text-[1.1rem] font-bold font-['Outfit'] text-zinc-800 dark:text-slate-100 m-0 mb-6 flex items-center gap-3">
-                            <div className="p-2 bg-blue-50 dark:bg-blue-500/10 rounded-xl">
+                          <h4 className="text-[1.05rem] font-bold font-['Outfit'] text-zinc-800 dark:text-slate-100 m-0 mb-6 flex items-center gap-3">
+                            <div className="p-2.5 bg-blue-50 dark:bg-blue-500/10 rounded-lg">
                               <Layout size={20} className="text-blue-600 dark:text-blue-400" />
                             </div>
                             Task Properties
@@ -1638,15 +1835,24 @@ function DashboardPage(): JSX.Element {
                           )}
 
                           <div className="flex flex-wrap items-center gap-4 mb-10">
-                            <div className={`flex items-center gap-2 px-4 py-2 rounded-2xl border text-[0.72rem] font-black uppercase tracking-wider transition-all duration-500 shadow-sm ${statusPillCls[activeTask.status] ?? 'bg-zinc-100 text-zinc-600 border-zinc-200'}`}>
+                            <div className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-[0.72rem] font-black uppercase tracking-wider transition-all duration-500 shadow-sm ${statusPillCls[activeTask.status] ?? 'bg-zinc-100 text-zinc-600 border-zinc-200'}`}>
                               <CheckCircle size={12} />
                               {activeTask.status.replace('_', ' ')}
                             </div>
                             <SourceBadge source={activeTask.source} />
+                            {activeTask.assignedToUser ? (
+                              <div className="flex items-center gap-2 px-4 py-2 rounded-lg border text-[0.72rem] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/30">
+                                Assigned to {activeTask.assignedToUser.name || activeTask.assignedToUser.email}
+                              </div>
+                            ) : activeTask.projectId ? (
+                              <div className="flex items-center gap-2 px-4 py-2 rounded-lg border text-[0.72rem] font-black uppercase tracking-wider bg-zinc-100 text-zinc-600 border-zinc-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700">
+                                Unassigned
+                              </div>
+                            ) : null}
                           </div>
 
                           <button
-                            className="w-full group/btn relative flex items-center justify-center gap-3 px-6 py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-[1.25rem] font-bold text-[0.95rem] shadow-xl shadow-zinc-900/20 dark:shadow-white/5 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 overflow-hidden"
+                            className="w-full group/btn relative flex items-center justify-center gap-3 px-6 py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-bold text-[0.95rem] shadow-sm shadow-zinc-900/20 dark:shadow-white/5 hover:scale-[1.01] active:scale-[0.98] transition-all duration-300 overflow-hidden"
                             onClick={() => handleOpenTaskNote(activeTask)}
                             type="button"
                           >
@@ -1662,6 +1868,14 @@ function DashboardPage(): JSX.Element {
                   </div>
                 )}
               </div>
+
+              {/* Chat Panel */}
+              <ChatPanel
+                project={activeProject}
+                members={activeProjectMembers}
+                isOpen={isChatPanelOpen}
+                onClose={() => setIsChatPanelOpen(false)}
+              />
             </div>
           )}
         </main>
@@ -1699,6 +1913,26 @@ function DashboardPage(): JSX.Element {
           <AddTaskForm epics={epics} initialProjectId={taskModalProjectId} onCreateTask={handleCreateTask} projects={projects} />
         </Modal>
       ) : null}
+      {isProjectTeamModalOpen && activeProject ? (
+        <Modal
+          bodyClassName="!p-0"
+          onClose={() => setIsProjectTeamModalOpen(false)}
+          panelClassName="!max-w-[820px]"
+          title={`Team for ${activeProject.name}`}
+        >
+          <ProjectTeamPanel
+            canManageTeam={canManageActiveProject}
+            currentUserId={user?.id ?? null}
+            isMutating={teamMutationLoading}
+            members={activeProjectMembers}
+            onAddMember={handleAddProjectMember}
+            onRemoveMember={handleRemoveProjectMember}
+            onSearchChange={(value) => { void handleProjectMemberSearch(value); }}
+            searchResults={memberSearchResults}
+            searchTerm={memberSearchTerm}
+          />
+        </Modal>
+      ) : null}
       {isProjectNotesModalOpen && activeProjectForNotes ? (
         <Modal onClose={() => setIsProjectNotesModalOpen(false)} title={activeProjectNotesModalTitle}>
           <ProjectNotes
@@ -1706,8 +1940,12 @@ function DashboardPage(): JSX.Element {
             heading="Project notes"
             loading={activeProjectForNotes != null && notesLoadingKey === `project:${activeProjectForNotes.id}`}
             notes={activeProjectNotes}
-            onCreateNote={() => activeProjectForNotes && handleOpenCreateProjectNote(activeProjectForNotes)}
-            onDeleteNote={(note) => void handleDeleteNote(note)}
+            onCreateNote={activeProjectForNotes.currentUserRole === 'ADMIN'
+              ? () => activeProjectForNotes && handleOpenCreateProjectNote(activeProjectForNotes)
+              : undefined}
+            onDeleteNote={activeProjectForNotes.currentUserRole === 'ADMIN'
+              ? (note) => void handleDeleteNote(note)
+              : undefined}
             onOpenNote={(note) => void handleOpenExistingNote(note)}
           />
         </Modal>
@@ -1722,8 +1960,12 @@ function DashboardPage(): JSX.Element {
             heading="Epic notes"
             loading={notesLoadingKey === `epic:${activeEpicForNotes.id}`}
             notes={activeEpicNotes}
-            onCreateNote={() => handleOpenCreateEpicNote(activeEpicForNotes)}
-            onDeleteNote={(note) => void handleDeleteNote(note)}
+            onCreateNote={projects.find((project) => project.id === activeEpicForNotes.projectId)?.currentUserRole === 'ADMIN'
+              ? () => handleOpenCreateEpicNote(activeEpicForNotes)
+              : undefined}
+            onDeleteNote={projects.find((project) => project.id === activeEpicForNotes.projectId)?.currentUserRole === 'ADMIN'
+              ? (note) => void handleDeleteNote(note)
+              : undefined}
             onOpenNote={(note) => void handleOpenExistingNote(note)}
           />
         </Modal>
@@ -1733,6 +1975,7 @@ function DashboardPage(): JSX.Element {
           <EditTaskForm
             epics={epics}
             onSubmit={handleUpdateTask}
+            projectMembersByProject={projectMembersByProject}
             projects={projects}
             task={editingTask}
           />

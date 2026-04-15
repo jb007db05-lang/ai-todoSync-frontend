@@ -30,7 +30,7 @@ function AddTaskForm({ epics, initialProjectId = null, onCreateTask, projects }:
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const projectOptions = flattenProjectOptions(projects);
+  const projectOptions = flattenProjectOptions(projects.filter((project) => project.currentUserRole === 'ADMIN'));
   const visibleEpics = epics.filter((epic) => epic.projectId === projectId).sort((left, right) => left.order - right.order);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {

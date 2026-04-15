@@ -84,7 +84,7 @@ function SubtaskForm({ onSubmit }: SubtaskFormProps): JSX.Element {
         {drafts.map((draft, index) => (
           <div
             key={draft.id}
-            className="bg-slate-50/92 dark:bg-slate-800/92 border border-zinc-200/60 dark:border-slate-700 rounded-2xl grid gap-3.5 p-4"
+            className="bg-slate-50/92 dark:bg-slate-800/92 border border-zinc-200/60 dark:border-slate-700 rounded-lg grid gap-3.5 p-4"
           >
             {/* Head */}
             <div className="flex items-center justify-between gap-3">

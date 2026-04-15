@@ -39,15 +39,13 @@ function ProjectPanel({
 }: ProjectPanelProps): JSX.Element {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  console.log("tasksByProject", tasksByProject);
-
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onSearch(e.target.value);
   };
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
-      setSelectedIds(new Set(projects.map(p => p.id)));
+      setSelectedIds(new Set(projects.filter((project) => project.currentUserRole === 'ADMIN').map((project) => project.id)));
     } else {
       setSelectedIds(new Set());
     }
@@ -56,6 +54,10 @@ function ProjectPanel({
   const handleSelectRow = (projectId: string, e: React.MouseEvent | React.ChangeEvent) => {
     if (e.type === 'change' || (e as React.MouseEvent).target instanceof HTMLInputElement) {
       // managed below
+    }
+    const project = projects.find((entry) => entry.id === projectId);
+    if (project?.currentUserRole !== 'ADMIN') {
+      return;
     }
     const next = new Set(selectedIds);
     if (next.has(projectId)) {
@@ -72,8 +74,9 @@ function ProjectPanel({
     setSelectedIds(new Set());
   };
 
-  const isAllSelected = projects.length > 0 && selectedIds.size === projects.length;
-  const isSomeSelected = selectedIds.size > 0 && selectedIds.size < projects.length;
+  const adminProjectsCount = projects.filter((project) => project.currentUserRole === 'ADMIN').length;
+  const isAllSelected = adminProjectsCount > 0 && selectedIds.size === adminProjectsCount;
+  const isSomeSelected = selectedIds.size > 0 && selectedIds.size < adminProjectsCount;
 
   const thCls = 'text-left px-4 py-3 text-[0.72rem] font-bold uppercase tracking-[0.05em] text-zinc-500 dark:text-slate-400 bg-zinc-50 dark:bg-slate-800 border-b border-zinc-200 dark:border-slate-700 sticky top-0 z-10';
   const rowActionCls = 'flex items-center justify-center w-7 h-7 rounded text-zinc-400 dark:text-slate-500 transition-all duration-150 hover:-translate-y-px';
@@ -169,6 +172,7 @@ function ProjectPanel({
                     <input
                       checked={selectedIds.has(project.id)}
                       className="w-4 h-4 cursor-pointer accent-blue-600"
+                      disabled={project.currentUserRole !== 'ADMIN'}
                       onChange={(e) => handleSelectRow(project.id, e)}
                       type="checkbox"
                     />
@@ -197,7 +201,8 @@ function ProjectPanel({
                   <td className="px-5 py-3.5 align-middle">
                     <div className="flex items-center justify-end gap-1.5">
                       <button
-                        className={`${rowActionCls} hover:bg-indigo-100 dark:hover:bg-indigo-900/30 hover:text-blue-600 dark:hover:text-blue-400`}
+                        className={`${rowActionCls} hover:bg-indigo-100 dark:hover:bg-indigo-900/30 hover:text-blue-600 dark:hover:text-blue-400 disabled:opacity-40`}
+                        disabled={project.currentUserRole !== 'ADMIN'}
                         onClick={(e) => { e.stopPropagation(); onOpenEpicManager(project); }}
                         title="Epics"
                         type="button"
@@ -205,7 +210,8 @@ function ProjectPanel({
                         <Layers3 size={14} />
                       </button>
                       <button
-                        className={`${rowActionCls} hover:bg-zinc-100 dark:hover:bg-slate-700 hover:text-zinc-800 dark:hover:text-slate-100`}
+                        className={`${rowActionCls} hover:bg-zinc-100 dark:hover:bg-slate-700 hover:text-zinc-800 dark:hover:text-slate-100 disabled:opacity-40`}
+                        disabled={project.currentUserRole !== 'ADMIN'}
                         onClick={(e) => { e.stopPropagation(); onOpenUpdateProject(project); }}
                         title="Edit project"
                         type="button"
@@ -214,7 +220,7 @@ function ProjectPanel({
                       </button>
                       <button
                         className={`${rowActionCls} hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 dark:hover:text-red-400 disabled:opacity-50`}
-                        disabled={actionProjectId === project.id}
+                        disabled={actionProjectId === project.id || project.currentUserRole !== 'ADMIN'}
                         onClick={(e) => { e.stopPropagation(); void onDeleteProject(project.id); }}
                         title="Delete project"
                         type="button"

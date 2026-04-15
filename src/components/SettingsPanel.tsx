@@ -1359,9 +1359,9 @@ function SettingsPanel(): JSX.Element {
   const loadDevices = async (): Promise<void> => {
     try {
       const response = await api.get<CompanionDevicesResponse>('/auth/devices');
-      console.log('[SettingsPanel] Raw API Response:', JSON.stringify(response.data, null, 2));
+      console.info('[SettingsPanel] Raw API Response:', JSON.stringify(response.data, null, 2));
       const fetched = response.data.data?.devices ?? [];
-      console.log('[SettingsPanel] Extracted Devices Array:', fetched);
+      console.info('[SettingsPanel] Extracted Devices Array:', fetched);
       setDevices(fetched);
     } catch (err) {
       console.error('[SettingsPanel] Error loading devices:', err);
@@ -1369,7 +1369,7 @@ function SettingsPanel(): JSX.Element {
   };
 
   useEffect(() => {
-    console.log('[SettingsPanel] Current Devices State:', devices);
+    console.info('[SettingsPanel] Current Devices State:', devices);
   }, [devices]);
 
   useEffect(() => {
@@ -1394,7 +1394,7 @@ function SettingsPanel(): JSX.Element {
 
     try {
       const response = await api.patch<RegenerateSyncKeyResponse>('/auth/regenerate-sync-key');
-      console.log('Sync key regenerated:', response.data);
+      console.info('Sync key regenerated:', response.data);
       await refreshUser();
       setSuccessMessage('Sync API key regenerated successfully.');
     } catch {

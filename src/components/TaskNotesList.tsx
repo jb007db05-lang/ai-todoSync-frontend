@@ -94,10 +94,10 @@ function TaskNotesList({
       {entries.map((entry) => (
         <article
           key={entry.id}
-          className="bg-white/88 dark:bg-slate-800/80 border border-zinc-200/80 dark:border-slate-700 rounded-2xl"
+          className="bg-white/88 dark:bg-slate-800/80 border border-zinc-200/80 dark:border-slate-700 rounded-lg"
         >
           <button
-            className="w-full flex flex-col gap-1.5 px-4 py-3.5 text-left hover:bg-teal-600/6 dark:hover:bg-teal-400/6 rounded-2xl transition-colors"
+            className="w-full flex flex-col gap-1.5 px-4 py-3.5 text-left hover:bg-teal-600/6 dark:hover:bg-teal-400/6 rounded-lg transition-colors"
             onClick={entry.onOpen}
             type="button"
           >

@@ -29,7 +29,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
       <div className="flex flex-col gap-6 pt-2">
         <div className="flex items-start gap-4">
           <div className={[
-            "w-12 h-12 flex items-center justify-center rounded-2xl shrink-0",
+            "w-12 h-12 flex items-center justify-center rounded-lg shrink-0",
             isDanger 
               ? "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400" 
               : "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"

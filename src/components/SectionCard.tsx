@@ -10,7 +10,7 @@ function SectionCard({ children, className }: SectionCardProps): JSX.Element {
     <section
       className={[
         'bg-white dark:bg-slate-900 border border-zinc-200 dark:border-slate-700',
-        'rounded-lg shadow-[0_10px_24px_rgba(15,23,42,0.06)] p-7',
+        'rounded-lg shadow-sm p-7',
         'transition-all duration-200 relative overflow-hidden',
         className ?? ''
       ].join(' ')}

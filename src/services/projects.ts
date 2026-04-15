@@ -1,5 +1,10 @@
 import api from '@/services/api';
-import type { CreateProjectInput, Project, UpdateProjectInput } from '@/types/project';
+import type {
+  CreateProjectInput,
+  Project,
+  ProjectMember,
+  UpdateProjectInput
+} from '@/types/project';
 
 export interface ProjectsPaginationParams {
   page?: number;
@@ -22,6 +27,13 @@ interface ProjectResponse {
   message: string;
   data: {
     project: Project;
+  };
+}
+
+interface ProjectMembersResponse {
+  message: string;
+  data: {
+    members: ProjectMember[];
   };
 }
 
@@ -48,4 +60,30 @@ const deleteProjects = async (projectIds: string[]): Promise<void> => {
   await api.post('/projects/bulk-delete', { projectIds });
 };
 
-export { createProject, deleteProject, deleteProjects, getProjects, updateProject };
+const getProjectMembers = async (projectId: string): Promise<ProjectMember[]> => {
+  const response = await api.get<ProjectMembersResponse>(`/projects/${projectId}/members`);
+  return response.data.data.members;
+};
+
+const addProjectMember = async (projectId: string, userId: string): Promise<ProjectMember> => {
+  const response = await api.post<{ message: string; data: { member: ProjectMember } }>(
+    `/projects/${projectId}/members`,
+    { userId }
+  );
+  return response.data.data.member;
+};
+
+const removeProjectMember = async (projectId: string, userId: string): Promise<void> => {
+  await api.delete(`/projects/${projectId}/members/${userId}`);
+};
+
+export {
+  addProjectMember,
+  createProject,
+  deleteProject,
+  deleteProjects,
+  getProjectMembers,
+  getProjects,
+  removeProjectMember,
+  updateProject
+};

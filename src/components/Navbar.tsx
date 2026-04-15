@@ -5,7 +5,7 @@ function Navbar(): JSX.Element {
   const { logout } = useAuth();
 
   return (
-    <header className="sticky top-6 z-50 flex items-center justify-between gap-4 px-7 py-4 bg-white/82 dark:bg-slate-900/90 backdrop-blur-md border border-zinc-200 dark:border-slate-700 rounded-[20px] shadow-[0_10px_30px_rgba(148,163,184,0.2)]">
+    <header className="sticky top-6 z-50 flex items-center justify-between gap-4 px-7 py-4 bg-white/82 dark:bg-slate-900/90 backdrop-blur-md border border-zinc-200 dark:border-slate-700 rounded-xl shadow-sm">
       <div className="grid gap-0.5">
         <Link
           className="font-['Outfit'] text-[1.4rem] font-extrabold tracking-[-0.02em] bg-gradient-to-r from-zinc-900 to-slate-500 dark:from-slate-100 dark:to-blue-300 bg-clip-text text-transparent no-underline"

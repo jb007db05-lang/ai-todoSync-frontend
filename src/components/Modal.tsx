@@ -44,7 +44,7 @@ function Modal({ backdropClassName, bodyClassName, children, onClose, panelClass
         className={[
           'relative w-full max-w-[540px] max-h-[90vh] overflow-y-auto',
           'bg-white dark:bg-slate-900 border border-zinc-200 dark:border-slate-700',
-          'rounded-lg shadow-[0_20px_25px_-5px_rgba(0,0,0,0.1),0_10px_10px_-5px_rgba(0,0,0,0.04)]',
+          'rounded-lg shadow-sm',
           'animate-modalIn',
           panelClassName ?? ''
         ].join(' ')}

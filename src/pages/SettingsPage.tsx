@@ -810,7 +810,7 @@ function SettingsPage(): JSX.Element {
   const loadDevices = async (): Promise<void> => {
     try {
       const response = await api.get<CompanionDevicesResponse>('/auth/devices');
-      console.log('Fetched companion devices:', response.data);
+      console.info('Fetched companion devices:', response.data);
       const nextDevices = response.data.data?.devices ?? [];
       setDevices(nextDevices);
     } catch {
@@ -1102,7 +1102,7 @@ function SettingsPage(): JSX.Element {
         <div className="accordion-list settings-accordion-list">
           {chatGptIntegrationSteps.map((step, index) => {
             const isOpen = openStepIndex === index;
-            console.log("Open : ", isOpen);
+            console.info("Open : ", isOpen);
             const panelId = `chatgpt-step-panel-${index}`;
 
             return (
