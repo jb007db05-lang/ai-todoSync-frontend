@@ -39,6 +39,8 @@ function ProjectPanel({
 }: ProjectPanelProps): JSX.Element {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
+  console.log("tasksByProject", tasksByProject);
+
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onSearch(e.target.value);
   };
