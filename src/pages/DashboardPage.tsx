@@ -2,24 +2,41 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import AddTaskForm from '@/components/AddTaskForm';
 import DateNavigator from '@/components/DateNavigator';
+import EditTaskForm from '@/components/EditTaskForm';
 import EmptyState from '@/components/EmptyState';
-import EpicForm from '@/components/EpicForm';
-import EpicManager from '@/components/EpicManager';
 import Modal from '@/components/Modal';
-import Navbar from '@/components/Navbar';
+import EpicForm from '@/components/EpicForm';
+import SubtaskInlineEdit from '@/components/SubtaskInlineEdit';
 import NoteModal from '@/components/NoteModal';
-import PageHeader from '@/components/PageHeader';
 import ProjectForm from '@/components/ProjectForm';
 import ProjectNotes from '@/components/ProjectNotes';
 import ProjectPanel from '@/components/ProjectPanel';
-import SectionCard from '@/components/SectionCard';
+import SettingsPanel from '@/components/SettingsPanel';
 import SubtaskForm from '@/components/SubtaskForm';
 import TaskList from '@/components/TaskList';
-import { ClipboardList } from 'lucide-react';
+import SourceBadge from '@/components/SourceBadge';
+import {
+  Calendar,
+  CheckCircle,
+  ChevronDown,
+  ChevronUp,
+  Edit3,
+  FileText,
+  Folder,
+  Layout,
+  List,
+  LogOut,
+  MessageSquare,
+  NotebookPen,
+  Plus,
+  Settings,
+  Trash2
+} from 'lucide-react';
 import { createEpic, deleteEpic, getEpics, reorderEpics, updateEpic } from '@/services/epics';
-import { createNote, deleteNote, getNote, getProjectNotes, updateNote } from '@/services/notes';
-import { createProject, deleteProject, getProjects, updateProject } from '@/services/projects';
+import { createEpicNote, createNote, deleteNote, getEpicNotes, getNote, getProjectNotes, updateNote } from '@/services/notes';
+import { createProject, deleteProject, deleteProjects, getProjects, updateProject } from '@/services/projects';
 import { createTask, deleteTask, getTasks, updateTask } from '@/services/tasks';
+import { useAuth } from '@/context/AuthContext';
 import type { Epic, EpicStatus } from '@/types/epic';
 import type { Note } from '@/types/note';
 import type { Project } from '@/types/project';
@@ -28,20 +45,27 @@ import { findProjectByName } from '@/utils/projectTree';
 
 type ActiveNoteEditor =
   | {
-      kind: 'project';
-      note: Note | null;
-      projectId: string;
-      projectName: string;
-    }
+    kind: 'project';
+    note: Note | null;
+    projectId: string;
+    projectName: string;
+  }
   | {
-      kind: 'task';
-      task: Task;
-    }
+    kind: 'epic';
+    epicId: string;
+    epicName: string;
+    note: Note | null;
+    projectId: string;
+  }
   | {
-      kind: 'subtask';
-      subtask: Task['subtasks'][number];
-      task: Task;
-    };
+    kind: 'task';
+    task: Task;
+  }
+  | {
+    kind: 'subtask';
+    subtask: Task['subtasks'][number];
+    task: Task;
+  };
 
 const getTodayDate = (): string => {
   const today = new Date();
@@ -103,17 +127,27 @@ function DashboardPage(): JSX.Element {
   const [noteMutationSuccess, setNoteMutationSuccess] = useState<string | null>(null);
   const [isProjectCreateModalOpen, setIsProjectCreateModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
-  const [isProjectManagerOpen, setIsProjectManagerOpen] = useState(false);
-  const [isEpicManagerOpen, setIsEpicManagerOpen] = useState(false);
   const [isEpicCreateModalOpen, setIsEpicCreateModalOpen] = useState(false);
   const [editingEpic, setEditingEpic] = useState<Epic | null>(null);
   const [isProjectNotesModalOpen, setIsProjectNotesModalOpen] = useState(false);
+  const [isEpicNotesModalOpen, setIsEpicNotesModalOpen] = useState(false);
   const [isTaskCreateModalOpen, setIsTaskCreateModalOpen] = useState(false);
   const [selectedProjectView, setSelectedProjectView] = useState<string>(ALL_PROJECTS_VALUE);
+  const [selectedEpicId, setSelectedEpicId] = useState<string | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [taskModalProjectId, setTaskModalProjectId] = useState<string | null>(null);
   const [subtaskModalTask, setSubtaskModalTask] = useState<Task | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [editingSubtask, setEditingSubtask] = useState<{ task: Task; subtask: Task['subtasks'][number] } | null>(null);
   const [projectNotes, setProjectNotes] = useState<Record<string, Note[]>>({});
-  const [notesLoadingProjectId, setNotesLoadingProjectId] = useState<string | null>(null);
+  const [epicNotes, setEpicNotes] = useState<Record<string, Note[]>>({});
+  const [notesLoadingKey, setNotesLoadingKey] = useState<string | null>(null);
+  const [projectPage, setProjectPage] = useState(1);
+  const [projectTotalPages, setProjectTotalPages] = useState<number>(1);
+  const [projectSearchTerm, setProjectSearchTerm] = useState<string>('');
+  const [activeView, setActiveView] = useState<'dashboard' | 'settings'>('dashboard');
+  const [activeProjectForNotes, setActiveProjectForNotes] = useState<Project | null>(null);
+  const [activeEpicForNotes, setActiveEpicForNotes] = useState<Epic | null>(null);
   const [activeNoteEditor, setActiveNoteEditor] = useState<ActiveNoteEditor | null>(null);
 
   const loadDashboard = useCallback(async (): Promise<void> => {
@@ -121,11 +155,16 @@ function DashboardPage(): JSX.Element {
     setError(null);
 
     try {
-      const [taskList, projectList] = await Promise.all([getTasks(selectedDate), getProjects()]);
-      const epicGroups = await Promise.all(projectList.map((project) => getEpics(project.id)));
+      const [taskList, projectData] = await Promise.all([
+        getTasks(selectedDate),
+        getProjects({ page: projectPage, limit: 10, search: projectSearchTerm })
+      ]);
+      const projectList = projectData.projects;
+      const epicGroups = await Promise.all(projectList.map((project: Project) => getEpics(project.id)));
       setTasks(taskList);
       setProjects(projectList);
       setEpics(epicGroups.flat());
+      setProjectTotalPages(projectData.totalPages);
     } catch {
       setError('Unable to load tasks for the selected day.');
       setTasks([]);
@@ -134,7 +173,7 @@ function DashboardPage(): JSX.Element {
     } finally {
       setLoading(false);
     }
-  }, [selectedDate]);
+  }, [selectedDate, projectPage, projectSearchTerm]);
 
   useEffect(() => {
     void loadDashboard();
@@ -212,6 +251,68 @@ function DashboardPage(): JSX.Element {
     }
   };
 
+  const handleUpdateTask = async (payload: {
+    title: string;
+    description?: string;
+    date: string;
+    status: TaskWorkflowStatus;
+    projectId: string | null;
+    epicId: string | null;
+  }): Promise<void> => {
+    if (editingTask == null) return;
+
+    setActionTaskId(editingTask.id);
+    setTaskMutationError(null);
+    setTaskMutationSuccess(null);
+
+    try {
+      // Preserve existing subtasks
+      await updateTask(editingTask.id, {
+        title: payload.title,
+        description: payload.description,
+        date: payload.date,
+        status: payload.status,
+        projectId: payload.projectId,
+        epicId: payload.epicId,
+      });
+      await loadDashboard();
+      setTaskMutationSuccess('Task updated.');
+      setEditingTask(null);
+    } catch {
+      setTaskMutationError('Unable to update the task.');
+      throw new Error('Unable to update task');
+    } finally {
+      setActionTaskId(null);
+    }
+  };
+
+  const handleUpdateSubtask = async (
+    task: Task,
+    targetSubtask: Task['subtasks'][number],
+    patch: { title: string; description?: string }
+  ): Promise<void> => {
+    setActionTaskId(task.id);
+    setTaskMutationError(null);
+    setTaskMutationSuccess(null);
+
+    try {
+      const subtasks = task.subtasks.map((subtask) => (
+        subtask.id === targetSubtask.id
+          ? { title: patch.title.trim(), note: subtask.note, status: subtask.status, completedAt: subtask.completedAt }
+          : { title: subtask.title, note: subtask.note, status: subtask.status, completedAt: subtask.completedAt }
+      ));
+
+      await updateTask(task.id, { status: task.status as TaskWorkflowStatus, subtasks });
+      await loadDashboard();
+      setTaskMutationSuccess('Subtask updated.');
+      setEditingSubtask(null);
+    } catch {
+      setTaskMutationError('Unable to update the subtask.');
+    } finally {
+      setActionTaskId(null);
+    }
+  };
+
   const handleDeleteEpic = async (epic: Epic): Promise<void> => {
     if (!requestConfirmation(`Delete epic "${epic.name}"? Tasks will remain and move to "No Epic".`)) {
       return;
@@ -225,9 +326,19 @@ function DashboardPage(): JSX.Element {
       await deleteEpic(epic.projectId, epic.id);
       await loadDashboard();
       setEpicMutationSuccess('Epic deleted. Related tasks were preserved and unassigned.');
+      setEpicNotes((current) => {
+        const next = { ...current };
+        delete next[epic.id];
+        return next;
+      });
 
       if (editingEpic?.id === epic.id) {
         setEditingEpic(null);
+      }
+
+      if (activeEpicForNotes?.id === epic.id) {
+        setActiveEpicForNotes(null);
+        setIsEpicNotesModalOpen(false);
       }
     } catch {
       setEpicMutationError('Unable to delete the epic.');
@@ -271,7 +382,7 @@ function DashboardPage(): JSX.Element {
     }
   };
 
-  const handleCreateProject = async (payload: { name: string }): Promise<void> => {
+  const handleCreateProject = async (payload: { name: string; description?: string }): Promise<void> => {
     setActionProjectId('new');
     setProjectMutationError(null);
     setProjectMutationSuccess(null);
@@ -296,7 +407,7 @@ function DashboardPage(): JSX.Element {
     }
   };
 
-  const handleUpdateProject = async (payload: { name: string }): Promise<void> => {
+  const handleUpdateProject = async (payload: { name: string; description?: string }): Promise<void> => {
     if (editingProject == null) {
       return;
     }
@@ -318,24 +429,26 @@ function DashboardPage(): JSX.Element {
   };
 
   const handleDeleteProject = async (projectId: string): Promise<void> => {
-    const projectName = projects.find((project) => project.id === projectId)?.name ?? 'this project';
-
-    if (!requestConfirmation(`Delete ${projectName}? This will remove the project, its tasks, and its notes.`)) {
+    if (!requestConfirmation('Are you sure you want to delete this project? All associated tasks, epics, and notes will be permanently removed.')) {
       return;
     }
 
     setActionProjectId(projectId);
-    setProjectMutationError(null);
-    setProjectMutationSuccess(null);
-    setNoteMutationError(null);
-    setNoteMutationSuccess(null);
-
     try {
       await deleteProject(projectId);
       await loadDashboard();
       setProjectNotes((current) => {
         const next = { ...current };
         delete next[projectId];
+        return next;
+      });
+      setEpicNotes((current) => {
+        const next = { ...current };
+        Object.keys(next).forEach((epicId) => {
+          if (epics.find((epic) => epic.id === epicId)?.projectId === projectId) {
+            delete next[epicId];
+          }
+        });
         return next;
       });
       setEpics((current) => current.filter((epic) => epic.projectId !== projectId));
@@ -353,14 +466,27 @@ function DashboardPage(): JSX.Element {
           return current.projectId === projectId ? null : current;
         }
 
+        if (current.kind === 'epic') {
+          return current.projectId === projectId ? null : current;
+        }
+
         return current.task.projectId === projectId ? null : current;
       });
       setSubtaskModalTask((current) => (current?.projectId === projectId ? null : current));
       setEditingEpic((current) => (current?.projectId === projectId ? null : current));
 
       if (activeProject?.id === projectId) {
-        setIsEpicManagerOpen(false);
-        setIsEpicCreateModalOpen(false);
+        setIsProjectNotesModalOpen(false);
+      }
+
+      if (activeProjectForNotes?.id === projectId) {
+        setActiveProjectForNotes(null);
+        setIsProjectNotesModalOpen(false);
+      }
+
+      if (activeEpicForNotes?.projectId === projectId) {
+        setActiveEpicForNotes(null);
+        setIsEpicNotesModalOpen(false);
       }
 
       setProjectMutationSuccess('Project deleted. Related tasks and notes were removed.');
@@ -371,6 +497,26 @@ function DashboardPage(): JSX.Element {
     }
   };
 
+  const handleDeleteProjects = async (projectIds: string[]): Promise<void> => {
+    if (!requestConfirmation(`Are you sure you want to delete ${projectIds.length} projects? All associated tasks, epics, and notes will be permanently removed.`)) {
+      return;
+    }
+
+    setActionProjectId('bulk');
+    try {
+      await deleteProjects(projectIds);
+      await loadDashboard();
+      if (selectedProjectView && projectIds.includes(selectedProjectView)) {
+        handleProjectSelect(ALL_PROJECTS_VALUE);
+      }
+    } catch {
+      // Error handled by UI
+    } finally {
+      setActionProjectId(null);
+    }
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleUpdateTaskStatus = async (task: Task, status: TaskWorkflowStatus): Promise<void> => {
     if (!requestConfirmation(`Update the status for "${task.title}" to "${status.replace('_', ' ')}"?`)) {
       return;
@@ -384,14 +530,14 @@ function DashboardPage(): JSX.Element {
       const updates =
         status === 'completed'
           ? {
-              status,
-              subtasks: task.subtasks.map((subtask) => ({
-                title: subtask.title,
-                note: subtask.note,
-                status: 'completed' as const,
-                completedAt: subtask.completedAt ?? new Date().toISOString()
-              }))
-            }
+            status,
+            subtasks: task.subtasks.map((subtask) => ({
+              title: subtask.title,
+              note: subtask.note,
+              status: 'completed' as const,
+              completedAt: subtask.completedAt ?? new Date().toISOString()
+            }))
+          }
           : { status };
 
       await updateTask(task.id, updates);
@@ -404,6 +550,7 @@ function DashboardPage(): JSX.Element {
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleUpdateTaskEpic = async (task: Task, epicId: string | null): Promise<void> => {
     setActionTaskId(task.id);
     setTaskMutationError(null);
@@ -570,7 +717,7 @@ function DashboardPage(): JSX.Element {
   };
 
   const loadNotesForProject = useCallback(async (projectId: string): Promise<void> => {
-    setNotesLoadingProjectId(projectId);
+    setNotesLoadingKey(`project:${projectId}`);
 
     try {
       const notes = await getProjectNotes(projectId);
@@ -581,22 +728,46 @@ function DashboardPage(): JSX.Element {
     } catch {
       setNoteMutationError('Unable to load notes for this project.');
     } finally {
-      setNotesLoadingProjectId((current) => (current === projectId ? null : current));
+      setNotesLoadingKey((current) => (current === `project:${projectId}` ? null : current));
     }
   }, []);
 
-  const handleOpenCreateNote = (): void => {
-    if (activeProject == null) {
-      return;
-    }
+  const loadNotesForEpic = useCallback(async (projectId: string, epicId: string): Promise<void> => {
+    setNotesLoadingKey(`epic:${epicId}`);
 
+    try {
+      const notes = await getEpicNotes(projectId, epicId);
+      setEpicNotes((current) => ({
+        ...current,
+        [epicId]: notes
+      }));
+    } catch {
+      setNoteMutationError('Unable to load notes for this epic.');
+    } finally {
+      setNotesLoadingKey((current) => (current === `epic:${epicId}` ? null : current));
+    }
+  }, []);
+
+  const handleOpenCreateProjectNote = (project: Project): void => {
     setNoteMutationError(null);
     setNoteMutationSuccess(null);
     setActiveNoteEditor({
       kind: 'project',
       note: null,
-      projectId: activeProject.id,
-      projectName: activeProject.name
+      projectId: project.id,
+      projectName: project.name
+    });
+  };
+
+  const handleOpenCreateEpicNote = (epic: Epic): void => {
+    setNoteMutationError(null);
+    setNoteMutationSuccess(null);
+    setActiveNoteEditor({
+      kind: 'epic',
+      epicId: epic.id,
+      epicName: epic.name,
+      note: null,
+      projectId: epic.projectId
     });
   };
 
@@ -607,14 +778,25 @@ function DashboardPage(): JSX.Element {
 
     try {
       const latestNote = await getNote(note.id);
-      const projectName =
-        projects.find((project) => project.id === latestNote.projectId)?.name ?? activeProject?.name ?? 'Project';
-      setActiveNoteEditor({
-        kind: 'project',
-        note: latestNote,
-        projectId: latestNote.projectId,
-        projectName
-      });
+      if (latestNote.entityType === 'epic') {
+        const epicName = epics.find((epic) => epic.id === latestNote.epicId)?.name ?? activeEpicForNotes?.name ?? 'Epic';
+        setActiveNoteEditor({
+          kind: 'epic',
+          epicId: latestNote.epicId ?? '',
+          epicName,
+          note: latestNote,
+          projectId: latestNote.projectId
+        });
+      } else {
+        const projectName =
+          projects.find((project) => project.id === latestNote.projectId)?.name ?? activeProject?.name ?? 'Project';
+        setActiveNoteEditor({
+          kind: 'project',
+          note: latestNote,
+          projectId: latestNote.projectId,
+          projectName
+        });
+      }
     } catch {
       setNoteMutationError('Unable to open the note.');
     } finally {
@@ -635,15 +817,18 @@ function DashboardPage(): JSX.Element {
 
     if (
       (editor.kind === 'project' && editor.note != null) ||
+      (editor.kind === 'epic' && editor.note != null) ||
       (editor.kind === 'task' && editor.task.note?.trim()) ||
       (editor.kind === 'subtask' && editor.subtask.note?.trim())
     ) {
       const label =
         editor.kind === 'project'
           ? `project note "${editor.note?.title ?? ''}"`
-          : editor.kind === 'task'
-            ? `task note for "${editor.task.title}"`
-            : `sub-task note for "${editor.subtask.title}"`;
+          : editor.kind === 'epic'
+            ? `epic note "${editor.note?.title ?? ''}"`
+            : editor.kind === 'task'
+              ? `task note for "${editor.task.title}"`
+              : `sub-task note for "${editor.subtask.title}"`;
       const actionLabel = payload.appendContent ? 'append to' : 'update';
 
       if (!requestConfirmation(`Confirm ${actionLabel} ${label}?`)) {
@@ -651,7 +836,7 @@ function DashboardPage(): JSX.Element {
       }
     }
 
-    setActionNoteId(editor.kind === 'project' ? editor.note?.id ?? 'new' : null);
+    setActionNoteId(editor.kind === 'project' || editor.kind === 'epic' ? editor.note?.id ?? 'new' : null);
     setNoteMutationError(null);
     setNoteMutationSuccess(null);
 
@@ -678,6 +863,29 @@ function DashboardPage(): JSX.Element {
             [editor.projectId]: [created, ...(current[editor.projectId] ?? [])]
           }));
           setNoteMutationSuccess('Note created.');
+        }
+      } else if (editor.kind === 'epic') {
+        if (editor.note) {
+          const updated = await updateNote(editor.note.id, {
+            appendContent: payload.appendContent,
+            title: payload.title,
+            content: payload.content
+          });
+          setEpicNotes((current) => ({
+            ...current,
+            [editor.epicId]: (current[editor.epicId] ?? []).map((note) => (note.id === updated.id ? updated : note))
+          }));
+          setNoteMutationSuccess(payload.appendContent ? 'Content appended to note.' : 'Note updated.');
+        } else {
+          const created = await createEpicNote(editor.projectId, editor.epicId, {
+            title: payload.title ?? '',
+            content: payload.content
+          });
+          setEpicNotes((current) => ({
+            ...current,
+            [editor.epicId]: [created, ...(current[editor.epicId] ?? [])]
+          }));
+          setNoteMutationSuccess('Epic note created.');
         }
       } else if (editor.kind === 'task') {
         await updateTask(editor.task.id, { note: payload.content });
@@ -720,12 +928,19 @@ function DashboardPage(): JSX.Element {
 
     try {
       await deleteNote(note.id);
-      setProjectNotes((current) => ({
-        ...current,
-        [note.projectId]: (current[note.projectId] ?? []).filter((currentNote) => currentNote.id !== note.id)
-      }));
+      if (note.entityType === 'epic' && note.epicId) {
+        setEpicNotes((current) => ({
+          ...current,
+          [note.epicId as string]: (current[note.epicId as string] ?? []).filter((currentNote) => currentNote.id !== note.id)
+        }));
+      } else {
+        setProjectNotes((current) => ({
+          ...current,
+          [note.projectId]: (current[note.projectId] ?? []).filter((currentNote) => currentNote.id !== note.id)
+        }));
+      }
 
-      if (activeNoteEditor?.kind === 'project' && activeNoteEditor.note?.id === note.id) {
+      if ((activeNoteEditor?.kind === 'project' || activeNoteEditor?.kind === 'epic') && activeNoteEditor.note?.id === note.id) {
         setActiveNoteEditor(null);
       }
 
@@ -738,7 +953,7 @@ function DashboardPage(): JSX.Element {
   };
 
   const handleDeleteInlineNote = async (): Promise<void> => {
-    if (activeNoteEditor == null || activeNoteEditor.kind === 'project') {
+    if (activeNoteEditor == null || activeNoteEditor.kind === 'project' || activeNoteEditor.kind === 'epic') {
       return;
     }
 
@@ -810,6 +1025,25 @@ function DashboardPage(): JSX.Element {
     });
   };
 
+  const handleOpenProjectNotesPanel = (project: Project): void => {
+    if (projectNotes[project.id] == null) {
+      void loadNotesForProject(project.id);
+    }
+
+    setActiveProjectForNotes(project);
+    setActiveEpicForNotes(null);
+    setIsProjectNotesModalOpen(true);
+  };
+
+  const handleOpenEpicNotesPanel = (epic: Epic): void => {
+    if (epicNotes[epic.id] == null) {
+      void loadNotesForEpic(epic.projectId, epic.id);
+    }
+
+    setActiveEpicForNotes(epic);
+    setIsEpicNotesModalOpen(true);
+  };
+
   const tasksByProject = useMemo(() => {
     const counts = new Map<string | null, number>();
 
@@ -846,117 +1080,530 @@ function DashboardPage(): JSX.Element {
       activeProject == null
         ? []
         : epics
-            .filter((epic) => epic.projectId === activeProject.id)
-            .sort((left, right) => left.order - right.order),
+          .filter((epic) => epic.projectId === activeProject.id)
+          .sort((left, right) => left.order - right.order),
     [activeProject, epics]
   );
-  const activeProjectNotes = activeProject ? projectNotes[activeProject.id] ?? [] : [];
-  const activeProjectNotesModalTitle = activeProject ? `Notes for ${activeProject.name}` : 'Project Notes';
+  const activeProjectNotes = activeProjectForNotes ? projectNotes[activeProjectForNotes.id] ?? [] : [];
+  const activeEpicNotes = activeEpicForNotes ? epicNotes[activeEpicForNotes.id] ?? [] : [];
+  const activeProjectNotesModalTitle = activeProjectForNotes ? `Notes for ${activeProjectForNotes.name}` : 'Project Notes';
+  const activeEpicNotesModalTitle = activeEpicForNotes ? `Notes for ${activeEpicForNotes.name}` : 'Epic Notes';
+
+  const { user, logout } = useAuth();
+
+  const handleProjectSelect = (projectId: string): void => {
+    setActiveView('dashboard');
+    setSelectedProjectView(projectId);
+    setSelectedEpicId(null);
+    setSelectedTaskId(null);
+  };
+
+  const handleProjectPageChange = (page: number): void => {
+    setProjectPage(page);
+  };
+
+  const handleProjectSearch = (term: string): void => {
+    setProjectSearchTerm(term);
+    setProjectPage(1);
+  };
+
+  const handleEpicSelect = (epicId: string | null): void => {
+    setSelectedEpicId(epicId);
+    setSelectedTaskId(null);
+  };
+
+  const activeEpicTasks = useMemo(() => {
+    if (!selectedEpicId) return [];
+    return visibleTasks.filter(t => t.epicId === selectedEpicId);
+  }, [selectedEpicId, visibleTasks]);
+
+  const activeTask = useMemo(() => {
+    if (!selectedTaskId) return null;
+    return tasks.find(t => t.id === selectedTaskId) ?? null;
+  }, [selectedTaskId, tasks]);
+
+  const sideNavItem = 'flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-[0.9rem] font-medium text-slate-400 hover:text-slate-100 hover:bg-white/10 transition-all duration-200';
+  const sideNavItemActive = 'bg-white/16 text-white';
+
+  const statusPillCls: Record<string, string> = {
+    planned: 'bg-blue-500/20 text-blue-300',
+    active: 'bg-amber-500/20 text-amber-300',
+    completed: 'bg-emerald-500/20 text-emerald-300',
+    archived: 'bg-zinc-500/20 text-zinc-400',
+  };
+
+  const allMutationMessages = [
+    taskMutationError,
+    taskMutationSuccess,
+    projectMutationError,
+    projectMutationSuccess,
+    epicMutationError,
+    epicMutationSuccess,
+    noteMutationError,
+    noteMutationSuccess,
+    error
+  ].filter(Boolean);
 
   return (
-    <main className="stack">
-      <Navbar />
-      <SectionCard className="hero-card dashboard-shell">
-        <div className="dashboard-hero-simple">
-          <PageHeader
-            title="Dashboard"
-            description="Select a project, review tasks for the day, and manage work from one clean workspace."
-          />
-          <DateNavigator date={selectedDate} disabled={loading} onChange={setSelectedDate} />
-        </div>
-      </SectionCard>
-      <SectionCard className="workspace-card workspace-card-full">
-        <div className="card-header workspace-header">
-          <div className="workspace-header-copy">
-            <span className="eyebrow">Task Surface</span>
-            <h2>{tasksHeading}</h2>
-            <p className="muted-text">Project-filtered execution list for the selected date.</p>
-          </div>
-          <div className="workspace-header-actions">
-            <label className="workspace-project-switcher">
-              <span>Project</span>
-              <select onChange={(event) => setSelectedProjectView(event.target.value)} value={selectedProjectView}>
-                <option value={ALL_PROJECTS_VALUE}>All projects</option>
-                {projects.map((project) => (
-                  <option key={project.id} value={project.id}>
-                    {project.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {activeProject ? (
-              <button
-                className="secondary-button"
-                onClick={() => setIsEpicManagerOpen(true)}
-                type="button"
-              >
-                Manage epics
-              </button>
-            ) : null}
-            {activeProject ? (
-              <button
-                className="secondary-button"
-                onClick={() => {
-                  if (projectNotes[activeProject.id] == null) {
-                    void loadNotesForProject(activeProject.id);
-                  }
-                  setIsProjectNotesModalOpen(true);
-                }}
-                type="button"
-              >
-                Project notes
-              </button>
-            ) : null}
-            <button className="secondary-button" onClick={() => setIsProjectManagerOpen(true)} type="button">
-              Manage projects
-            </button>
-            <button
-              onClick={() => {
-                setTaskModalProjectId(selectedProjectView === ALL_PROJECTS_VALUE ? null : selectedProjectView);
-                setIsTaskCreateModalOpen(true);
-              }}
-              type="button"
+    <div className="flex h-screen overflow-hidden bg-zinc-100 dark:bg-[#0b1220]">
+      {/* Toast Notification */}
+      {allMutationMessages.length > 0 && (
+        <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2">
+          {allMutationMessages.map((msg, i) => (
+            <div
+              key={i}
+              className={`px-4 py-2.5 rounded-lg shadow-lg border text-sm font-medium animate-in fade-in slide-in-from-top-4 ${msg?.toLowerCase().includes('unable') || msg?.toLowerCase().includes('error')
+                ? 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
+                : 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
+                }`}
             >
-              New task
-            </button>
-          </div>
+              <div className="flex items-center justify-between gap-3">
+                <span>{msg}</span>
+                <button
+                  className="opacity-50 hover:opacity-100 transition-opacity"
+                  onClick={() => {
+                    // Clear all for now to keep it simple, or specific ones if needed
+                    setTaskMutationError(null);
+                    setTaskMutationSuccess(null);
+                    setProjectMutationError(null);
+                    setProjectMutationSuccess(null);
+                    setEpicMutationError(null);
+                    setEpicMutationSuccess(null);
+                    setNoteMutationError(null);
+                    setNoteMutationSuccess(null);
+                    setError(null);
+                  }}
+                >
+                  <Plus className="rotate-45" size={14} />
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
-        
-          {projectMutationSuccess ? <p className="success-text">{projectMutationSuccess}</p> : null}
-          {projectMutationError ? <p className="error-text">{projectMutationError}</p> : null}
-          {epicMutationSuccess ? <p className="success-text">{epicMutationSuccess}</p> : null}
-          {epicMutationError ? <p className="error-text">{epicMutationError}</p> : null}
-          {taskMutationSuccess ? <p className="success-text">{taskMutationSuccess}</p> : null}
-          {taskMutationError ? <p className="error-text">{taskMutationError}</p> : null}
-          {noteMutationSuccess ? <p className="success-text">{noteMutationSuccess}</p> : null}
-          {noteMutationError ? <p className="error-text">{noteMutationError}</p> : null}
-          {loading ? <p className="muted-text">Refreshing tasks for {selectedDate}...</p> : null}
-          {error ? <p className="error-text">{error}</p> : null}
-        
-        {!loading && visibleTasks.length === 0 ? (
-          <EmptyState
-            description="Use the project selector or create a new task to populate this date."
-            icon={ClipboardList}
-            title="No tasks in this view"
-          />
-        ) : null}
-        {!loading && visibleTasks.length > 0 ? (
-          <TaskList
-            actionTaskId={actionTaskId}
-            epics={epics}
-            onDeleteSubtask={(task, subtask) => void handleDeleteSubtask(task, subtask)}
-            onCreateSubtask={(task) => setSubtaskModalTask(task)}
-            onDelete={(taskId) => void handleDeleteTask(taskId)}
-            onOpenSubtaskNote={(task, subtask) => handleOpenSubtaskNote(task, subtask)}
-            onOpenTaskNote={(task) => handleOpenTaskNote(task)}
-            onUpdateEpic={(task, epicId) => void handleUpdateTaskEpic(task, epicId)}
-            onUpdateStatus={(task, status) => void handleUpdateTaskStatus(task, status)}
-            onUpdateSubtaskStatus={(task, subtask, status) => void handleUpdateSubtaskStatus(task, subtask, status)}
-            projects={projects}
-            tasks={visibleTasks}
-          />
-        ) : null}
-      </SectionCard>
+      )}
+      {/* Sidebar */}
+      <aside className="flex flex-col w-[240px] shrink-0 bg-zinc-900 dark:bg-[#0c1525] border-r border-white/8 h-full">
+        {/* Logo */}
+        <div className="flex items-center gap-2.5 px-5 py-4.5 border-b border-white/8">
+          <Layout className="text-blue-400" size={22} />
+          <span className="font-['Outfit'] font-bold text-white text-[1.1rem] tracking-tight">Task Manager</span>
+        </div>
+
+        {/* Project nav */}
+        <div className="flex flex-col gap-1 p-3 flex-1 overflow-y-auto">
+          <p className="text-[0.65rem] uppercase tracking-[0.1em] text-slate-500 font-bold px-3 pt-2 pb-1">Workspace</p>
+          <button
+            className={`${sideNavItem} ${selectedProjectView === ALL_PROJECTS_VALUE ? sideNavItemActive : ''}`}
+            onClick={() => handleProjectSelect(ALL_PROJECTS_VALUE)}
+            type="button"
+          >
+            <Folder size={16} />
+            <span>All Projects</span>
+          </button>
+
+          <button
+            className={`${sideNavItem} text-blue-400 hover:text-blue-200 hover:bg-blue-600/15`}
+            onClick={() => setIsProjectCreateModalOpen(true)}
+            type="button"
+          >
+            <Plus size={16} />
+            <span>New Project</span>
+          </button>
+        </div>
+
+        {/* Footer */}
+        <div className="flex flex-col gap-1 p-3 border-t border-white/8">
+          <button
+            className={`${sideNavItem} ${activeView === 'settings' ? sideNavItemActive : ''}`}
+            onClick={() => setActiveView('settings')}
+            title="Settings"
+            type="button"
+          >
+            <Settings size={16} />
+            <span>Settings</span>
+          </button>
+          <button className={sideNavItem} onClick={logout} title="Sign out" type="button">
+            <LogOut size={16} />
+            <span>Sign out</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* Right side wrapper */}
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+        {/* Top bar */}
+        <header className="flex items-center justify-between gap-4 px-6 h-14 shrink-0 bg-white/92 dark:bg-slate-900/92 border-b border-zinc-200 dark:border-slate-700 backdrop-blur-md">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white text-sm font-bold">
+              {user?.email?.[0].toUpperCase()}
+            </div>
+            <span className="text-zinc-600 dark:text-slate-400 text-sm">{user?.email}</span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <DateNavigator date={selectedDate} disabled={loading} onChange={setSelectedDate} />
+          </div>
+        </header>
+
+        {/* Main */}
+        <main className="flex-1 overflow-hidden">
+          {activeView === 'settings' ? (
+            <div className="h-full overflow-y-auto">
+              <div className="px-8 py-6 border-b border-zinc-200 dark:border-slate-700 bg-white/60 dark:bg-slate-900/60">
+                <h3 className="text-xl font-semibold text-zinc-900 dark:text-slate-100 m-0">Settings</h3>
+                <p className="text-zinc-500 dark:text-slate-400 m-0 text-sm mt-0.5">Account &amp; Preferences</p>
+              </div>
+              <div className="p-8">
+                <SettingsPanel />
+              </div>
+            </div>
+          ) : !activeProject ? (
+            <div className="h-full overflow-y-auto">
+              <ProjectPanel
+                actionProjectId={actionProjectId}
+                currentPage={projectPage}
+                loading={loading}
+                onDeleteProject={handleDeleteProject}
+                onDeleteProjects={handleDeleteProjects}
+                onOpenCreateProject={() => setIsProjectCreateModalOpen(true)}
+                onOpenEpicManager={(project) => {
+                  handleProjectSelect(project.id);
+                }}
+                onOpenProject={(projectId) => {
+                  handleProjectSelect(projectId ?? ALL_PROJECTS_VALUE);
+                }}
+                onOpenUpdateProject={(project) => {
+                  setEditingProject(project);
+                }}
+                projects={projects}
+                tasksByProject={tasksByProject}
+                totalPages={projectTotalPages}
+                onPageChange={handleProjectPageChange}
+                onSearch={handleProjectSearch}
+                searchTerm={projectSearchTerm}
+              />
+            </div>
+          ) : (
+            /* 3-column workspace */
+            <div className="flex flex-col h-full overflow-hidden bg-zinc-50 dark:bg-slate-900/40">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200 dark:border-slate-700 bg-white/40 dark:bg-slate-900/40 shrink-0">
+                <div className="flex items-center gap-3">
+                  <Folder className="text-blue-500 shrink-0" size={20} />
+                  <div className="relative flex items-center">
+                    <select
+                      className="appearance-none bg-transparent border-none text-lg font-bold text-zinc-900 dark:text-slate-100 focus:outline-none focus:ring-0 cursor-pointer pr-6 m-0 p-0"
+                      onChange={(e) => handleProjectSelect(e.target.value)}
+                      value={activeProject.id}
+                    >
+                      {projects.map((project) => (
+                        <option
+                          className="text-zinc-900 dark:text-slate-100 bg-white dark:bg-slate-800 text-base font-normal"
+                          key={project.id}
+                          value={project.id}
+                        >
+                          {project.name}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center">
+                      <ChevronDown className="text-zinc-500 dark:text-slate-400" size={16} />
+                    </div>
+                  </div>
+                </div>
+                <button
+                  className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded-lg text-sm font-medium text-zinc-600 dark:text-slate-300 hover:bg-zinc-50 dark:hover:bg-slate-700 shadow-sm transition-colors"
+                  onClick={() => handleOpenProjectNotesPanel(activeProject)}
+                  type="button"
+                >
+                  <MessageSquare size={16} />
+                  Project Notes
+                </button>
+              </div>
+              <div className="flex flex-1 min-h-0 overflow-hidden divide-x divide-zinc-200 dark:divide-slate-700">
+                {/* Column 1 — Epics */}
+                <div className="flex flex-col w-[340px] shrink-0 h-full border-r border-zinc-200 dark:border-slate-800 bg-white dark:bg-slate-900/50">
+                  <div className="flex items-center justify-between px-6 py-5 border-b border-zinc-200 dark:border-slate-800 bg-zinc-50/50 dark:bg-slate-900/80">
+                    <div>
+                      <h3 className="text-[1.1rem] font-bold font-['Outfit'] text-zinc-900 dark:text-slate-100 m-0 tracking-tight">Epics</h3>
+                      <p className="text-zinc-500 dark:text-slate-400 text-[0.72rem] font-semibold m-0 uppercase tracking-wider">{activeProject.name}</p>
+                    </div>
+                    <button
+                      className="flex items-center justify-center w-8 h-8 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm transition-all active:scale-95"
+                      onClick={() => setIsEpicCreateModalOpen(true)}
+                      title="New Epic"
+                      type="button"
+                    >
+                      <Plus size={16} />
+                    </button>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 custom-scrollbar">
+                    {activeProjectEpics.map(epic => {
+                      const isActive = selectedEpicId === epic.id;
+                      return (
+                        <div
+                          key={epic.id}
+                          className={`relative flex flex-col gap-3 p-5 rounded-xl border transition-all cursor-pointer ${isActive
+                              ? 'bg-blue-50/30 dark:bg-blue-500/5 border-blue-400/50 dark:border-blue-500/40 ring-1 ring-blue-500/20 shadow-sm'
+                              : 'bg-white dark:bg-slate-800/40 border-zinc-200 dark:border-slate-800 hover:border-zinc-300 dark:hover:border-slate-700 hover:bg-zinc-50 dark:hover:bg-slate-800/60'
+                            }`}
+                          onClick={() => handleEpicSelect(isActive ? null : epic.id)}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <h4 className={`text-[0.95rem] font-bold m-0 leading-tight transition-colors ${isActive ? 'text-blue-900 dark:text-blue-100' : 'text-zinc-800 dark:text-slate-200'
+                              }`}>
+                              {epic.name}
+                            </h4>
+                            <span className={`shrink-0 text-[0.6rem] font-bold px-2 py-0.5 rounded uppercase tracking-wide border ${statusPillCls[epic.status] ?? 'bg-zinc-100 dark:bg-slate-800 text-zinc-600 dark:text-slate-400 border-zinc-200 dark:border-slate-700'
+                              }`}>
+                              {epic.status}
+                            </span>
+                          </div>
+
+                          {epic.description && (
+                            <p className="text-[0.82rem] m-0 line-clamp-2 leading-relaxed text-zinc-500 dark:text-slate-400">
+                              {epic.description}
+                            </p>
+                          )}
+
+                          {/* Action Toolbar — Always Visible & Integrated */}
+                          <div className="flex items-center gap-1.5 mt-2 pt-3 border-t border-zinc-100 dark:border-slate-800/50">
+                            <button
+                              className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-slate-700 text-zinc-400 hover:text-blue-600 transition-colors"
+                              onClick={(e) => { e.stopPropagation(); handleOpenEpicNotesPanel(epic); }}
+                              title="Notes"
+                            >
+                              <FileText size={14} />
+                            </button>
+                            <button
+                              className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-slate-700 text-zinc-400 hover:text-indigo-600 transition-colors"
+                              onClick={(e) => { e.stopPropagation(); setEditingEpic(epic); }}
+                              title="Edit"
+                            >
+                              <Edit3 size={14} />
+                            </button>
+                            <div className="flex-1" />
+                            <button
+                              className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-slate-700 text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
+                              onClick={(e) => { e.stopPropagation(); handleMoveEpic(epic, 'up'); }}
+                              title="Up"
+                            >
+                              <ChevronUp size={14} />
+                            </button>
+                            <button
+                              className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-slate-700 text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
+                              onClick={(e) => { e.stopPropagation(); handleMoveEpic(epic, 'down'); }}
+                              title="Down"
+                            >
+                              <ChevronDown size={14} />
+                            </button>
+                            <div className="w-px h-3 bg-zinc-200 dark:bg-slate-800 mx-1" />
+                            <button
+                              className="p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 text-zinc-400 hover:text-red-500 transition-colors"
+                              disabled={actionEpicId === epic.id}
+                              onClick={(e) => { e.stopPropagation(); handleDeleteEpic(epic); }}
+                              title="Delete"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {activeProjectEpics.length === 0 && (
+                      <EmptyState description="Create an epic to group your tasks." icon={List} title="No epics found" />
+                    )}
+                  </div>
+                </div>
+
+                {/* Column 2 — Tasks */}
+                {selectedEpicId && (
+                  <div className="flex flex-col w-[500px] shrink-0 h-full border-r border-zinc-200/50 dark:border-slate-800/50 animate-slideInRight">
+                    <div className="flex items-center justify-between px-6 py-5 bg-white/30 dark:bg-slate-900/40 backdrop-blur-2xl border-b border-zinc-200/50 dark:border-slate-800/50">
+                      <div>
+                        <h3 className="text-[1.1rem] font-bold font-['Outfit'] text-zinc-900 dark:text-slate-100 m-0 tracking-tight">{tasksHeading}</h3>
+                        <p className="text-zinc-400 dark:text-slate-500 text-[0.72rem] font-bold m-0 truncate max-w-[280px] uppercase tracking-[0.12em] opacity-80">
+                          {epics.find(e => e.id === selectedEpicId)?.name}
+                        </p>
+                      </div>
+                      <button
+                        className="flex items-center justify-center w-9 h-9 bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-400 text-white rounded-xl shadow-xl shadow-blue-500/30 transition-all duration-300 hover:scale-110 active:scale-95"
+                        onClick={() => {
+                          setTaskModalProjectId(activeProject?.id ?? null);
+                          setIsTaskCreateModalOpen(true);
+                        }}
+                        title="New Task"
+                        type="button"
+                      >
+                        <Plus size={18} />
+                      </button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-6 content-start">
+                      <TaskList
+                        epics={epics}
+                        onDelete={(taskId) => void handleDeleteTask(taskId)}
+                        onEditTask={(task) => setEditingTask(task)}
+                        projects={projects}
+                        tasks={activeEpicTasks}
+                        onSelectTask={(task) => setSelectedTaskId(task.id)}
+                        selectedTaskId={selectedTaskId}
+                      />
+                      {activeEpicTasks.length === 0 && (
+                        <EmptyState description="No tasks scheduled for this epic today." icon={Calendar} title="Empty workspace" />
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Column 3 — Subtasks */}
+                {selectedTaskId && activeTask && (
+                  <div className="flex flex-col flex-1 min-w-0 h-full animate-slideInRight">
+                    <div className="flex items-center justify-between px-6 py-5 bg-white/30 dark:bg-slate-900/40 backdrop-blur-2xl border-b border-zinc-200/50 dark:border-slate-800/50">
+                      <div>
+                        <h3 className="text-[1.1rem] font-bold font-['Outfit'] text-zinc-900 dark:text-slate-100 m-0 tracking-tight">Subtasks</h3>
+                        <p className="text-zinc-400 dark:text-slate-500 text-[0.72rem] font-bold m-0 truncate max-w-[280px] uppercase tracking-[0.12em] opacity-80">{activeTask.title}</p>
+                      </div>
+                      <button
+                        className="flex items-center justify-center w-9 h-9 bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-400 text-white rounded-xl shadow-xl shadow-blue-500/30 transition-all duration-300 hover:scale-110 active:scale-95"
+                        onClick={() => setSubtaskModalTask(activeTask)}
+                        title="New Subtask"
+                        type="button"
+                      >
+                        <Plus size={18} />
+                      </button>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto p-8 flex flex-col gap-6 content-start bg-slate-50/30 dark:bg-transparent">
+                      {activeTask.subtasks.map(subtask => {
+                        const isEditingThisSubtask = editingSubtask?.task.id === activeTask.id && editingSubtask?.subtask.id === subtask.id;
+                        return (
+                          <div key={subtask.id} className="group relative bg-white dark:bg-slate-800/40 border border-zinc-200/50 dark:border-slate-800/80 rounded-[1.75rem] p-6 transition-all duration-500 hover:shadow-2xl hover:shadow-indigo-500/5 hover:-translate-y-1 hover:border-indigo-100 dark:hover:border-indigo-500/30">
+                            <div className="flex items-start justify-between gap-6">
+                              <div className="flex items-start gap-4.5 flex-1 min-w-0">
+                                <div className="mt-1 relative flex items-center justify-center">
+                                  <input
+                                    checked={subtask.status === 'completed'}
+                                    className="peer w-6 h-6 accent-indigo-600 cursor-pointer rounded-lg border-zinc-300 dark:border-slate-700 transition-all shadow-sm"
+                                    onChange={() => void handleUpdateSubtaskStatus(activeTask, subtask, subtask.status === 'completed' ? 'pending' : 'completed')}
+                                    type="checkbox"
+                                  />
+                                </div>
+                                <div className="flex flex-col gap-1.5 min-w-0">
+                                  <span className={`text-[1rem] transition-all duration-300 ${subtask.status === 'completed'
+                                    ? 'text-zinc-400 dark:text-slate-500 line-through'
+                                    : 'text-zinc-800 dark:text-slate-200 font-semibold tracking-tight'
+                                    }`}>
+                                    {subtask.title}
+                                  </span>
+                                  {!isEditingThisSubtask && subtask.description && (
+                                    <p className="text-zinc-400 dark:text-slate-500 text-[0.82rem] leading-relaxed line-clamp-2 opacity-80">{subtask.description}</p>
+                                  )}
+                                  {!isEditingThisSubtask && subtask.note && (
+                                    <div className="flex items-center gap-2 mt-2 px-3 py-1.5 bg-zinc-50 dark:bg-slate-900/40 rounded-xl text-zinc-500 dark:text-slate-400 text-[0.78rem] font-medium italic border border-zinc-100 dark:border-slate-800/50">
+                                      <MessageSquare size={14} className="shrink-0 text-indigo-400" />
+                                      <span className="truncate">{subtask.note}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0">
+                                <button
+                                  className="p-2 rounded-xl hover:bg-indigo-50 dark:hover:bg-slate-700/50 text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all"
+                                  onClick={() => setEditingSubtask(isEditingThisSubtask ? null : { task: activeTask, subtask })}
+                                  title={isEditingThisSubtask ? 'Cancel' : 'Edit Subtask'}
+                                  type="button"
+                                >
+                                  <Edit3 size={16} />
+                                </button>
+                                <button
+                                  className="p-2 rounded-xl hover:bg-indigo-50 dark:hover:bg-slate-700/50 text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all"
+                                  onClick={() => handleOpenSubtaskNote(activeTask, subtask)}
+                                  title="Subtask Note"
+                                  type="button"
+                                >
+                                  <FileText size={16} />
+                                </button>
+                                <button
+                                  className="p-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-zinc-400 hover:text-red-500 dark:hover:text-red-400 transition-all"
+                                  onClick={() => void handleDeleteSubtask(activeTask, subtask)}
+                                  title="Delete Subtask"
+                                  type="button"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Inline subtask edit form */}
+                            {isEditingThisSubtask && (
+                              <div className="mt-5 pt-5 border-t border-zinc-100 dark:border-slate-800/50">
+                                <SubtaskInlineEdit
+                                  subtask={subtask}
+                                  onSave={(patch) => void handleUpdateSubtask(activeTask, subtask, patch)}
+                                  onCancel={() => setEditingSubtask(null)}
+                                  isSaving={actionTaskId === activeTask.id}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      {activeTask.subtasks.length === 0 && (
+                        <EmptyState description="Break down your task into smaller steps." icon={CheckCircle} title="All clear" />
+                      )}
+
+                      {/* Task detail footer */}
+                      <div className="mt-12 mb-8">
+                        <div className="bg-white dark:bg-slate-800/30 border border-zinc-200/50 dark:border-slate-800 rounded-[2.5rem] p-10 shadow-2xl shadow-zinc-200/40 dark:shadow-none relative overflow-hidden group/detail">
+                          {/* Decorative Glow */}
+                          <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-500/5 rounded-full blur-3xl group-hover/detail:bg-blue-500/10 transition-all duration-700" />
+
+                          <h4 className="text-[1.1rem] font-bold font-['Outfit'] text-zinc-800 dark:text-slate-100 m-0 mb-6 flex items-center gap-3">
+                            <div className="p-2 bg-blue-50 dark:bg-blue-500/10 rounded-xl">
+                              <Layout size={20} className="text-blue-600 dark:text-blue-400" />
+                            </div>
+                            Task Properties
+                          </h4>
+
+                          {activeTask.description && (
+                            <div className="relative">
+                              <p className="text-zinc-600 dark:text-slate-400 text-[0.92rem] leading-relaxed mb-8 pl-4 border-l-2 border-zinc-100 dark:border-slate-800 italic">{activeTask.description}</p>
+                            </div>
+                          )}
+
+                          <div className="flex flex-wrap items-center gap-4 mb-10">
+                            <div className={`flex items-center gap-2 px-4 py-2 rounded-2xl border text-[0.72rem] font-black uppercase tracking-wider transition-all duration-500 shadow-sm ${statusPillCls[activeTask.status] ?? 'bg-zinc-100 text-zinc-600 border-zinc-200'}`}>
+                              <CheckCircle size={12} />
+                              {activeTask.status.replace('_', ' ')}
+                            </div>
+                            <SourceBadge source={activeTask.source} />
+                          </div>
+
+                          <button
+                            className="w-full group/btn relative flex items-center justify-center gap-3 px-6 py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-[1.25rem] font-bold text-[0.95rem] shadow-xl shadow-zinc-900/20 dark:shadow-white/5 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 overflow-hidden"
+                            onClick={() => handleOpenTaskNote(activeTask)}
+                            type="button"
+                          >
+                            <NotebookPen size={20} className="transition-transform group-hover/btn:rotate-12" />
+                            Manage Work Notes
+
+                            {/* Inner Glow Effect */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
+
+      {/* Modals & Overlays */}
       {isProjectCreateModalOpen ? (
         <Modal onClose={() => setIsProjectCreateModalOpen(false)} title="Create Project">
           <ProjectForm onSubmit={handleCreateProject} />
@@ -964,51 +1611,7 @@ function DashboardPage(): JSX.Element {
       ) : null}
       {editingProject ? (
         <Modal onClose={() => setEditingProject(null)} title="Update Project">
-          <ProjectForm initialName={editingProject.name} onSubmit={handleUpdateProject} submitLabel="Update project" />
-        </Modal>
-      ) : null}
-      {isProjectManagerOpen ? (
-        <Modal
-          bodyClassName="project-manager-modal-body"
-          onClose={() => setIsProjectManagerOpen(false)}
-          panelClassName="project-manager-modal-panel"
-          title="Manage Projects"
-        >
-          <ProjectPanel
-            actionProjectId={actionProjectId}
-            loading={loading}
-            onOpenCreateProject={() => setIsProjectCreateModalOpen(true)}
-            onOpenEpicManager={(project) => {
-              setSelectedProjectView(project.id);
-              setEditingEpic(null);
-              setIsEpicCreateModalOpen(false);
-              setIsProjectManagerOpen(false);
-              setIsEpicManagerOpen(true);
-            }}
-            onOpenProject={(projectId) => {
-              setSelectedProjectView(projectId ?? ALL_PROJECTS_VALUE);
-              setIsProjectManagerOpen(false);
-            }}
-            onOpenUpdateProject={(project) => {
-              setEditingProject(project);
-            }}
-            onDeleteProject={handleDeleteProject}
-            projects={projects}
-            tasksByProject={tasksByProject}
-          />
-        </Modal>
-      ) : null}
-      {isEpicManagerOpen && activeProject ? (
-        <Modal onClose={() => setIsEpicManagerOpen(false)} title={`Manage Epics for ${activeProject.name}`}>
-          <EpicManager
-            actionEpicId={actionEpicId}
-            epics={activeProjectEpics}
-            onCreateEpic={() => setIsEpicCreateModalOpen(true)}
-            onDeleteEpic={handleDeleteEpic}
-            onEditEpic={(epic) => setEditingEpic(epic)}
-            onMoveEpic={handleMoveEpic}
-            projectName={activeProject.name}
-          />
+          <ProjectForm initialDescription={editingProject.description} initialName={editingProject.name} onSubmit={handleUpdateProject} submitLabel="Update project" />
         </Modal>
       ) : null}
       {isEpicCreateModalOpen && activeProject ? (
@@ -1032,22 +1635,47 @@ function DashboardPage(): JSX.Element {
           <AddTaskForm epics={epics} initialProjectId={taskModalProjectId} onCreateTask={handleCreateTask} projects={projects} />
         </Modal>
       ) : null}
-      {isProjectNotesModalOpen && activeProject ? (
+      {isProjectNotesModalOpen && activeProjectForNotes ? (
         <Modal onClose={() => setIsProjectNotesModalOpen(false)} title={activeProjectNotesModalTitle}>
           <ProjectNotes
             actionNoteId={actionNoteId}
-            loading={notesLoadingProjectId === activeProject.id}
+            heading="Project notes"
+            loading={activeProjectForNotes != null && notesLoadingKey === `project:${activeProjectForNotes.id}`}
             notes={activeProjectNotes}
-            onCreateNote={handleOpenCreateNote}
+            onCreateNote={() => activeProjectForNotes && handleOpenCreateProjectNote(activeProjectForNotes)}
             onDeleteNote={(note) => void handleDeleteNote(note)}
             onOpenNote={(note) => void handleOpenExistingNote(note)}
           />
         </Modal>
       ) : null}
+      {isEpicNotesModalOpen && activeEpicForNotes ? (
+        <Modal onClose={() => setIsEpicNotesModalOpen(false)} title={activeEpicNotesModalTitle}>
+          <ProjectNotes
+            actionNoteId={actionNoteId}
+            createLabel="Create epic note"
+            emptyDescription="Create the first note to capture decisions, references, or follow-ups for this epic."
+            emptyTitle="No epic notes yet"
+            heading="Epic notes"
+            loading={notesLoadingKey === `epic:${activeEpicForNotes.id}`}
+            notes={activeEpicNotes}
+            onCreateNote={() => handleOpenCreateEpicNote(activeEpicForNotes)}
+            onDeleteNote={(note) => void handleDeleteNote(note)}
+            onOpenNote={(note) => void handleOpenExistingNote(note)}
+          />
+        </Modal>
+      ) : null}
+      {editingTask ? (
+        <Modal onClose={() => setEditingTask(null)} title={`Edit Task: ${editingTask.title}`}>
+          <EditTaskForm
+            epics={epics}
+            onSubmit={handleUpdateTask}
+            projects={projects}
+            task={editingTask}
+          />
+        </Modal>
+      ) : null}
       {subtaskModalTask ? (
         <Modal
-          backdropClassName="subtask-modal-backdrop"
-          panelClassName="subtask-modal-panel"
           onClose={() => setSubtaskModalTask(null)}
           title={`Create Subtask for ${subtaskModalTask.title}`}
         >
@@ -1056,9 +1684,9 @@ function DashboardPage(): JSX.Element {
       ) : null}
       {activeNoteEditor ? (
         <NoteModal
-          allowAppend={activeNoteEditor.kind === 'project' && activeNoteEditor.note != null}
+          allowAppend={(activeNoteEditor.kind === 'project' || activeNoteEditor.kind === 'epic') && activeNoteEditor.note != null}
           allowDelete={
-            activeNoteEditor.kind === 'project'
+            activeNoteEditor.kind === 'project' || activeNoteEditor.kind === 'epic'
               ? activeNoteEditor.note != null
               : activeNoteEditor.kind === 'task'
                 ? Boolean(activeNoteEditor.task.note?.trim())
@@ -1067,53 +1695,63 @@ function DashboardPage(): JSX.Element {
           deleteLabel={
             activeNoteEditor.kind === 'project'
               ? 'Delete Note'
-              : activeNoteEditor.kind === 'task'
-                ? 'Delete Task Note'
-                : 'Delete Sub-task Note'
+              : activeNoteEditor.kind === 'epic'
+                ? 'Delete Epic Note'
+                : activeNoteEditor.kind === 'task'
+                  ? 'Delete Task Note'
+                  : 'Delete Sub-task Note'
           }
           entityLabel={
             activeNoteEditor.kind === 'project'
               ? activeNoteEditor.projectName
-              : activeNoteEditor.kind === 'task'
-                ? activeNoteEditor.task.title
-                : `${activeNoteEditor.task.title} / ${activeNoteEditor.subtask.title}`
+              : activeNoteEditor.kind === 'epic'
+                ? activeNoteEditor.epicName
+                : activeNoteEditor.kind === 'task'
+                  ? activeNoteEditor.task.title
+                  : `${activeNoteEditor.task.title} / ${activeNoteEditor.subtask.title}`
           }
           modalTitle={
             activeNoteEditor.kind === 'project'
               ? activeNoteEditor.note
                 ? 'Edit Project Note'
                 : 'Create Project Note'
-              : activeNoteEditor.kind === 'task'
-                ? activeNoteEditor.task.note?.trim()
-                  ? 'Edit Task Note'
-                  : 'Create Task Note'
-                : activeNoteEditor.subtask.note?.trim()
-                  ? 'Edit Sub-task Note'
-                  : 'Create Sub-task Note'
+              : activeNoteEditor.kind === 'epic'
+                ? activeNoteEditor.note
+                  ? 'Edit Epic Note'
+                  : 'Create Epic Note'
+                : activeNoteEditor.kind === 'task'
+                  ? activeNoteEditor.task.note?.trim()
+                    ? 'Edit Task Note'
+                    : 'Create Task Note'
+                  : activeNoteEditor.subtask.note?.trim()
+                    ? 'Edit Sub-task Note'
+                    : 'Create Sub-task Note'
           }
           note={
             activeNoteEditor.kind === 'project'
               ? activeNoteEditor.note
-              : activeNoteEditor.kind === 'task'
-                ? { title: '', content: activeNoteEditor.task.note ?? '' }
-                : { title: '', content: activeNoteEditor.subtask.note ?? '' }
+              : activeNoteEditor.kind === 'epic'
+                ? activeNoteEditor.note
+                : activeNoteEditor.kind === 'task'
+                  ? { title: '', content: activeNoteEditor.task.note ?? '' }
+                  : { title: '', content: activeNoteEditor.subtask.note ?? '' }
           }
           onClose={() => {
             setActiveNoteEditor(null);
           }}
           onDelete={
-            activeNoteEditor.kind === 'project'
+            activeNoteEditor.kind === 'project' || activeNoteEditor.kind === 'epic'
               ? activeNoteEditor.note
                 ? () => void handleDeleteNote(activeNoteEditor.note as Note)
                 : undefined
               : () => void handleDeleteInlineNote()
           }
           onSave={handleSaveNote}
-          showTitle={activeNoteEditor.kind === 'project'}
+          showTitle={activeNoteEditor.kind === 'project' || activeNoteEditor.kind === 'epic'}
           titlePlaceholder="Sprint recap"
         />
       ) : null}
-    </main>
+    </div>
   );
 }
 

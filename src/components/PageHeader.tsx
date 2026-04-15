@@ -8,10 +8,10 @@ interface PageHeaderProps {
 
 function PageHeader({ title, description, actions }: PageHeaderProps): JSX.Element {
   return (
-    <div className="card-header">
+    <div className="flex items-start justify-between gap-4">
       <div>
-        <h1>{title}</h1>
-        {description ? <p>{description}</p> : null}
+        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-slate-100 m-0">{title}</h1>
+        {description ? <p className="text-zinc-500 dark:text-slate-400 mt-1">{description}</p> : null}
       </div>
       {actions}
     </div>

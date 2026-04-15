@@ -1,6 +1,8 @@
 export interface Note {
   id: string;
+  entityType: 'project' | 'epic';
   projectId: string;
+  epicId: string | null;
   title: string;
   content: string;
   createdAt?: string;

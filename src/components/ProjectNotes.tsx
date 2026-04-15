@@ -5,6 +5,10 @@ import type { Note } from '@/types/note';
 
 interface ProjectNotesProps {
   actionNoteId: string | null;
+  createLabel?: string;
+  emptyDescription?: string;
+  emptyTitle?: string;
+  heading?: string;
   loading: boolean;
   notes: Note[];
   onCreateNote: () => void;
@@ -28,6 +32,10 @@ const formatTimestamp = (value?: string): string => {
 
 function ProjectNotes({
   actionNoteId,
+  createLabel = 'Create note',
+  emptyDescription = 'Create the first note to capture decisions, references, or follow-ups for this project.',
+  emptyTitle = 'No notes yet',
+  heading = 'Notes',
   loading,
   notes,
   onCreateNote,
@@ -35,35 +43,45 @@ function ProjectNotes({
   onOpenNote
 }: ProjectNotesProps): JSX.Element {
   return (
-    <section className="notes-panel">
-      <div className="notes-panel-header">
+    <section className="bg-slate-50/90 dark:bg-slate-800/50 border border-zinc-200/80 dark:border-slate-700 rounded-[20px] grid gap-4 p-[18px]">
+      {/* Header */}
+      <div className="flex items-start gap-3 justify-between">
         <div>
-          <span className="project-list-kicker">Notes</span>
-          <h3>Project notes</h3>
+          <span className="text-blue-600 dark:text-blue-400 text-[0.72rem] tracking-[0.12em] uppercase font-semibold">Notes</span>
+          <h3 className="mt-1 mb-0 text-zinc-900 dark:text-slate-100">{heading}</h3>
         </div>
-        <button onClick={onCreateNote} type="button">
-          Create note
+        <button
+          className="inline-flex items-center gap-1.5 px-4 py-2 bg-zinc-900 dark:bg-blue-600 text-white rounded text-sm font-medium hover:bg-zinc-700 dark:hover:bg-blue-500 transition-colors shrink-0"
+          onClick={onCreateNote}
+          type="button"
+        >
+          {createLabel}
         </button>
       </div>
-      {loading ? <p className="muted-text">Loading notes...</p> : null}
+
+      {loading ? <p className="text-zinc-400 dark:text-slate-500 m-0 text-sm">Loading notes...</p> : null}
+
       {!loading && notes.length === 0 ? (
-        <EmptyState
-          compact
-          description="Create the first note to capture decisions, references, or follow-ups for this project."
-          icon={ScrollText}
-          title="No project notes yet"
-        />
+        <EmptyState compact description={emptyDescription} icon={ScrollText} title={emptyTitle} />
       ) : null}
+
       {notes.length ? (
-        <div className="note-list">
+        <div className="grid gap-3 max-h-[520px] overflow-auto pr-1">
           {notes.map((note) => (
-            <article className="note-list-card" key={note.id}>
-              <button className="note-list-main" onClick={() => onOpenNote(note)} type="button">
-                <strong>{note.title}</strong>
-                <span>Updated {formatTimestamp(note.updatedAt)}</span>
+            <article
+              key={note.id}
+              className="flex items-stretch bg-white/88 dark:bg-slate-800/80 border border-zinc-200/80 dark:border-slate-700 rounded-2xl gap-3 justify-between p-2.5"
+            >
+              <button
+                className="flex flex-col items-start flex-1 gap-1.5 bg-transparent hover:bg-teal-600/6 dark:hover:bg-teal-400/6 rounded-xl px-3 py-2.5 text-left transition-colors"
+                onClick={() => onOpenNote(note)}
+                type="button"
+              >
+                <strong className="text-zinc-900 dark:text-slate-100 text-[0.98rem]">{note.title}</strong>
+                <span className="text-zinc-500 dark:text-slate-400 text-[0.86rem]">Updated {formatTimestamp(note.updatedAt)}</span>
               </button>
               <button
-                className="danger-button ghost-button"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs bg-white dark:bg-slate-700 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 rounded hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 transition-colors self-center"
                 disabled={actionNoteId === note.id}
                 onClick={() => onDeleteNote(note)}
                 type="button"

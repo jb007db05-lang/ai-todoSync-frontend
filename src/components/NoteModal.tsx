@@ -17,6 +17,8 @@ interface NoteModalProps {
   titlePlaceholder?: string;
 }
 
+const toolbarBtnBase = 'inline-flex items-center justify-center h-7 px-2.5 rounded text-xs font-semibold bg-white dark:bg-slate-700 border border-zinc-200 dark:border-slate-600 text-zinc-700 dark:text-slate-200 hover:bg-zinc-50 dark:hover:bg-slate-600 transition-colors cursor-pointer';
+
 function NoteModal({
   allowAppend = false,
   allowDelete = false,
@@ -47,18 +49,15 @@ function NoteModal({
     setErrorMessage(null);
     setSubmitting(false);
 
-    // Ensure the editor reflects the initial or reset content
     if (editorRef.current) {
       editorRef.current.innerHTML = note?.content ?? '';
     }
   }, [note]);
 
   useEffect(() => {
-    // Only update the DOM if the change came from an external source (not typing)
     if (editorRef.current && !isInternalUpdateRef.current && editorRef.current.innerHTML !== content) {
       editorRef.current.innerHTML = content;
     }
-    // Reset the internal update flag
     isInternalUpdateRef.current = false;
   }, [content]);
 
@@ -78,11 +77,7 @@ function NoteModal({
     syncEditorContent();
   };
 
-  const handleToolbarCommand = (
-    event: MouseEvent<HTMLButtonElement>,
-    command: string,
-    value?: string
-  ): void => {
+  const handleToolbarCommand = (event: MouseEvent<HTMLButtonElement>, command: string, value?: string): void => {
     event.preventDefault();
     applyCommand(command, value);
   };
@@ -108,10 +103,15 @@ function NoteModal({
     setErrorMessage(null);
 
     try {
+      let finalContent = content;
+      if (editorRef.current) {
+        finalContent = editorRef.current.innerHTML;
+      }
+
       await onSave({
         appendContent: mode === 'append',
         title: showTitle ? title.trim() : undefined,
-        content
+        content: finalContent
       });
     } catch {
       setErrorMessage('Unable to save the note right now.');
@@ -122,108 +122,66 @@ function NoteModal({
 
   return (
     <Modal
-      backdropClassName="note-modal-backdrop"
-      bodyClassName="note-modal-body"
+      backdropClassName="items-center overflow-y-auto"
+      bodyClassName="!p-0"
       onClose={onClose}
-      panelClassName="note-modal-panel"
+      panelClassName="!max-w-[700px] w-full"
       title={modalTitle ?? (note ? 'Edit Note' : 'Create Note')}
     >
-      <form className="form note-form" onSubmit={(event) => void handleSubmit(event)}>
-        <p className="muted-text">Rich text note for {entityLabel}. Use the toolbar to format content before saving.</p>
+      <form className="grid gap-5 p-6" onSubmit={(event) => void handleSubmit(event)}>
+        <p className="text-zinc-500 dark:text-slate-400 m-0 text-sm">
+          Rich text note for {entityLabel}. Use the toolbar to format content before saving.
+        </p>
+
         {showTitle ? (
-          <div className="field-group">
-            <span className="field-label">Title</span>
+          <label className="grid gap-2 font-medium text-[0.95rem] text-zinc-900 dark:text-slate-100">
+            <span>Title</span>
             <input
+              className="w-full bg-white/82 dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded-md text-zinc-900 dark:text-slate-100 px-4 py-3.5 transition-all focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
               onChange={(event) => setTitle(event.target.value)}
               placeholder={titlePlaceholder}
               type="text"
               value={title}
             />
-          </div>
+          </label>
         ) : null}
-        <div className="field-group">
-          <span className="field-label">Content</span>
-          <div className="note-editor-shell">
-            <div className="note-editor-toolbar">
-              <div className="note-toolbar-cluster">
-                <button
-                  aria-label="Bold"
-                  className="secondary-button note-toolbar-button note-toolbar-icon"
-                  onMouseDown={(event) => handleToolbarCommand(event, 'bold')}
-                  title="Bold"
-                  type="button"
-                >
-                  B
-                </button>
-                <button
-                  aria-label="Italic"
-                  className="secondary-button note-toolbar-button note-toolbar-icon note-toolbar-italic"
-                  onMouseDown={(event) => handleToolbarCommand(event, 'italic')}
-                  title="Italic"
-                  type="button"
-                >
-                  I
-                </button>
-                <button
-                  aria-label="Underline"
-                  className="secondary-button note-toolbar-button note-toolbar-icon note-toolbar-underline"
-                  onMouseDown={(event) => handleToolbarCommand(event, 'underline')}
-                  title="Underline"
-                  type="button"
-                >
-                  U
-                </button>
+
+        {/* Editor */}
+        <div className="grid gap-2">
+          <span className="font-medium text-[0.95rem] text-zinc-900 dark:text-slate-100">Content</span>
+
+          <div className="bg-white dark:bg-slate-900 border border-zinc-200 dark:border-slate-700 rounded-xl overflow-hidden flex flex-col min-h-[420px]">
+            {/* Toolbar */}
+            <div className="flex flex-wrap items-center gap-2 px-3.5 py-3 bg-zinc-50 dark:bg-slate-800 border-b border-zinc-200 dark:border-slate-700">
+              {/* Format cluster */}
+              <div className="flex items-center gap-1">
+                <button aria-label="Bold" className={`${toolbarBtnBase} font-bold`} onMouseDown={(e) => handleToolbarCommand(e, 'bold')} title="Bold" type="button">B</button>
+                <button aria-label="Italic" className={`${toolbarBtnBase} italic`} onMouseDown={(e) => handleToolbarCommand(e, 'italic')} title="Italic" type="button">I</button>
+                <button aria-label="Underline" className={`${toolbarBtnBase} underline`} onMouseDown={(e) => handleToolbarCommand(e, 'underline')} title="Underline" type="button">U</button>
               </div>
-              <div className="note-toolbar-divider" />
-              <div className="note-toolbar-cluster">
-                <button
-                  aria-label="Extra small text"
-                  className={`secondary-button note-toolbar-button note-toolbar-size${fontSize === '2' ? ' note-toolbar-active' : ''}`}
-                  onMouseDown={(event) => handleFontSizeCommand(event, '2')}
-                  title="Extra small text"
-                  type="button"
-                >
-                  XS
-                </button>
-                <button
-                  aria-label="Small text"
-                  className={`secondary-button note-toolbar-button note-toolbar-size${fontSize === '3' ? ' note-toolbar-active' : ''}`}
-                  onMouseDown={(event) => handleFontSizeCommand(event, '3')}
-                  title="Small text"
-                  type="button"
-                >
-                  S
-                </button>
-                <button
-                  aria-label="Body text"
-                  className={`secondary-button note-toolbar-button note-toolbar-size${fontSize === '4' ? ' note-toolbar-active' : ''}`}
-                  onMouseDown={(event) => handleFontSizeCommand(event, '4')}
-                  title="Body text"
-                  type="button"
-                >
-                  M
-                </button>
-                <button
-                  aria-label="Large text"
-                  className={`secondary-button note-toolbar-button note-toolbar-size${fontSize === '5' ? ' note-toolbar-active' : ''}`}
-                  onMouseDown={(event) => handleFontSizeCommand(event, '5')}
-                  title="Large text"
-                  type="button"
-                >
-                  L
-                </button>
-                <button
-                  aria-label="Extra large text"
-                  className={`secondary-button note-toolbar-button note-toolbar-size${fontSize === '6' ? ' note-toolbar-active' : ''}`}
-                  onMouseDown={(event) => handleFontSizeCommand(event, '6')}
-                  title="Extra large text"
-                  type="button"
-                >
-                  XL
-                </button>
+
+              <div className="w-px h-5 bg-zinc-200 dark:bg-slate-600" />
+
+              {/* Size cluster */}
+              <div className="flex items-center gap-1">
+                {(['2', '3', '4', '5', '6'] as const).map((sz, idx) => {
+                  const labels = ['XS', 'S', 'M', 'L', 'XL'];
+                  return (
+                    <button
+                      key={sz}
+                      aria-label={`${labels[idx]} text`}
+                      className={`${toolbarBtnBase} ${fontSize === sz ? 'bg-zinc-900 dark:bg-blue-600 text-white dark:text-white border-zinc-900 dark:border-blue-600' : ''}`}
+                      onMouseDown={(e) => handleFontSizeCommand(e, sz)}
+                      title={`${labels[idx]} text`}
+                      type="button"
+                    >
+                      {labels[idx]}
+                    </button>
+                  );
+                })}
                 <input
                   aria-label="Text color"
-                  className="note-toolbar-color"
+                  className="note-toolbar-color w-7 h-7 rounded cursor-pointer border-none p-0"
                   onChange={(event) => {
                     const value = event.target.value;
                     setTextColor(value);
@@ -234,51 +192,27 @@ function NoteModal({
                   value={textColor}
                 />
               </div>
-              <div className="note-toolbar-divider" />
-              <div className="note-toolbar-cluster">
-                <button
-                  aria-label="Bulleted list"
-                  className="secondary-button note-toolbar-button note-toolbar-icon"
-                  onMouseDown={(event) => handleToolbarCommand(event, 'insertUnorderedList')}
-                  title="Bulleted list"
-                  type="button"
-                >
-                  •
-                </button>
-                <button
-                  aria-label="Numbered list"
-                  className="secondary-button note-toolbar-button note-toolbar-list"
-                  onMouseDown={(event) => handleToolbarCommand(event, 'insertOrderedList')}
-                  title="Numbered list"
-                  type="button"
-                >
-                  1.
-                </button>
+
+              <div className="w-px h-5 bg-zinc-200 dark:bg-slate-600" />
+
+              {/* Lists cluster */}
+              <div className="flex items-center gap-1">
+                <button aria-label="Bulleted list" className={toolbarBtnBase} onMouseDown={(e) => handleToolbarCommand(e, 'insertUnorderedList')} title="Bulleted list" type="button">•</button>
+                <button aria-label="Numbered list" className={toolbarBtnBase} onMouseDown={(e) => handleToolbarCommand(e, 'insertOrderedList')} title="Numbered list" type="button">1.</button>
               </div>
-              <div className="note-toolbar-divider" />
-              <div className="note-toolbar-cluster">
-                <button
-                  aria-label="Outdent"
-                  className="secondary-button note-toolbar-button note-toolbar-short"
-                  onMouseDown={(event) => handleToolbarCommand(event, 'outdent')}
-                  title="Outdent"
-                  type="button"
-                >
-                  ←
-                </button>
-                <button
-                  aria-label="Indent"
-                  className="secondary-button note-toolbar-button note-toolbar-short"
-                  onMouseDown={(event) => handleToolbarCommand(event, 'indent')}
-                  title="Indent"
-                  type="button"
-                >
-                  →
-                </button>
+
+              <div className="w-px h-5 bg-zinc-200 dark:bg-slate-600" />
+
+              {/* Indent cluster */}
+              <div className="flex items-center gap-1">
+                <button aria-label="Outdent" className={toolbarBtnBase} onMouseDown={(e) => handleToolbarCommand(e, 'outdent')} title="Outdent" type="button">←</button>
+                <button aria-label="Indent" className={toolbarBtnBase} onMouseDown={(e) => handleToolbarCommand(e, 'indent')} title="Indent" type="button">→</button>
               </div>
             </div>
+
+            {/* Editor surface */}
             <div
-              className="note-editor-surface"
+              className="note-editor-surface flex-1 p-4 text-zinc-800 dark:text-slate-200 text-[0.97rem] leading-relaxed min-h-[340px] overflow-auto"
               contentEditable
               onInput={syncEditorContent}
               ref={editorRef}
@@ -286,35 +220,49 @@ function NoteModal({
             />
           </div>
         </div>
-        <div className="note-form-actions">
-          <button className="secondary-button" onClick={onClose} type="button">
+
+        {/* Form actions */}
+        <div className="flex flex-wrap gap-3 justify-between">
+          <button
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded text-zinc-700 dark:text-slate-200 text-sm hover:bg-zinc-50 dark:hover:bg-slate-700 transition-colors"
+            onClick={onClose}
+            type="button"
+          >
             Cancel
           </button>
-          {note && allowDelete && onDelete ? (
+          <div className="flex gap-3">
+            {note && allowDelete && onDelete ? (
+              <button
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-slate-800 border border-red-200 dark:border-red-800 rounded text-red-600 dark:text-red-400 text-sm hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 transition-colors"
+                disabled={submitting}
+                onClick={() => void onDelete()}
+                type="button"
+              >
+                {deleteLabel}
+              </button>
+            ) : null}
+            {note && allowAppend ? (
+              <button
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded text-zinc-600 dark:text-slate-300 text-sm hover:bg-zinc-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
+                disabled={submitting}
+                onClick={(event) => void handleSubmit(event, 'append')}
+                type="button"
+              >
+                {submitting ? 'Appending...' : 'Append'}
+              </button>
+            ) : null}
             <button
-              className="danger-button"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-zinc-900 dark:bg-blue-600 text-white rounded text-sm font-medium hover:bg-zinc-700 dark:hover:bg-blue-500 disabled:opacity-50 transition-colors"
               disabled={submitting}
-              onClick={() => void onDelete()}
-              type="button"
+              onClick={(event) => void handleSubmit(event, 'replace')}
+              type="submit"
             >
-              {deleteLabel}
+              {submitting ? 'Saving...' : 'Save'}
             </button>
-          ) : null}
-          {note && allowAppend ? (
-            <button
-              className="secondary-button note-append-button"
-              disabled={submitting}
-              onClick={(event) => void handleSubmit(event, 'append')}
-              type="button"
-            >
-              {submitting ? 'Appending...' : 'Append'}
-            </button>
-          ) : null}
-          <button disabled={submitting} onClick={(event) => void handleSubmit(event, 'replace')} type="submit">
-            {submitting ? 'Saving...' : 'Save'}
-          </button>
+          </div>
         </div>
-        {errorMessage ? <p className="error-text">{errorMessage}</p> : null}
+
+        {errorMessage ? <p className="text-red-600 dark:text-red-400 m-0 text-[0.9rem]">{errorMessage}</p> : null}
       </form>
     </Modal>
   );

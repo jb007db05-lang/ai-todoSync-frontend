@@ -12,6 +12,7 @@ export const TASK_WORKFLOW_STATUS_OPTIONS: Array<{ value: TaskWorkflowStatus; la
 export interface Subtask {
   id: string;
   title: string;
+  description?: string;
   note?: string;
   status: TaskWorkflowStatus;
   completed: boolean;

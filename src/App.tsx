@@ -5,7 +5,6 @@ import ThemeProvider from '@/context/ThemeContext';
 import DashboardPage from '@/pages/DashboardPage';
 import LoginPage from '@/pages/LoginPage';
 import RegisterPage from '@/pages/RegisterPage';
-import SettingsPage from '@/pages/SettingsPage';
 import PrivateRoute from '@/routes/PrivateRoute';
 import PublicRoute from '@/routes/PublicRoute';
 
@@ -36,14 +35,6 @@ function App(): JSX.Element {
               element={
                 <PrivateRoute>
                   <DashboardPage />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/settings"
-              element={
-                <PrivateRoute>
-                  <SettingsPage />
                 </PrivateRoute>
               }
             />
