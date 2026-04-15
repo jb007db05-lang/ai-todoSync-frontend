@@ -14,6 +14,7 @@ import ManageDevicesModal from '@/components/ManageDevicesModal';
 import Modal from '@/components/Modal';
 import SectionCard from '@/components/SectionCard';
 import { useAuth } from '@/context/AuthContext';
+import { useConfirm } from '@/context/ConfirmationContext';
 import api from '@/services/api';
 
 import step1 from '@/assets/gptIntegration/step1.png';
@@ -1352,6 +1353,7 @@ function SettingsPanel(): JSX.Element {
     key: string;
     deviceName: string;
   } | null>(null);
+  const confirm = useConfirm();
   const canManagePrimarySecurity = session?.deviceType === 'primary';
 
   const loadDevices = async (): Promise<void> => {
@@ -1377,9 +1379,14 @@ function SettingsPanel(): JSX.Element {
   }, [canManagePrimarySecurity]);
 
   const handleRegenerateKey = async (): Promise<void> => {
-    if (!confirm('Are you sure you want to regenerate your sync API key? Any existing GPT integrations using this key will stop working immediately.')) {
-      return;
-    }
+    const isConfirmed = await confirm({
+      title: 'Regenerate Sync Key',
+      message: 'Are you sure you want to regenerate your sync API key? Any existing GPT integrations using this key will stop working immediately.',
+      confirmText: 'Regenerate Key',
+      type: 'danger'
+    });
+
+    if (!isConfirmed) return;
 
     setIsRegenerating(true);
     setSuccessMessage(null);
