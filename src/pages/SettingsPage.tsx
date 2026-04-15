@@ -8,10 +8,12 @@ import {
   Shield,
   Smartphone,
   Sparkles,
-  Trash2
+  Trash2,
+  Settings2
 } from 'lucide-react';
 
 import ActionGroup from '@/components/ActionGroup';
+import ManageDevicesModal from '@/components/ManageDevicesModal';
 import Modal from '@/components/Modal';
 import Navbar from '@/components/Navbar';
 import PageHeader from '@/components/PageHeader';
@@ -38,7 +40,7 @@ interface CompanionDevice {
   id: string;
   deviceName: string;
   deviceType: string;
-  status: 'active' | 'revoked';
+  status: 'active' | 'revoked' | 'pending';
   createdAt?: string;
   updatedAt?: string;
   revokedAt?: string | null;
@@ -798,11 +800,10 @@ function SettingsPage(): JSX.Element {
   const [devices, setDevices] = useState<CompanionDevice[]>([]);
   const [isLoadingDevices, setIsLoadingDevices] = useState<boolean>(false);
   const [devicesError, setDevicesError] = useState<string | null>(null);
+  const [isManageModalOpen, setIsManageModalOpen] = useState(false);
   const [isGeneratingCompanionKey, setIsGeneratingCompanionKey] = useState<boolean>(false);
   const [deviceName, setDeviceName] = useState<string>('');
   const [deviceType, setDeviceType] = useState<string>('mobile');
-  const [renameDrafts, setRenameDrafts] = useState<Record<string, { deviceName: string; deviceType: string }>>({});
-  const [activeDeviceActionId, setActiveDeviceActionId] = useState<string | null>(null);
   const [generatedCompanionKey, setGeneratedCompanionKey] = useState<{
     key: string;
     deviceName: string;
@@ -818,16 +819,6 @@ function SettingsPage(): JSX.Element {
       console.log('Fetched companion devices:', response.data);
       const nextDevices = response.data.data?.devices ?? [];
       setDevices(nextDevices);
-      setRenameDrafts(
-        nextDevices.reduce<Record<string, { deviceName: string; deviceType: string }>>((accumulator, current) => {
-          accumulator[current.id] = {
-            deviceName: current.deviceName,
-            deviceType: current.deviceType
-          };
-
-          return accumulator;
-        }, {})
-      );
     } catch {
       setDevicesError('Unable to load companion devices.');
     } finally {
@@ -898,59 +889,6 @@ function SettingsPage(): JSX.Element {
       setDevicesError('Unable to generate a companion device key.');
     } finally {
       setIsGeneratingCompanionKey(false);
-    }
-  };
-
-  const handleRenameDraftChange = (
-    deviceId: string,
-    field: 'deviceName' | 'deviceType',
-    value: string
-  ): void => {
-    setRenameDrafts((current) => ({
-      ...current,
-      [deviceId]: {
-        deviceName: current[deviceId]?.deviceName ?? '',
-        deviceType: current[deviceId]?.deviceType ?? '',
-        [field]: value
-      }
-    }));
-  };
-
-  const handleUpdateDevice = async (deviceId: string): Promise<void> => {
-    setActiveDeviceActionId(deviceId);
-    setDevicesError(null);
-
-    try {
-      const draft = renameDrafts[deviceId];
-      await api.patch(`/auth/devices/${deviceId}`, {
-        deviceName: draft.deviceName,
-        deviceType: draft.deviceType
-      });
-      await loadDevices();
-    } catch {
-      setDevicesError('Unable to update the companion device.');
-    } finally {
-      setActiveDeviceActionId(null);
-    }
-  };
-
-  const handleRevokeDevice = async (deviceId: string): Promise<void> => {
-    const confirmed = window.confirm('Do you want to revoke this companion device?');
-
-    if (!confirmed) {
-      return;
-    }
-
-    setActiveDeviceActionId(deviceId);
-    setDevicesError(null);
-
-    try {
-      await api.delete(`/auth/devices/${deviceId}`);
-      await loadDevices();
-    } catch {
-      setDevicesError('Unable to revoke the companion device.');
-    } finally {
-      setActiveDeviceActionId(null);
     }
   };
 
@@ -1078,74 +1016,62 @@ function SettingsPage(): JSX.Element {
                   </button>
                 </ActionGroup>
               </div>
-              <div className="settings-device-list">
-                <div className="settings-device-list-head">
-                  <strong>Registered companion devices</strong>
-                  <button className="secondary-button" onClick={() => void loadDevices()} type="button">
-                    Refresh
+              <div className="settings-device-summary-section">
+                <div className="settings-device-registry-card">
+                  <div className="settings-device-registry-icon">
+                    <Smartphone size={24} />
+                  </div>
+                  <div className="settings-device-registry-info">
+                    <strong>{devices.length} registered {devices.length === 1 ? 'device' : 'devices'}</strong>
+                    <span>{5 - devices.length} slots remaining</span>
+                  </div>
+                  <button className="secondary-button" onClick={() => setIsManageModalOpen(true)} type="button">
+                    <Settings2 size={16} />
+                    Manage registered devices
                   </button>
                 </div>
-                {isLoadingDevices ? <p className="muted-text">Loading companion devices...</p> : null}
-                {devicesError ? <p className="error-text">{devicesError}</p> : null}
-                {!isLoadingDevices && devices.length === 0 ? (
-                  <div className="settings-empty-state">
-                    <p>No companion devices are registered yet.</p>
-                  </div>
-                ) : null}
-                {devices.map((device) => {
-                  const draft = renameDrafts[device.id] ?? {
-                    deviceName: device.deviceName,
-                    deviceType: device.deviceType
-                  };
-                  const isWorking = activeDeviceActionId === device.id;
 
-                  return (
-                    <article className="settings-device-row" key={device.id}>
-                      <div className="settings-device-row-top">
-                        <div>
-                          <strong>{device.deviceName}</strong>
-                          <p className="muted-text">{device.deviceType}</p>
-                        </div>
-                        <span className="settings-device-status settings-device-status-active">Active</span>
-                      </div>
-                      <div className="settings-device-edit-grid">
-                        <input
-                          onChange={(event) => handleRenameDraftChange(device.id, 'deviceName', event.target.value)}
-                          value={draft.deviceName}
-                        />
-                        <select
-                          onChange={(event) => handleRenameDraftChange(device.id, 'deviceType', event.target.value)}
-                          value={draft.deviceType}
-                        >
-                          <option value="mobile">Mobile</option>
-                          <option value="tablet">Tablet</option>
-                          <option value="desktop">Desktop</option>
-                          <option value="assistant">Assistant</option>
-                        </select>
-                      </div>
-                      <ActionGroup>
-                        <button
-                          className="secondary-button"
-                          disabled={isWorking}
-                          onClick={() => void handleUpdateDevice(device.id)}
-                          type="button"
-                        >
-                          {isWorking ? 'Saving...' : 'Update device'}
-                        </button>
-                        <button
-                          className="danger-button"
-                          disabled={isWorking}
-                          onClick={() => void handleRevokeDevice(device.id)}
-                          type="button"
-                        >
-                          <Trash2 size={14} />
-                          Revoke
-                        </button>
-                      </ActionGroup>
-                    </article>
-                  );
-                })}
+                <div className="settings-device-form mt-6">
+                  <div className="field">
+                    <label htmlFor="device-name">New device name</label>
+                    <input
+                      id="device-name"
+                      onChange={(event) => setDeviceName(event.target.value)}
+                      placeholder="e.g. Work Laptop"
+                      value={deviceName}
+                    />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="device-type">Category</label>
+                    <select id="device-type" onChange={(event) => setDeviceType(event.target.value)} value={deviceType}>
+                      <option value="mobile">Mobile</option>
+                      <option value="tablet">Tablet</option>
+                      <option value="desktop">Desktop</option>
+                      <option value="assistant">Assistant</option>
+                    </select>
+                  </div>
+                  <ActionGroup>
+                    <button
+                      className="primary-button"
+                      disabled={isGeneratingCompanionKey || !deviceName.trim() || devices.length >= 5}
+                      onClick={() => void handleGenerateCompanionKey()}
+                      type="button"
+                    >
+                      <Shield size={14} />
+                      {isGeneratingCompanionKey ? 'Generating...' : 'Add companion device'}
+                    </button>
+                  </ActionGroup>
+                </div>
               </div>
+
+              {isManageModalOpen && (
+                <ManageDevicesModal
+                  onClose={() => setIsManageModalOpen(false)}
+                  onDevicesChanged={() => {
+                    void loadDevices();
+                  }}
+                />
+              )}
             </>
           ) : (
             <div className="settings-restricted-card">

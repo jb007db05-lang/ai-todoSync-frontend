@@ -7,9 +7,11 @@ import {
   Shield,
   Smartphone,
   Sparkles,
-  Trash2
+  Trash2,
+  Settings2
 } from 'lucide-react';
 
+import ManageDevicesModal from '@/components/ManageDevicesModal';
 import Modal from '@/components/Modal';
 import SectionCard from '@/components/SectionCard';
 import { useAuth } from '@/context/AuthContext';
@@ -33,7 +35,7 @@ interface CompanionDevice {
   id: string;
   deviceName: string;
   deviceType: string;
-  status: 'active' | 'revoked';
+  status: 'active' | 'revoked' | 'pending';
   createdAt?: string;
   updatedAt?: string;
   revokedAt?: string | null;
@@ -1345,11 +1347,10 @@ function SettingsPanel(): JSX.Element {
   const [devices, setDevices] = useState<CompanionDevice[]>([]);
   const [isLoadingDevices, setIsLoadingDevices] = useState<boolean>(false);
   const [devicesError, setDevicesError] = useState<string | null>(null);
+  const [isManageModalOpen, setIsManageModalOpen] = useState(false);
   const [isGeneratingCompanionKey, setIsGeneratingCompanionKey] = useState<boolean>(false);
   const [deviceName, setDeviceName] = useState<string>('');
   const [deviceType, setDeviceType] = useState<string>('mobile');
-  const [renameDrafts, setRenameDrafts] = useState<Record<string, { deviceName: string; deviceType: string }>>({});
-  const [activeDeviceActionId, setActiveDeviceActionId] = useState<string | null>(null);
   const [generatedCompanionKey, setGeneratedCompanionKey] = useState<{
     key: string;
     deviceName: string;
@@ -1432,66 +1433,14 @@ function SettingsPanel(): JSX.Element {
     }
   };
 
-  const handleUpdateDevice = async (deviceId: string): Promise<void> => {
-    const draft = renameDrafts[deviceId];
-    if (!draft || !draft.deviceName.trim()) return;
-
-    setActiveDeviceActionId(deviceId);
-    try {
-      await api.patch(`/auth/devices/${deviceId}`, {
-        deviceName: draft.deviceName.trim(),
-        deviceType: draft.deviceType
-      });
-      setRenameDrafts((current) => {
-        const next = { ...current };
-        delete next[deviceId];
-        return next;
-      });
-      void loadDevices();
-    } catch {
-      setErrorMessage('Unable to update device.');
-    } finally {
-      setActiveDeviceActionId(null);
-    }
-  };
-
-  const handleRevokeDevice = async (deviceId: string): Promise<void> => {
-    if (!confirm('Revoke this companion device immediately? It will be signed out and unable to reconnect without a new key.')) {
-      return;
-    }
-
-    setActiveDeviceActionId(deviceId);
-    try {
-      await api.delete(`/auth/devices/${deviceId}`);
-      void loadDevices();
-    } catch {
-      setErrorMessage('Unable to revoke device.');
-    } finally {
-      setActiveDeviceActionId(null);
-    }
-  };
-
   const handleCopy = async (text: string, index: number): Promise<void> => {
     try {
       await navigator.clipboard.writeText(text);
       setCopiedIndex(index);
-      setTimeout(() => setCopiedIndex(null), 2000);
+      setTimeout(() => setCopiedIndex(null), 1500);
     } catch {
       alert('Unable to copy to clipboard.');
     }
-  };
-
-  const handleRenameDraftChange = (deviceId: string, field: 'deviceName' | 'deviceType', value: string): void => {
-    setRenameDrafts((current) => ({
-      ...current,
-      [deviceId]: {
-        ...(current[deviceId] || {
-          deviceName: devices.find((d) => d.id === deviceId)?.deviceName || '',
-          deviceType: devices.find((d) => d.id === deviceId)?.deviceType || 'mobile'
-        }),
-        [field]: value
-      }
-    }));
   };
 
   const inputCls = 'w-full bg-white/82 dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded-md text-zinc-900 dark:text-slate-100 px-4 py-3.5 transition-all focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10';
@@ -1558,90 +1507,68 @@ function SettingsPanel(): JSX.Element {
 
           {canManagePrimarySecurity ? (
             <>
-              {/* Generate key form */}
-              <div className="bg-zinc-50 dark:bg-slate-800/50 border border-zinc-200 dark:border-slate-700 rounded-xl p-4 mb-4 grid gap-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <label className="grid gap-1.5 text-sm font-medium text-zinc-700 dark:text-slate-300">
-                    <span>Target Device Name</span>
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-zinc-200 dark:border-slate-700">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-white dark:bg-slate-800 shadow-sm text-zinc-400 dark:text-slate-500 border border-zinc-100 dark:border-slate-700">
+                      <Smartphone size={18} />
+                    </div>
+                    <div>
+                      <p className="text-[0.65rem] font-bold text-zinc-400 dark:text-slate-500 uppercase tracking-widest m-0 mb-0.5">Device Registry</p>
+                      <p className="text-sm font-semibold text-zinc-900 dark:text-slate-100 m-0">
+                        {devices.length} registered {devices.length === 1 ? 'device' : 'devices'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    className={ghostBtn}
+                    onClick={() => setIsManageModalOpen(true)}
+                    type="button"
+                  >
+                    <Settings2 size={14} />
+                    Manage devices
+                  </button>
+                </div>
+
+                <div className="flex flex-col gap-1.5 pt-2 border-t border-zinc-100 dark:border-slate-800/50">
+                  <p className="text-[0.65rem] font-bold text-zinc-400 dark:text-slate-500 uppercase tracking-widest mb-2">New Device Key</p>
+                  <div className="grid grid-cols-2 gap-3">
                     <input
-                      className={inputCls}
-                      disabled={isGeneratingCompanionKey}
-                      onChange={(e) => setDeviceName(e.target.value)}
-                      placeholder="My iPhone 15"
-                      type="text"
+                      className="bg-white/50 dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-sm text-zinc-900 dark:text-slate-100 transition-all focus:outline-none focus:border-blue-500"
+                      onChange={(event) => setDeviceName(event.target.value)}
+                      placeholder="e.g. Work Mobile"
                       value={deviceName}
                     />
-                  </label>
-                  <label className="grid gap-1.5 text-sm font-medium text-zinc-700 dark:text-slate-300">
-                    <span>Category</span>
                     <select
-                      className={inputCls}
-                      disabled={isGeneratingCompanionKey}
-                      onChange={(e) => setDeviceType(e.target.value)}
+                      className="bg-white/50 dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-sm text-zinc-900 dark:text-slate-100 transition-all focus:outline-none focus:border-blue-500"
+                      onChange={(event) => setDeviceType(event.target.value)}
                       value={deviceType}
                     >
                       <option value="mobile">Mobile</option>
                       <option value="tablet">Tablet</option>
                       <option value="desktop">Desktop</option>
-                      <option value="assistant">Voice Assistant</option>
-                    </select>
-                  </label>
+                      </select>
+                  </div>
+                  <button
+                    className="w-full mt-2 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-400 text-white rounded-lg text-sm font-semibold shadow-lg shadow-blue-500/20 transition-all disabled:opacity-50"
+                    disabled={isGeneratingCompanionKey || !deviceName.trim() || devices.length >= 5}
+                    onClick={() => void handleGenerateCompanionKey()}
+                    type="button"
+                  >
+                    <Shield size={16} />
+                    {isGeneratingCompanionKey ? 'Generating...' : 'Generate Device Key'}
+                  </button>
                 </div>
-                <button
-                  className={primaryBtn}
-                  disabled={isGeneratingCompanionKey || !deviceName.trim()}
-                  onClick={() => void handleGenerateCompanionKey()}
-                  type="button"
-                >
-                  Generate Device Key
-                </button>
               </div>
 
-              {/* Device list */}
-              <div className="grid gap-3">
-                {isLoadingDevices && <p className="text-zinc-400 dark:text-slate-500 m-0 text-sm">Loading secure sessions...</p>}
-                {devicesError && <p className="text-red-600 dark:text-red-400 m-0 text-sm">{devicesError}</p>}
-                {!isLoadingDevices && devices.length === 0 && (
-                  <p className="text-zinc-400 dark:text-slate-500 m-0 text-sm">No companion devices active.</p>
-                )}
-                {devices.map((device) => {
-                  const draft = renameDrafts[device.id] || { deviceName: device.deviceName, deviceType: device.deviceType };
-                  const isWorking = activeDeviceActionId === device.id;
-
-                  return (
-                    <article
-                      key={device.id}
-                      className="bg-white dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 rounded-xl p-4 grid gap-3"
-                    >
-                      <div className="grid grid-cols-2 gap-3">
-                        <input
-                          className={inputCls}
-                          onChange={(event) => handleRenameDraftChange(device.id, 'deviceName', event.target.value)}
-                          value={draft.deviceName}
-                        />
-                        <select
-                          className={inputCls}
-                          onChange={(event) => handleRenameDraftChange(device.id, 'deviceType', event.target.value)}
-                          value={draft.deviceType}
-                        >
-                          <option value="mobile">Mobile</option>
-                          <option value="tablet">Tablet</option>
-                          <option value="desktop">Desktop</option>
-                          <option value="assistant">Assistant</option>
-                        </select>
-                      </div>
-                      <div className="flex gap-2">
-                        <button className={ghostBtn} disabled={isWorking} onClick={() => void handleUpdateDevice(device.id)} type="button">
-                          {isWorking ? 'Saving...' : 'Update device'}
-                        </button>
-                        <button className={dangerBtn} disabled={isWorking} onClick={() => void handleRevokeDevice(device.id)} type="button">
-                          <Trash2 size={14} /> Revoke
-                        </button>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
+              {isManageModalOpen && (
+                <ManageDevicesModal
+                  onClose={() => setIsManageModalOpen(false)}
+                  onDevicesChanged={() => {
+                    void loadDevices();
+                  }}
+                />
+              )}
             </>
           ) : (
             <div className="bg-zinc-50 dark:bg-slate-800/50 border border-zinc-200 dark:border-slate-700 rounded-xl p-5 text-center">
@@ -1739,13 +1666,13 @@ function SettingsPanel(): JSX.Element {
         <Modal onClose={() => setGeneratedCompanionKey(null)} title="Companion Device Key">
           <div className="grid gap-4">
             <p className="text-zinc-500 dark:text-slate-400 m-0 text-sm">
-              Key for <strong className="text-zinc-800 dark:text-slate-200">{generatedCompanionKey.deviceName}</strong>. Copy it now; it won't be shown again.
+              Key for <strong className="text-zinc-800 dark:text-slate-200">{generatedCompanionKey?.deviceName}</strong>. Copy it now; it won't be shown again.
             </p>
             <code className="block bg-zinc-900 dark:bg-[#0d1117] text-zinc-100 text-[0.85rem] rounded-xl p-4 break-all">
-              {generatedCompanionKey.key}
+              {generatedCompanionKey?.key}
             </code>
             <div className="flex gap-3">
-              <button className={primaryBtn} onClick={() => void handleCopy(generatedCompanionKey.key, -2)} type="button">
+              <button className={primaryBtn} onClick={() => generatedCompanionKey?.key && void handleCopy(generatedCompanionKey.key, -2)} type="button">
                 {copiedIndex === -2 ? <Check size={14} /> : <Copy size={14} />}
                 Copy Key
               </button>

@@ -1,0 +1,228 @@
+import { useEffect, useState } from 'react';
+import { Smartphone, Tablet, Monitor, Info, Trash2, Save, RefreshCcw } from 'lucide-react';
+import api from '@/services/api';
+import Modal from './Modal';
+
+interface CompanionDevice {
+  id: string;
+  deviceName: string;
+  deviceType: string;
+  status: 'active' | 'revoked' | 'pending';
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+interface CompanionDevicesResponse {
+  message: string;
+  data: {
+    devices: CompanionDevice[];
+  };
+}
+
+interface ManageDevicesModalProps {
+  onClose: () => void;
+  onDevicesChanged?: (count: number) => void;
+}
+
+const deviceIconMap: Record<string, any> = {
+  mobile: Smartphone,
+  tablet: Tablet,
+  desktop: Monitor,
+  assistant: Info,
+};
+
+function ManageDevicesModal({ onClose, onDevicesChanged }: ManageDevicesModalProps): JSX.Element {
+  const [devices, setDevices] = useState<CompanionDevice[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [activeActionId, setActiveActionId] = useState<string | null>(null);
+  const [renameDrafts, setRenameDrafts] = useState<Record<string, { deviceName: string; deviceType: string }>>({});
+
+  const loadDevices = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await api.get<CompanionDevicesResponse>('/auth/devices');
+      const fetched = response.data.data?.devices ?? [];
+      setDevices(fetched);
+      onDevicesChanged?.(fetched.length);
+
+      // Initialize drafts
+      const drafts: Record<string, { deviceName: string; deviceType: string }> = {};
+      fetched.forEach(d => {
+        drafts[d.id] = { deviceName: d.deviceName, deviceType: d.deviceType };
+      });
+      setRenameDrafts(drafts);
+    } catch {
+      setError('Failed to load companion devices.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadDevices();
+  }, []);
+
+  const handleUpdate = async (deviceId: string) => {
+    const draft = renameDrafts[deviceId];
+    if (!draft || !draft.deviceName.trim()) return;
+
+    setActiveActionId(deviceId);
+    try {
+      await api.patch(`/auth/devices/${deviceId}`, {
+        deviceName: draft.deviceName.trim(),
+        deviceType: draft.deviceType
+      });
+      await loadDevices();
+    } catch {
+      setError('Failed to update device.');
+    } finally {
+      setActiveActionId(null);
+    }
+  };
+
+  const handleRevoke = async (deviceId: string) => {
+    if (!confirm('Revoke this companion device immediately? It will be signed out and unable to reconnect without a new key.')) {
+      return;
+    }
+
+    setActiveActionId(deviceId);
+    try {
+      await api.delete(`/auth/devices/${deviceId}`);
+      await loadDevices();
+    } catch {
+      setError('Failed to revoke device.');
+    } finally {
+      setActiveActionId(null);
+    }
+  };
+
+  const handleDraftChange = (deviceId: string, field: 'deviceName' | 'deviceType', value: string) => {
+    setRenameDrafts(prev => ({
+      ...prev,
+      [deviceId]: { ...prev[deviceId], [field]: value }
+    }));
+  };
+
+  const ghostBtn = 'inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded text-zinc-600 dark:text-slate-300 text-[0.75rem] hover:bg-zinc-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors';
+  const dangerBtn = 'inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-red-200 dark:border-red-800 rounded text-red-600 dark:text-red-400 text-[0.75rem] hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 transition-colors';
+
+  return (
+    <Modal onClose={onClose} title="Manage Companion Devices" panelClassName="max-w-[600px]">
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-zinc-500 dark:text-slate-400 m-0">
+            You can rename or revoke access for your secondary devices below.
+          </p>
+          <button 
+            onClick={() => void loadDevices()} 
+            disabled={loading}
+            className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-slate-800 text-zinc-400 dark:text-slate-500 transition-colors"
+          >
+            <RefreshCcw size={16} className={loading ? 'animate-spin' : ''} />
+          </button>
+        </div>
+
+        {error && <p className="text-xs text-red-500 bg-red-50 dark:bg-red-900/20 p-2 rounded border border-red-200 dark:border-red-800 m-0">{error}</p>}
+
+        <div className="flex flex-col gap-3 min-h-[100px]">
+          {loading && devices.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center p-8 text-zinc-400 dark:text-slate-500 italic text-sm">
+              Syncing device list...
+            </div>
+          ) : devices.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center p-8 text-zinc-400 dark:text-slate-500 italic text-sm">
+              No registered companion devices.
+            </div>
+          ) : (
+            devices.map(device => {
+              const draft = renameDrafts[device.id] ?? { deviceName: device.deviceName, deviceType: device.deviceType };
+              const Icon = deviceIconMap[device.deviceType] || Info;
+              const isWorking = activeActionId === device.id;
+
+              return (
+                <div key={device.id} className="p-4 rounded-xl border border-zinc-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 flex flex-col gap-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-zinc-100 dark:bg-slate-800 text-zinc-500 dark:text-slate-400">
+                        <Icon size={18} />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-zinc-900 dark:text-slate-100 text-sm">
+                            {device.deviceName}
+                          </span>
+                          {device.status === 'pending' && (
+                            <span className="text-[10px] font-bold bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded border border-amber-200/50 dark:border-amber-800/50 uppercase">
+                              Pending
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[0.7rem] text-zinc-400 dark:text-slate-500 m-0 uppercase tracking-wider font-bold">
+                          {device.deviceType}
+                        </p>
+                      </div>
+                    </div>
+                    <span className={`text-[0.65rem] font-bold px-2 py-0.5 rounded uppercase tracking-wide border ${
+                      device.status === 'pending'
+                        ? 'bg-amber-100/50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-500 border-amber-200/50 dark:border-amber-800/50'
+                        : 'bg-green-100/50 dark:bg-green-900/20 text-green-600 dark:text-green-500 border-green-200/50 dark:border-green-800/50'
+                    }`}>
+                      {device.status}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[0.65rem] font-bold text-zinc-400 dark:text-slate-500 uppercase tracking-widest pl-1">Name</label>
+                      <input 
+                        className="bg-zinc-50 dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-zinc-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        value={draft.deviceName}
+                        onChange={e => handleDraftChange(device.id, 'deviceName', e.target.value)}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[0.65rem] font-bold text-zinc-400 dark:text-slate-500 uppercase tracking-widest pl-1">Category</label>
+                      <select 
+                        className="bg-zinc-50 dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-zinc-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        value={draft.deviceType}
+                        onChange={e => handleDraftChange(device.id, 'deviceType', e.target.value)}
+                      >
+                        <option value="mobile">Mobile</option>
+                        <option value="tablet">Tablet</option>
+                        <option value="desktop">Desktop</option>
+                        <option value="assistant">Assistant</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-100 dark:border-slate-800/50 text-[0.75rem]">
+                    <button 
+                      className={ghostBtn}
+                      disabled={isWorking || (draft.deviceName === device.deviceName && draft.deviceType === device.deviceType)}
+                      onClick={() => void handleUpdate(device.id)}
+                    >
+                      <Save size={14} />
+                      {isWorking ? 'Saving...' : 'Save Changes'}
+                    </button>
+                    <button 
+                      className={dangerBtn}
+                      disabled={isWorking}
+                      onClick={() => void handleRevoke(device.id)}
+                    >
+                      <Trash2 size={14} />
+                      {isWorking ? 'Revoking...' : 'Revoke Device'}
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+export default ManageDevicesModal;
