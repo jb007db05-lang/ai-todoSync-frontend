@@ -1475,10 +1475,10 @@ function SettingsPanel(): JSX.Element {
 
   return (
     <div className="grid gap-8 p-1">
-      <div className="grid gap-1 mb-2">
+      {/* <div className="grid gap-1 mb-2">
         <h2 className="text-[1.5rem] font-bold text-olive-950 dark:text-white m-0">Settings</h2>
         <p className="text-zinc-500 dark:text-slate-400 m-0">Manage your profile, account security, and integrations.</p>
-      </div>
+      </div> */}
 
       {/* Profile Section */}
       <SectionCard>
