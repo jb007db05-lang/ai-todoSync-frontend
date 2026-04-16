@@ -15,6 +15,7 @@ import ProjectTeamPanel from '@/components/ProjectTeamPanel';
 import SettingsPanel from '@/components/SettingsPanel';
 import SubtaskForm from '@/components/SubtaskForm';
 import ChatPanel from '@/components/ChatPanel';
+import ActivityHistoryPanel from '@/components/ActivityHistoryPanel';
 import { useChat } from '@/context/ChatContext';
 import NotificationBox, { Notification } from '@/components/NotificationBox';
 import TaskList from '@/components/TaskList';
@@ -39,7 +40,8 @@ import {
   Plus,
   Settings,
   Users,
-  Trash2
+  Trash2,
+  History
 } from 'lucide-react';
 import { createEpic, deleteEpic, getEpics, reorderEpics, updateEpic } from '@/services/epics';
 import { createEpicNote, createNote, deleteNote, getEpicNotes, getNote, getProjectNotes, updateNote } from '@/services/notes';
@@ -222,6 +224,7 @@ function DashboardPage(): JSX.Element {
   const [activeEpicForNotes, setActiveEpicForNotes] = useState<Epic | null>(null);
   const [activeNoteEditor, setActiveNoteEditor] = useState<ActiveNoteEditor | null>(null);
   const [isChatPanelOpen, setIsChatPanelOpen] = useState(false);
+  const [isActivityHistoryOpen, setIsActivityHistoryOpen] = useState(false);
   const { lastMessage, clearLastMessage, setActiveProject } = useChat();
 
 
@@ -1330,7 +1333,8 @@ function DashboardPage(): JSX.Element {
     setIsNotificationsOpen(false);
   };
   const activeProjectMembers = activeProject ? (projectMembersByProject[activeProject.id] ?? []) : [];
-  const canManageActiveProject = activeProject?.currentUserRole === 'ADMIN';
+  const canManageActiveProject = !!activeProject;
+  const canManageTeam = activeProject?.currentUserRole === 'ADMIN';
   const visibleTasks = useMemo(() => {
     let filtered = tasks;
     
@@ -1773,6 +1777,14 @@ function DashboardPage(): JSX.Element {
                       <Users size={16} />
                       Team
                     </button>
+                    <button
+                      className="flex items-center gap-2 px-3.5 py-2.5 bg-white dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded-lg text-sm font-medium text-zinc-600 dark:text-slate-300 hover:bg-zinc-50 dark:hover:bg-slate-700 shadow-sm transition-colors"
+                      onClick={() => setIsActivityHistoryOpen(true)}
+                      type="button"
+                    >
+                      <History size={16} />
+                      History
+                    </button>
                   </div>
                 </div>
               </div>
@@ -2156,7 +2168,7 @@ function DashboardPage(): JSX.Element {
           title={`Team for ${activeProject.name}`}
         >
           <ProjectTeamPanel
-            canManageTeam={canManageActiveProject}
+            canManageTeam={canManageTeam}
             currentUserId={user?.id ?? null}
             isMutating={teamMutationLoading}
             members={activeProjectMembers}
@@ -2165,6 +2177,19 @@ function DashboardPage(): JSX.Element {
             onSearchChange={(value) => { void handleProjectMemberSearch(value); }}
             searchResults={memberSearchResults}
             searchTerm={memberSearchTerm}
+          />
+        </Modal>
+      ) : null}
+      {isActivityHistoryOpen && activeProject ? (
+        <Modal
+          bodyClassName="!p-0"
+          onClose={() => setIsActivityHistoryOpen(false)}
+          panelClassName="!max-w-[720px]"
+          title={`Activity History — ${activeProject.name}`}
+        >
+          <ActivityHistoryPanel
+            projectId={activeProject.id}
+            projectName={activeProject.name}
           />
         </Modal>
       ) : null}
