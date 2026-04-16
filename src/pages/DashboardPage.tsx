@@ -1673,7 +1673,7 @@ function DashboardPage(): JSX.Element {
                   {user?.email}
                 </span>
               </div>
-              <ChevronDown className="w-4 h-4 text-zinc-400" />
+              {/* <ChevronDown className="w-4 h-4 text-zinc-400" /> */}
             </div>
           </div>
         </header>
