@@ -32,7 +32,19 @@ export interface Task {
   source?: TaskSource;
   projectId: string | null;
   epicId: string | null;
+  assignedToUserId: string | null;
+  assignedToUser: {
+    id: string;
+    email: string;
+    name: string | null;
+  } | null;
   subtasks: Subtask[];
+  permissions: {
+    canEdit: boolean;
+    canDelete: boolean;
+    canAssign: boolean;
+    canUpdate: boolean;
+  };
 }
 
 export interface TaskSummary {

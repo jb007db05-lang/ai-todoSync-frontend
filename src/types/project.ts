@@ -3,8 +3,30 @@ export interface Project {
   name: string;
   description?: string;
   userId: string;
+  currentUserRole: 'ADMIN' | 'MEMBER';
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface ProjectMemberUser {
+  id: string;
+  email: string;
+  name: string | null;
+}
+
+export interface ProjectMember {
+  id: string;
+  projectId: string;
+  userId: string;
+  role: 'ADMIN' | 'MEMBER';
+  createdAt?: string;
+  user: ProjectMemberUser;
+}
+
+export interface UserSearchResult {
+  id: string;
+  email: string;
+  name: string | null;
 }
 
 export interface CreateProjectInput {

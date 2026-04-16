@@ -38,11 +38,11 @@ function EpicManager({
       <div className="flex items-flex-start justify-between gap-4">
         <div>
           <span className="text-blue-600 dark:text-blue-400 font-['Space_Grotesk'] text-[0.72rem] tracking-[0.12em] uppercase">Epic layer</span>
-          <h3 className="my-1 text-zinc-900 dark:text-slate-100">{projectName} epics</h3>
+          <h3 className="my-1 text-olive-950 dark:text-slate-100">{projectName} epics</h3>
           <p className="text-zinc-500 dark:text-slate-400 m-0 text-sm">Create, reorder, rename, or remove epics without affecting the underlying tasks.</p>
         </div>
         <button
-          className="inline-flex items-center gap-1.5 px-4 py-2 bg-zinc-900 dark:bg-blue-600 text-white rounded text-sm font-medium hover:bg-zinc-700 dark:hover:bg-blue-500 transition-colors shrink-0"
+          className="inline-flex items-center gap-1.5 px-4 py-2 bg-olive-900 dark:bg-blue-600 text-white rounded text-sm font-medium hover:bg-olive-800 dark:hover:bg-blue-500 transition-colors shrink-0"
           onClick={onCreateEpic}
           type="button"
         >
@@ -61,14 +61,14 @@ function EpicManager({
           {epics.map((epic, index) => (
             <div
               key={epic.id}
-              className="flex items-stretch bg-gradient-to-b from-white/98 to-slate-50/98 dark:from-slate-800/84 dark:to-slate-800/84 border border-zinc-200/60 dark:border-slate-700 rounded-2xl grid gap-3 grid-cols-[1fr_auto] p-[18px]"
+              className="flex items-stretch bg-gradient-to-b from-white/98 to-slate-50/98 dark:from-slate-800/84 dark:to-slate-800/84 border border-zinc-200/60 dark:border-slate-700 rounded-lg grid gap-3 grid-cols-[1fr_auto] p-[18px]"
             >
               {/* Copy */}
               <div className="grid gap-1.5">
                 <span className="text-blue-600 dark:text-blue-400 font-['Space_Grotesk'] text-[0.72rem] tracking-[0.12em] uppercase">
                   Epic #{index + 1}
                 </span>
-                <strong className="text-zinc-900 dark:text-slate-100 text-[1.05rem]">{epic.name}</strong>
+                <strong className="text-olive-950 dark:text-slate-100 text-[1.05rem]">{epic.name}</strong>
                 <span className="text-zinc-500 dark:text-slate-400 text-sm">
                   {epic.description?.trim() ? epic.description : 'No description provided.'}
                 </span>

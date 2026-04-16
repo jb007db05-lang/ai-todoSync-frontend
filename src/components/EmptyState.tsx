@@ -28,7 +28,7 @@ function EmptyState({ compact = false, description, icon: Icon, title }: EmptySt
         <Icon size={compact ? 18 : 22} />
       </div>
       <div className="grid gap-1.5 max-w-[520px]">
-        <strong className="text-zinc-800 dark:text-slate-200 text-[0.98rem] tracking-tight">{title}</strong>
+        <strong className="text-olive-900 dark:text-slate-200 text-[0.98rem] tracking-tight">{title}</strong>
         <p className="m-0 text-sm">{description}</p>
       </div>
     </div>

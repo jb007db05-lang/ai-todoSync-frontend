@@ -55,9 +55,14 @@ const updateTask = async (taskId: string, payload: UpdateTaskInput): Promise<Tas
   return response.data.data.task;
 };
 
+const assignTask = async (taskId: string, userId: string | null): Promise<Task> => {
+  const response = await api.patch<TaskResponse>(`/tasks/${taskId}/assign`, { userId });
+  return response.data.data.task;
+};
+
 const deleteTask = async (taskId: string): Promise<string> => {
   const response = await api.delete<DeleteTaskResponse>(`/tasks/${taskId}`);
   return response.data.data.taskId;
 };
 
-export { createTask, deleteTask, getTaskSummary, getTasks, updateTask };
+export { assignTask, createTask, deleteTask, getTaskSummary, getTasks, updateTask };

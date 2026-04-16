@@ -35,7 +35,7 @@ function DaySummary({ controls = null, date, error = null, loading = false, summ
       {/* Header */}
       <div className="flex items-start justify-between gap-1.5">
         <div className="grid gap-1.5">
-          <h2 className="text-xl font-semibold text-zinc-900 dark:text-slate-100 m-0">Daily summary</h2>
+          <h2 className="text-xl font-semibold text-olive-950 dark:text-slate-100 m-0">Daily summary</h2>
           <p className="text-zinc-500 dark:text-slate-400 m-0 text-sm">{date}</p>
         </div>
         {controls ? <div className="shrink-0 max-w-full">{controls}</div> : null}
@@ -50,7 +50,7 @@ function DaySummary({ controls = null, date, error = null, loading = false, summ
           {metrics.map(({ label, value }, i) => (
             <article
               key={label}
-              className="bg-white/46 dark:bg-slate-800/72 border border-zinc-200 dark:border-slate-700 rounded-2xl p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:bg-white/68 dark:hover:bg-slate-800/82"
+              className="bg-white/46 dark:bg-slate-800/72 border border-zinc-200 dark:border-slate-700 rounded-lg p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:bg-white/68 dark:hover:bg-slate-800/82"
             >
               <span className="text-zinc-500 dark:text-slate-400 text-[0.9rem] uppercase tracking-[0.05em] font-semibold">
                 {label}

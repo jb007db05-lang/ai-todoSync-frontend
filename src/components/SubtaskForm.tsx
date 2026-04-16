@@ -21,7 +21,7 @@ const createDraft = (): SubtaskDraft => ({
   status: 'pending'
 });
 
-const inputCls = 'w-full bg-white/82 dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded-md text-zinc-900 dark:text-slate-100 px-4 py-3.5 transition-all duration-200 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10';
+const inputCls = 'w-full bg-white/82 dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded-md text-olive-950 dark:text-slate-100 px-4 py-3.5 transition-all duration-200 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10';
 
 function SubtaskForm({ onSubmit }: SubtaskFormProps): JSX.Element {
   const [drafts, setDrafts] = useState<SubtaskDraft[]>([createDraft()]);
@@ -84,11 +84,11 @@ function SubtaskForm({ onSubmit }: SubtaskFormProps): JSX.Element {
         {drafts.map((draft, index) => (
           <div
             key={draft.id}
-            className="bg-slate-50/92 dark:bg-slate-800/92 border border-zinc-200/60 dark:border-slate-700 rounded-2xl grid gap-3.5 p-4"
+            className="bg-slate-50/92 dark:bg-slate-800/92 border border-zinc-200/60 dark:border-slate-700 rounded-lg grid gap-3.5 p-4"
           >
             {/* Head */}
             <div className="flex items-center justify-between gap-3">
-              <strong className="text-zinc-800 dark:text-slate-200 text-sm">Sub-task {index + 1}</strong>
+              <strong className="text-olive-900 dark:text-slate-200 text-sm">Sub-task {index + 1}</strong>
               <button
                 className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs bg-white dark:bg-slate-700 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 rounded hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 transition-colors"
                 disabled={submitting || drafts.length === 1}
@@ -150,7 +150,7 @@ function SubtaskForm({ onSubmit }: SubtaskFormProps): JSX.Element {
           <Plus size={16} /> Add another sub-task
         </button>
         <button
-          className="px-4 py-2 bg-zinc-900 dark:bg-blue-600 text-white rounded text-sm font-medium hover:bg-zinc-700 dark:hover:bg-blue-500 disabled:opacity-50 transition-colors"
+          className="px-4 py-2 bg-olive-900 dark:bg-blue-600 text-white rounded text-sm font-medium hover:bg-olive-800 dark:hover:bg-blue-500 disabled:opacity-50 transition-colors"
           disabled={submitting}
           type="submit"
         >

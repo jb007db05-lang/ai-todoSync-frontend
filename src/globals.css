@@ -16,6 +16,57 @@
 /* Dark-mode selector strategy — used by dark: variant */
 @variant dark (&:is(.dark *));
 
+@theme {
+  --color-olive-50: #f4f6f4;
+  --color-olive-100: #e5ebe5;
+  --color-olive-200: #cad6ca;
+  --color-olive-300: #a4b7a4;
+  --color-olive-400: #7b937c;
+  --color-olive-500: #5d755e;
+  --color-olive-600: #465a47;
+  --color-olive-700: #39483a;
+  --color-olive-800: #2f3a30;
+  --color-olive-900: #262f27;
+  --color-olive-950: #141a15;
+
+  /* Universally override primary UI colors to use the new olive scale */
+  --color-blue-50: var(--color-olive-50);
+  --color-blue-100: var(--color-olive-100);
+  --color-blue-200: var(--color-olive-200);
+  --color-blue-300: var(--color-olive-300);
+  --color-blue-400: var(--color-olive-400);
+  --color-blue-500: var(--color-olive-500);
+  --color-blue-600: var(--color-olive-600);
+  --color-blue-700: var(--color-olive-700);
+  --color-blue-800: var(--color-olive-800);
+  --color-blue-900: var(--color-olive-900);
+  --color-blue-950: var(--color-olive-950);
+
+  --color-indigo-50: var(--color-olive-50);
+  --color-indigo-100: var(--color-olive-100);
+  --color-indigo-200: var(--color-olive-200);
+  --color-indigo-300: var(--color-olive-300);
+  --color-indigo-400: var(--color-olive-400);
+  --color-indigo-500: var(--color-olive-500);
+  --color-indigo-600: var(--color-olive-600);
+  --color-indigo-700: var(--color-olive-700);
+  --color-indigo-800: var(--color-olive-800);
+  --color-indigo-900: var(--color-olive-900);
+  --color-indigo-950: var(--color-olive-950);
+
+  --color-violet-50: var(--color-olive-50);
+  --color-violet-100: var(--color-olive-100);
+  --color-violet-200: var(--color-olive-200);
+  --color-violet-300: var(--color-olive-300);
+  --color-violet-400: var(--color-olive-400);
+  --color-violet-500: var(--color-olive-500);
+  --color-violet-600: var(--color-olive-600);
+  --color-violet-700: var(--color-olive-700);
+  --color-violet-800: var(--color-olive-800);
+  --color-violet-900: var(--color-olive-900);
+  --color-violet-950: var(--color-olive-950);
+}
+
 /* ---- Global box-sizing & font inheritance ---- */
 @layer base {
   *,
@@ -28,21 +79,11 @@
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     line-height: 1.6;
     min-height: 100vh;
-    background-attachment: fixed;
-    /* light-mode background */
-    background-image:
-      radial-gradient(circle at 8% 10%, rgba(21, 94, 239, 0.12), transparent 24%),
-      radial-gradient(circle at 88% 14%, rgba(124, 58, 237, 0.08), transparent 20%),
-      radial-gradient(circle at 50% 100%, rgba(15, 118, 110, 0.06), transparent 24%),
-      linear-gradient(180deg, #f8fafc 0%, #f3f5f8 48%, #edf1f5 100%);
+    background-color: #f9fafb;
   }
 
   .dark body {
-    background-image:
-      radial-gradient(circle at 12% 14%, rgba(59, 130, 246, 0.18), transparent 24%),
-      radial-gradient(circle at 88% 16%, rgba(167, 139, 250, 0.1), transparent 18%),
-      radial-gradient(circle at 50% 100%, rgba(45, 212, 191, 0.08), transparent 26%),
-      linear-gradient(180deg, #09111f 0%, #0b1220 46%, #111827 100%);
+    background-color: #0f172a;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -136,8 +177,8 @@
 
 /* ---- Custom checkbox checkmark (pure CSS ::after) ---- */
 input[type="checkbox"].custom-check:checked {
-  background-color: #0969da;
-  border-color: #0969da;
+  background-color: var(--color-olive-600, #465a47);
+  border-color: var(--color-olive-600, #465a47);
 }
 
 input[type="checkbox"].custom-check:checked::after {

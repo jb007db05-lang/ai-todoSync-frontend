@@ -1359,9 +1359,9 @@ function SettingsPanel(): JSX.Element {
   const loadDevices = async (): Promise<void> => {
     try {
       const response = await api.get<CompanionDevicesResponse>('/auth/devices');
-      console.log('[SettingsPanel] Raw API Response:', JSON.stringify(response.data, null, 2));
+      console.info('[SettingsPanel] Raw API Response:', JSON.stringify(response.data, null, 2));
       const fetched = response.data.data?.devices ?? [];
-      console.log('[SettingsPanel] Extracted Devices Array:', fetched);
+      console.info('[SettingsPanel] Extracted Devices Array:', fetched);
       setDevices(fetched);
     } catch (err) {
       console.error('[SettingsPanel] Error loading devices:', err);
@@ -1369,7 +1369,7 @@ function SettingsPanel(): JSX.Element {
   };
 
   useEffect(() => {
-    console.log('[SettingsPanel] Current Devices State:', devices);
+    console.info('[SettingsPanel] Current Devices State:', devices);
   }, [devices]);
 
   useEffect(() => {
@@ -1394,7 +1394,7 @@ function SettingsPanel(): JSX.Element {
 
     try {
       const response = await api.patch<RegenerateSyncKeyResponse>('/auth/regenerate-sync-key');
-      console.log('Sync key regenerated:', response.data);
+      console.info('Sync key regenerated:', response.data);
       await refreshUser();
       setSuccessMessage('Sync API key regenerated successfully.');
     } catch {
@@ -1443,7 +1443,7 @@ function SettingsPanel(): JSX.Element {
   };
 
   const ghostBtn = 'inline-flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded text-zinc-600 dark:text-slate-300 text-sm hover:bg-zinc-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors';
-  const primaryBtn = 'inline-flex items-center gap-1.5 px-4 py-2 bg-zinc-900 dark:bg-blue-600 text-white rounded text-sm font-medium hover:bg-zinc-700 dark:hover:bg-blue-500 disabled:opacity-50 transition-colors';
+  const primaryBtn = 'inline-flex items-center gap-1.5 px-4 py-2 bg-olive-900 dark:bg-blue-600 text-white rounded text-sm font-medium hover:bg-olive-800 dark:hover:bg-blue-500 disabled:opacity-50 transition-colors';
 
   return (
     <div className="grid gap-8 p-1">
@@ -1454,7 +1454,7 @@ function SettingsPanel(): JSX.Element {
           <div className="flex items-start justify-between gap-4 mb-6">
             <div>
               <span className="text-blue-600 dark:text-blue-400 text-[0.72rem] tracking-[0.12em] uppercase font-semibold">Security</span>
-              <h2 className="mt-1 mb-1 text-zinc-900 dark:text-slate-100">Sync API Key</h2>
+              <h2 className="mt-1 mb-1 text-olive-950 dark:text-slate-100">Sync API Key</h2>
               <p className="text-zinc-500 dark:text-slate-400 m-0 text-sm">Your unique key for connecting external task tools.</p>
             </div>
             <span className="flex items-center justify-center w-10 h-10 bg-blue-600/8 dark:bg-blue-400/12 rounded-xl text-blue-600 dark:text-blue-400 shrink-0">
@@ -1494,7 +1494,7 @@ function SettingsPanel(): JSX.Element {
           <div className="flex items-start justify-between gap-4 mb-6">
             <div>
               <span className="text-blue-600 dark:text-blue-400 text-[0.72rem] tracking-[0.12em] uppercase font-semibold">Devices</span>
-              <h2 className="mt-1 mb-1 text-zinc-900 dark:text-slate-100">Companion Access</h2>
+              <h2 className="mt-1 mb-1 text-olive-950 dark:text-slate-100">Companion Access</h2>
               <p className="text-zinc-500 dark:text-slate-400 m-0 text-sm">Manage secure keys for mobile, desktop, or voice apps.</p>
             </div>
             <span className="flex items-center justify-center w-10 h-10 bg-blue-600/8 dark:bg-blue-400/12 rounded-xl text-blue-600 dark:text-blue-400 shrink-0">
@@ -1512,7 +1512,7 @@ function SettingsPanel(): JSX.Element {
                     </div>
                     <div>
                       <p className="text-[0.65rem] font-bold text-zinc-400 dark:text-slate-500 uppercase tracking-widest m-0 mb-0.5">Device Registry</p>
-                      <p className="text-sm font-semibold text-zinc-900 dark:text-slate-100 m-0">
+                      <p className="text-sm font-semibold text-olive-950 dark:text-slate-100 m-0">
                         {devices.length} registered {devices.length === 1 ? 'device' : 'devices'}
                       </p>
                     </div>
@@ -1531,13 +1531,13 @@ function SettingsPanel(): JSX.Element {
                   <p className="text-[0.65rem] font-bold text-zinc-400 dark:text-slate-500 uppercase tracking-widest mb-2">New Device Key</p>
                   <div className="grid grid-cols-2 gap-3">
                     <input
-                      className="bg-white/50 dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-sm text-zinc-900 dark:text-slate-100 transition-all focus:outline-none focus:border-blue-500"
+                      className="bg-white/50 dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-sm text-olive-950 dark:text-slate-100 transition-all focus:outline-none focus:border-blue-500"
                       onChange={(event) => setDeviceName(event.target.value)}
                       placeholder="e.g. Work Mobile"
                       value={deviceName}
                     />
                     <select
-                      className="bg-white/50 dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-sm text-zinc-900 dark:text-slate-100 transition-all focus:outline-none focus:border-blue-500"
+                      className="bg-white/50 dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-sm text-olive-950 dark:text-slate-100 transition-all focus:outline-none focus:border-blue-500"
                       onChange={(event) => setDeviceType(event.target.value)}
                       value={deviceType}
                     >
@@ -1581,7 +1581,7 @@ function SettingsPanel(): JSX.Element {
         <div className="flex items-start justify-between gap-4 mb-6">
           <div>
             <span className="text-blue-600 dark:text-blue-400 text-[0.72rem] tracking-[0.12em] uppercase font-semibold">A.I.</span>
-            <h2 className="mt-1 mb-1 text-zinc-900 dark:text-slate-100">ChatGPT Integration</h2>
+            <h2 className="mt-1 mb-1 text-olive-950 dark:text-slate-100">ChatGPT Integration</h2>
             <p className="text-zinc-500 dark:text-slate-400 m-0 text-sm">Configure a custom GPT to manage your tasks via voice or chat.</p>
           </div>
           <span className="flex items-center justify-center w-10 h-10 bg-blue-600/8 dark:bg-blue-400/12 rounded-xl text-blue-600 dark:text-blue-400 shrink-0">
@@ -1612,7 +1612,7 @@ function SettingsPanel(): JSX.Element {
                   type="button"
                 >
                   <span className="grid gap-0.5">
-                    <strong className="text-zinc-900 dark:text-slate-100 text-[0.95rem]">{step.title}</strong>
+                    <strong className="text-olive-950 dark:text-slate-100 text-[0.95rem]">{step.title}</strong>
                     <span className="text-zinc-500 dark:text-slate-400 text-sm">{step.summary}</span>
                   </span>
                   <span className="flex items-center justify-center w-6 h-6 text-zinc-400 dark:text-slate-500 text-lg shrink-0">
@@ -1645,7 +1645,7 @@ function SettingsPanel(): JSX.Element {
                           {copiedIndex === index ? <Check size={12} /> : <Copy size={12} />}
                           {copiedIndex === index ? 'Copied!' : 'Copy'}
                         </button>
-                        <pre className="bg-zinc-900 dark:bg-[#0d1117] text-zinc-100 text-[0.8rem] leading-relaxed rounded-xl p-5 overflow-x-auto whitespace-pre-wrap max-h-[400px] overflow-y-auto">
+                        <pre className="bg-olive-900 dark:bg-[#0d1117] text-zinc-100 text-[0.8rem] leading-relaxed rounded-xl p-5 overflow-x-auto whitespace-pre-wrap max-h-[400px] overflow-y-auto">
                           <code>{step.code}</code>
                         </pre>
                       </div>
@@ -1663,9 +1663,9 @@ function SettingsPanel(): JSX.Element {
         <Modal onClose={() => setGeneratedCompanionKey(null)} title="Companion Device Key">
           <div className="grid gap-4">
             <p className="text-zinc-500 dark:text-slate-400 m-0 text-sm">
-              Key for <strong className="text-zinc-800 dark:text-slate-200">{generatedCompanionKey?.deviceName}</strong>. Copy it now; it won't be shown again.
+              Key for <strong className="text-olive-900 dark:text-slate-200">{generatedCompanionKey?.deviceName}</strong>. Copy it now; it won't be shown again.
             </p>
-            <code className="block bg-zinc-900 dark:bg-[#0d1117] text-zinc-100 text-[0.85rem] rounded-xl p-4 break-all">
+            <code className="block bg-olive-900 dark:bg-[#0d1117] text-zinc-100 text-[0.85rem] rounded-xl p-4 break-all">
               {generatedCompanionKey?.key}
             </code>
             <div className="flex gap-3">
