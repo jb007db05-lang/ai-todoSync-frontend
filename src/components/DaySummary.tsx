@@ -10,7 +10,7 @@ interface DaySummaryProps {
 }
 
 const metricColors = [
-  'text-blue-600 dark:text-blue-400',
+  'text-olive-600 dark:text-blue-400',
   'text-amber-600 dark:text-amber-400',
   'text-cyan-600 dark:text-cyan-400',
   'text-violet-600 dark:text-violet-400',

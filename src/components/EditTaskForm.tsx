@@ -1,7 +1,7 @@
 import { FormEvent, useMemo, useState } from 'react';
 
 import type { Epic } from '@/types/epic';
-import type { Project, ProjectMember } from '@/types/project';
+import type { Project } from '@/types/project';
 import { TASK_WORKFLOW_STATUS_OPTIONS, type Task, type TaskWorkflowStatus } from '@/types/task';
 
 interface EditTaskFormProps {
@@ -9,13 +9,12 @@ interface EditTaskFormProps {
   onSubmit: (payload: {
     title: string;
     description?: string;
+    note?: string;
     date: string;
     status: TaskWorkflowStatus;
     projectId: string | null;
     epicId: string | null;
-    assignedToUserId: string | null;
   }) => Promise<void>;
-  projectMembersByProject: Record<string, ProjectMember[]>;
   projects: Project[];
   task: Task;
 }
@@ -23,20 +22,20 @@ interface EditTaskFormProps {
 const inputCls =
   'w-full bg-white/82 dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded-md ' +
   'text-olive-950 dark:text-slate-100 px-4 py-3.5 transition-all duration-200 focus:outline-none ' +
-  'focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10';
+  'focus:border-olive-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-olive-500/10';
 const labelCls = 'grid gap-2 font-medium text-[0.95rem] text-olive-950 dark:text-slate-100';
 
-function EditTaskForm({ epics, onSubmit, projectMembersByProject, projects, task }: EditTaskFormProps): JSX.Element {
+function EditTaskForm({ epics, onSubmit, projects, task }: EditTaskFormProps): JSX.Element {
   const initialStatus: TaskWorkflowStatus =
     task.status === 'rolled_over' ? 'pending' : (task.status as TaskWorkflowStatus);
 
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description ?? '');
+  const [note, setNote] = useState(task.note ?? '');
   const [date, setDate] = useState(task.date);
   const [status, setStatus] = useState<TaskWorkflowStatus>(initialStatus);
   const [projectId, setProjectId] = useState<string>(task.projectId ?? '');
   const [epicId, setEpicId] = useState<string>(task.epicId ?? '');
-  const [assignedToUserId, setAssignedToUserId] = useState<string>(task.assignedToUserId ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -57,22 +56,11 @@ function EditTaskForm({ epics, onSubmit, projectMembersByProject, projects, task
     if (currentEpic && currentEpic.projectId !== newProjectId) {
       setEpicId('');
     }
-
-    if (newProjectId === '') {
-      setAssignedToUserId('');
-      return;
-    }
-
-    const nextMembers = projectMembersByProject[newProjectId] ?? [];
-    if (!nextMembers.some((member) => member.userId === assignedToUserId)) {
-      setAssignedToUserId('');
-    }
   };
 
   const availableEpics = projectId
     ? epics.filter((epic) => epic.projectId === projectId)
     : [];
-  const availableMembers = projectId ? (projectMembersByProject[projectId] ?? []) : [];
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
@@ -94,11 +82,11 @@ function EditTaskForm({ epics, onSubmit, projectMembersByProject, projects, task
       await onSubmit({
         title: title.trim(),
         description: description.trim() || undefined,
+        note: note.trim() || undefined,
         date,
         status,
         projectId: projectId || null,
         epicId: epicId || null,
-        assignedToUserId: assignedToUserId || null,
       });
     } catch {
       setErrorMessage('Unable to save the task right now.');
@@ -129,6 +117,17 @@ function EditTaskForm({ epics, onSubmit, projectMembersByProject, projects, task
           placeholder="Optional context or details"
           rows={3}
           value={description}
+        />
+      </label>
+
+      <label className={labelCls}>
+        <span>Internal Note <span className="text-zinc-400 dark:text-slate-500 font-normal text-[0.82rem]">(optional)</span></span>
+        <textarea
+          className={`${inputCls} min-h-[88px] resize-y`}
+          onChange={(event) => setNote(event.target.value)}
+          placeholder="Private notes for this task"
+          rows={3}
+          value={note}
         />
       </label>
 
@@ -194,27 +193,8 @@ function EditTaskForm({ epics, onSubmit, projectMembersByProject, projects, task
         </label>
       )}
 
-      {projectId && (
-        <label className={labelCls}>
-          <span>Assignee <span className="text-zinc-400 dark:text-slate-500 font-normal text-[0.82rem]">(optional)</span></span>
-          <select
-            className={inputCls}
-            disabled={!task.permissions.canAssign}
-            onChange={(event) => setAssignedToUserId(event.target.value)}
-            value={assignedToUserId}
-          >
-            <option value="">Unassigned</option>
-            {availableMembers.map((member) => (
-              <option key={member.id} value={member.userId}>
-                {member.user.name ? `${member.user.name} (${member.user.email})` : member.user.email}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-
       <button
-        className="bg-olive-900 dark:bg-blue-600 text-white rounded-md px-4 py-2.5 text-[0.9rem] font-medium hover:bg-olive-800 dark:hover:bg-blue-500 disabled:opacity-50 transition-colors"
+        className="bg-olive-900 dark:bg-olive-600 text-white rounded-md px-4 py-2.5 text-[0.9rem] font-medium hover:bg-olive-800 dark:hover:bg-olive-500 disabled:opacity-50 transition-colors"
         disabled={submitting}
         type="submit"
       >

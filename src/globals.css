@@ -77,9 +77,10 @@
 
   body {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    line-height: 1.6;
+    line-height: 1.55;
     min-height: 100vh;
     background-color: #f9fafb;
+    color: #1a1a1a;
   }
 
   .dark body {
@@ -87,10 +88,11 @@
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Inter', sans-serif;
-    font-weight: 600;
+    font-family: 'Outfit', 'Inter', sans-serif;
+    font-weight: 700;
     margin-top: 0;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
   }
 
   button, input, select, textarea {
@@ -122,8 +124,14 @@
 
   a:hover { color: #214d45; }
 
-  .dark a { color: #9cdbc9; }
-  .dark a:hover { color: #fff2e5; }
+  .dark body {
+    background-color: #0c0e12;
+    color: #f1f5f9;
+  }
+
+  .dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+    color: #f8fafc;
+  }
 }
 
 /* ---- Custom scrollbar ---- */
@@ -199,4 +207,10 @@ input[type="checkbox"].custom-check:checked::after {
   .animate-slideUp   { animation: slideUp   0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
   .animate-modalIn   { animation: modalScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
   .animate-slideInRight { animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+
+  .avatar-initials {
+    @apply flex items-center justify-center rounded-full font-bold uppercase tracking-tighter;
+    background-color: var(--color-olive-600);
+    color: white;
+  }
 }

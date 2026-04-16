@@ -17,6 +17,12 @@ export interface Subtask {
   status: TaskWorkflowStatus;
   completed: boolean;
   completedAt: string | null;
+  assignedToUserId: string | null;
+  assignedToUser: {
+    id: string;
+    email: string;
+    name: string | null;
+  } | null;
 }
 
 export interface Task {
@@ -32,12 +38,6 @@ export interface Task {
   source?: TaskSource;
   projectId: string | null;
   epicId: string | null;
-  assignedToUserId: string | null;
-  assignedToUser: {
-    id: string;
-    email: string;
-    name: string | null;
-  } | null;
   subtasks: Subtask[];
   permissions: {
     canEdit: boolean;
@@ -71,6 +71,7 @@ export interface CreateTaskInput {
     note?: string;
     status?: TaskWorkflowStatus;
     completedAt?: string | null;
+    assignedToUserId?: string | null;
   }>;
 }
 
@@ -87,5 +88,6 @@ export interface UpdateTaskInput {
     note?: string;
     status?: TaskWorkflowStatus;
     completedAt?: string | null;
+    assignedToUserId?: string | null;
   }>;
 }

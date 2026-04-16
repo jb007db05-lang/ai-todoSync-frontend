@@ -37,12 +37,12 @@ const NotificationBox: React.FC<NotificationBoxProps> = ({
       {/* Header */}
       <div className="px-5 py-4 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Bell className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          <Bell className="w-5 h-5 text-olive-600 dark:text-blue-400" />
           <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider">
             Notifications
           </h3>
           {unreadCount > 0 && (
-            <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-bold rounded-full">
+            <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-olive-600 dark:text-blue-400 text-[10px] font-bold rounded-full">
               {unreadCount} New
             </span>
           )}
@@ -51,7 +51,7 @@ const NotificationBox: React.FC<NotificationBoxProps> = ({
           {notifications.length > 0 && (
             <button
               onClick={onClearAll}
-              className="text-[11px] font-bold text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors uppercase tracking-tight"
+              className="text-[11px] font-bold text-slate-500 hover:text-olive-600 dark:hover:text-blue-400 transition-colors uppercase tracking-tight"
             >
               Clear All
             </button>
@@ -92,13 +92,13 @@ const NotificationBox: React.FC<NotificationBoxProps> = ({
                 ].join(' ')}
               >
                 {!notification.isRead && (
-                  <div className="absolute left-1.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-blue-600 rounded-full shadow-[0_0_8px_rgba(37,99,235,0.6)]" />
+                  <div className="absolute left-1.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-olive-600 rounded-full shadow-[0_0_8px_rgba(37,99,235,0.6)]" />
                 )}
                 
                 <div className="flex gap-4">
                   <div className={[
                     'w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm',
-                    notification.type === 'message' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' :
+                    notification.type === 'message' ? 'bg-blue-100 text-olive-600 dark:bg-blue-900/30 dark:text-blue-400' :
                     notification.type === 'team_join' ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' :
                     'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
                   ].join(' ')}>
@@ -122,7 +122,7 @@ const NotificationBox: React.FC<NotificationBoxProps> = ({
                     </p>
                     
                     <div className="mt-3 flex items-center justify-between">
-                       <span className="text-[10px] font-bold text-blue-500 dark:text-blue-400 uppercase tracking-widest flex items-center gap-1">
+                       <span className="text-[10px] font-bold text-olive-500 dark:text-blue-400 uppercase tracking-widest flex items-center gap-1">
                           View details <ExternalLink size={10} />
                        </span>
                        {!notification.isRead && (

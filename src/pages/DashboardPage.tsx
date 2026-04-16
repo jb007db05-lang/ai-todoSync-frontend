@@ -20,6 +20,7 @@ import NotificationBox, { Notification } from '@/components/NotificationBox';
 import TaskList from '@/components/TaskList';
 import TaskFilterBar, { TaskFilters } from '@/components/TaskFilterBar';
 import SourceBadge from '@/components/SourceBadge';
+import UserAvatar from '@/components/UserAvatar';
 import {
   Calendar,
   CheckCircle,
@@ -52,7 +53,7 @@ import {
   removeProjectMember,
   updateProject
 } from '@/services/projects';
-import { assignTask, createTask, deleteTask, getTasks, updateTask } from '@/services/tasks';
+import { createTask, deleteTask, getTasks, updateTask } from '@/services/tasks';
 import { searchUsersByEmail } from '@/services/users';
 import { useAuth } from '@/context/AuthContext';
 import type { Epic, EpicStatus } from '@/types/epic';
@@ -139,22 +140,40 @@ function DashboardPage(): JSX.Element {
   const [actionNoteId, setActionNoteId] = useState<string | null>(null);
   const [taskMutationError, setTaskMutationError] = useState<string | null>(null);
   const [taskMutationSuccess, setTaskMutationSuccess] = useState<string | null>(null);
-
-  // Auto-dismiss success notifications
-  useEffect(() => {
-    if (taskMutationSuccess) {
-      const timer = setTimeout(() => {
-        setTaskMutationSuccess(null);
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [taskMutationSuccess]);
   const [projectMutationError, setProjectMutationError] = useState<string | null>(null);
   const [projectMutationSuccess, setProjectMutationSuccess] = useState<string | null>(null);
   const [epicMutationError, setEpicMutationError] = useState<string | null>(null);
   const [epicMutationSuccess, setEpicMutationSuccess] = useState<string | null>(null);
   const [noteMutationError, setNoteMutationError] = useState<string | null>(null);
   const [noteMutationSuccess, setNoteMutationSuccess] = useState<string | null>(null);
+
+  // Universal auto-dismiss for all feedback alerts
+  useEffect(() => {
+    const feedbackStates = [
+      { value: taskMutationSuccess, setter: setTaskMutationSuccess },
+      { value: taskMutationError, setter: setTaskMutationError },
+      { value: projectMutationSuccess, setter: setProjectMutationSuccess },
+      { value: projectMutationError, setter: setProjectMutationError },
+      { value: epicMutationSuccess, setter: setEpicMutationSuccess },
+      { value: epicMutationError, setter: setEpicMutationError },
+      { value: noteMutationSuccess, setter: setNoteMutationSuccess },
+      { value: noteMutationError, setter: setNoteMutationError },
+      { value: error, setter: setError }
+    ];
+
+    const timers = feedbackStates
+      .filter(s => s.value !== null)
+      .map(s => setTimeout(() => s.setter(null), 5000));
+
+    return () => timers.forEach(clearTimeout);
+  }, [
+    taskMutationSuccess, taskMutationError, 
+    projectMutationSuccess, projectMutationError,
+    epicMutationSuccess, epicMutationError,
+    noteMutationSuccess, noteMutationError,
+    error
+  ]);
+
   const [isProjectCreateModalOpen, setIsProjectCreateModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [isEpicCreateModalOpen, setIsEpicCreateModalOpen] = useState(false);
@@ -250,6 +269,7 @@ function DashboardPage(): JSX.Element {
   const handleCreateTask = async (payload: {
     title: string;
     description?: string;
+    note?: string;
     status?: TaskWorkflowStatus;
     projectId?: string | null;
     epicId?: string | null;
@@ -257,6 +277,7 @@ function DashboardPage(): JSX.Element {
     await createTask({
       title: payload.title,
       description: payload.description,
+      note: payload.note,
       date: selectedDate,
       status: payload.status,
       source: 'manual',
@@ -322,11 +343,11 @@ function DashboardPage(): JSX.Element {
   const handleUpdateTask = async (payload: {
     title: string;
     description?: string;
+    note?: string;
     date: string;
     status: TaskWorkflowStatus;
     projectId: string | null;
     epicId: string | null;
-    assignedToUserId: string | null;
   }): Promise<void> => {
     if (editingTask == null) return;
 
@@ -335,18 +356,15 @@ function DashboardPage(): JSX.Element {
     setTaskMutationSuccess(null);
 
     try {
-      // Preserve existing subtasks
       await updateTask(editingTask.id, {
         title: payload.title,
         description: payload.description,
+        note: payload.note,
         date: payload.date,
         status: payload.status,
         projectId: payload.projectId,
         epicId: payload.epicId,
       });
-      if (editingTask.assignedToUserId !== payload.assignedToUserId) {
-        await assignTask(editingTask.id, payload.assignedToUserId);
-      }
       await loadDashboard();
       setTaskMutationSuccess('Task updated.');
       setEditingTask(null);
@@ -361,7 +379,7 @@ function DashboardPage(): JSX.Element {
   const handleUpdateSubtask = async (
     task: Task,
     targetSubtask: Task['subtasks'][number],
-    patch: { title: string; description?: string }
+    patch: { title: string; description?: string; note?: string; assignedToUserId?: string | null }
   ): Promise<void> => {
     setActionTaskId(task.id);
     setTaskMutationError(null);
@@ -370,8 +388,14 @@ function DashboardPage(): JSX.Element {
     try {
       const subtasks = task.subtasks.map((subtask) => (
         subtask.id === targetSubtask.id
-          ? { title: patch.title.trim(), note: subtask.note, status: subtask.status, completedAt: subtask.completedAt }
-          : { title: subtask.title, note: subtask.note, status: subtask.status, completedAt: subtask.completedAt }
+          ? { 
+              ...subtask,
+              title: patch.title.trim(), 
+              description: patch.description,
+              note: patch.note,
+              assignedToUserId: patch.assignedToUserId
+            }
+          : subtask
       ));
 
       await updateTask(task.id, { status: task.status as TaskWorkflowStatus, subtasks });
@@ -791,17 +815,11 @@ function DashboardPage(): JSX.Element {
     try {
       const subtasks = task.subtasks.map((subtask) => {
         if (subtask.id !== targetSubtask.id) {
-          return {
-            title: subtask.title,
-            note: subtask.note,
-            status: subtask.status,
-            completedAt: subtask.completedAt
-          };
+          return subtask;
         }
 
         return {
-          title: subtask.title,
-          note: subtask.note,
+          ...subtask,
           status,
           completedAt: status === 'completed' ? new Date().toISOString() : null
         };
@@ -821,7 +839,7 @@ function DashboardPage(): JSX.Element {
   };
 
   const handleCreateSubtask = async (
-    payload: Array<{ title: string; status: TaskWorkflowStatus }>
+    payload: Array<{ title: string; description?: string; note?: string; status: TaskWorkflowStatus }>
   ): Promise<void> => {
     if (subtaskModalTask == null) {
       return;
@@ -833,14 +851,11 @@ function DashboardPage(): JSX.Element {
 
     try {
       const subtasks = [
-        ...subtaskModalTask.subtasks.map((subtask) => ({
-          title: subtask.title,
-          note: subtask.note,
-          status: subtask.status,
-          completedAt: subtask.completedAt
-        })),
+        ...subtaskModalTask.subtasks,
         ...payload.map((subtask) => ({
           title: subtask.title,
+          description: subtask.description,
+          note: subtask.note,
           status: subtask.status,
           completedAt: subtask.status === 'completed' ? new Date().toISOString() : null
         }))
@@ -879,13 +894,7 @@ function DashboardPage(): JSX.Element {
 
     try {
       const subtasks = task.subtasks
-        .filter((subtask) => subtask.id !== targetSubtask.id)
-        .map((subtask) => ({
-          title: subtask.title,
-          note: subtask.note,
-          status: subtask.status,
-          completedAt: subtask.completedAt
-        }));
+        .filter((subtask) => subtask.id !== targetSubtask.id);
 
       await updateTask(task.id, {
         status: deriveTaskStatusFromSubtasks(task.status, subtasks),
@@ -1083,12 +1092,11 @@ function DashboardPage(): JSX.Element {
         setTaskMutationSuccess(editor.task.note?.trim() ? 'Task note updated.' : 'Task note created.');
       } else {
         const latestTask = tasks.find((task) => task.id === editor.task.id) ?? editor.task;
-        const subtasks = latestTask.subtasks.map((subtask) => ({
-          title: subtask.title,
-          note: subtask.id === editor.subtask.id ? payload.content : subtask.note,
-          status: subtask.status,
-          completedAt: subtask.completedAt
-        }));
+        const subtasks = latestTask.subtasks.map((subtask) => (
+          subtask.id === editor.subtask.id 
+            ? { ...subtask, note: payload.content } 
+            : subtask
+        ));
 
         await updateTask(latestTask.id, {
           status: deriveTaskStatusFromSubtasks(latestTask.status, subtasks),
@@ -1242,16 +1250,7 @@ function DashboardPage(): JSX.Element {
     setIsEpicNotesModalOpen(true);
   };
 
-  const tasksByProject = useMemo(() => {
-    const counts = new Map<string | null, number>();
 
-    tasks.forEach((task) => {
-      const key = task.projectId ?? null;
-      counts.set(key, (counts.get(key) ?? 0) + 1);
-    });
-
-    return counts;
-  }, [tasks]);
   const activeProject = useMemo(() => {
     if (selectedProjectView === ALL_PROJECTS_VALUE) {
       return null;
@@ -1284,28 +1283,36 @@ function DashboardPage(): JSX.Element {
     prevProjectsRef.current = projects;
   }, [projects]);
 
-  // Convert lastMessage to notification
+  // Convert lastMessage to notification - Single robust implementation
   useEffect(() => {
-    if (lastMessage && !isChatPanelOpen) {
-      if (lastMessage.sender?.id === user?.id || lastMessage.senderId === user?.id) return;
+    if (lastMessage) {
+      // Create notification if chat is closed
+      if (!isChatPanelOpen) {
+        if (lastMessage.sender?.id === user?.id || lastMessage.senderId === user?.id) {
+          clearLastMessage();
+          return;
+        }
 
-      const newNotification: Notification = {
-        id: lastMessage.id,
-        type: 'message',
-        title: `Message from ${lastMessage.sender?.name || lastMessage.sender?.email}`,
-        message: lastMessage.content,
-        timestamp: new Date(lastMessage.createdAt),
-        isRead: false,
-        projectId: activeProject?.id,
-      };
+        const newNotification: Notification = {
+          id: lastMessage.id,
+          type: 'message',
+          title: lastMessage.sender?.name || lastMessage.sender?.email || 'New Message',
+          message: lastMessage.content,
+          timestamp: new Date(lastMessage.createdAt),
+          isRead: false,
+          projectId: activeProject?.id,
+        };
+        
+        setNotifications((prev: Notification[]) => {
+          if (prev.some(n => n.id === lastMessage.id)) return prev;
+          return [newNotification, ...prev];
+        });
+      }
       
-      setNotifications((prev: Notification[]) => {
-        // Avoid duplicates if lastMessage is re-emitted
-        if (prev.some(n => n.id === lastMessage.id)) return prev;
-        return [newNotification, ...prev];
-      });
+      // Always clear last message once processed or if chat is open
+      clearLastMessage();
     }
-  }, [lastMessage, isChatPanelOpen, activeProject, user?.id]);
+  }, [lastMessage, isChatPanelOpen, activeProject, user?.id, clearLastMessage]);
 
   const handleMarkAsRead = (id: string) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
@@ -1339,7 +1346,9 @@ function DashboardPage(): JSX.Element {
 
     // Assignee filter
     if (taskFilters.assigneeId !== 'all') {
-      filtered = filtered.filter((task) => task.assignedToUserId === taskFilters.assigneeId);
+      filtered = filtered.filter((task) => 
+        task.subtasks.some((st) => st.assignedToUserId === taskFilters.assigneeId)
+      );
     }
 
     // Epic filter
@@ -1405,13 +1414,8 @@ function DashboardPage(): JSX.Element {
     }
   }, [editingTask, loadProjectTeam, projectMembersByProject]);
 
-  useEffect(() => {
-    if (lastMessage && !isChatPanelOpen) {
-      // Notification is handled by the dedicated useEffect above
-      // setTaskMutationSuccess(...) is removed in favor of the notification bell
-      clearLastMessage();
-    }
-  }, [lastMessage, isChatPanelOpen, clearLastMessage]);
+    // Notification clearing moved to the primary effect above
+
 
   const handleLogout = async () => {
     const isConfirmed = await confirm({
@@ -1456,9 +1460,6 @@ function DashboardPage(): JSX.Element {
     if (!selectedTaskId) return null;
     return tasks.find(t => t.id === selectedTaskId) ?? null;
   }, [selectedTaskId, tasks]);
-
-  // const sideNavItem = 'flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-[0.9rem] font-medium text-slate-400 hover:text-slate-100 hover:bg-white/10 transition-all duration-200 justify-start';
-  // const sideNavItemActive = 'bg-olive-700 text-white font-bold shadow-sm';
 
   const statusPillCls: Record<string, string> = {
     planned: 'bg-blue-500/20 text-blue-300',
@@ -1582,10 +1583,9 @@ function DashboardPage(): JSX.Element {
       {/* Right side wrapper */}
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         {/* Top bar */}
-        {/* Top bar (Redesigned Header matching Image) */}
         <header className="relative z-50 flex items-center justify-between gap-4 px-8 h-[72px] shrink-0 bg-white dark:bg-slate-900 border-b border-zinc-200 dark:border-slate-800 transition-colors">
           <div className="flex flex-col justify-center">
-            <h1 className="text-[1.15rem] font-bold text-olive-950 dark:text-white leading-tight">
+            <h1 className="text-[1.15rem] font-bold font-['Outfit'] text-olive-950 dark:text-white leading-tight">
               {activeView === 'settings' ? 'Settings' : (activeProject ? activeProject.name : 'All Projects')}
             </h1>
             <div className="flex items-center text-[0.75rem] font-semibold text-zinc-400 dark:text-slate-500 mt-0.5 gap-1.5">
@@ -1626,15 +1626,6 @@ function DashboardPage(): JSX.Element {
               </div>
             )}
 
-            {/* Chat Trigger */}
-            {/* <button
-              onClick={() => setIsChatPanelOpen(true)}
-              className="relative flex items-center justify-center p-2 rounded-full text-zinc-600 hover:bg-zinc-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
-              aria-label="Open chat"
-            >
-              <MessageSquare className="w-5 h-5" />
-            </button> */}
-
             {/* Notification Bell */}
             <div className="relative">
               <button
@@ -1664,9 +1655,12 @@ function DashboardPage(): JSX.Element {
 
             {/* User Profile Pill */}
             <div className="flex items-center gap-3 pl-5 border-l border-zinc-200 dark:border-slate-800">
-              <div className="flex items-center justify-center w-9 h-9 rounded-full bg-olive-100 dark:bg-olive-800/50 text-olive-700 dark:text-olive-300 text-sm font-bold shadow-sm border border-olive-200/50 dark:border-olive-700/50">
-                {user?.name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
-              </div>
+              <UserAvatar 
+                name={user?.name || null} 
+                email={user?.email || ''} 
+                size="lg"
+                showTooltip={false}
+              />
               <div className="hidden sm:flex flex-col">
                 <span className="text-[0.8rem] font-bold text-olive-900 dark:text-slate-200 leading-tight">
                   {user?.name || 'Current User'}
@@ -1711,7 +1705,6 @@ function DashboardPage(): JSX.Element {
                   setEditingProject(project);
                 }}
                 projects={projects}
-                tasksByProject={tasksByProject}
                 totalPages={projectTotalPages}
                 onPageChange={handleProjectPageChange}
                 onSearch={handleProjectSearch}
@@ -1720,11 +1713,11 @@ function DashboardPage(): JSX.Element {
             </div>
           ) : (
             /* 3-column workspace */
-            <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-slate-900 dark:bg-white dark:bg-slate-900">
+            <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-slate-900">
               <div className="shrink-0 px-6 py-5 border-b border-zinc-200/80 dark:border-slate-700/80 bg-white/78 dark:bg-slate-950/38 ">
                 <div className="flex items-start justify-between gap-5">
                   <div className="flex items-center gap-4">
-                    <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-blue-600 text-white shadow-lg shadow-blue-500/25 shrink-0">
+                    <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-olive-600 text-white shadow-lg shadow-blue-500/25 shrink-0">
                       <Folder size={20} />
                     </div>
                     <div className="grid gap-1">
@@ -1764,12 +1757,12 @@ function DashboardPage(): JSX.Element {
                         'flex items-center gap-2 px-4 py-2.5 border rounded-xl text-sm font-bold shadow-sm transition-all duration-300 transform active:scale-95',
                         isChatPanelOpen
                           ? 'bg-gradient-to-r from-blue-600 to-indigo-600 border-blue-600 text-white shadow-blue-500/25'
-                          : 'bg-white dark:bg-slate-800 border-zinc-200 dark:border-slate-600 text-zinc-600 dark:text-slate-300 hover:border-blue-400 dark:hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'
+                          : 'bg-white dark:bg-slate-800 border-zinc-200 dark:border-slate-600 text-zinc-600 dark:text-slate-300 hover:border-blue-400 dark:hover:border-olive-500 hover:text-olive-600 dark:hover:text-blue-400'
                       ].join(' ')}
                       onClick={() => setIsChatPanelOpen(!isChatPanelOpen)}
                       type="button"
                     >
-                      <MessageCircle size={18} className={isChatPanelOpen ? 'text-white' : 'text-blue-500'} />
+                      <MessageCircle size={18} className={isChatPanelOpen ? 'text-white' : 'text-olive-500'} />
                       Chat
                     </button>
                     <button
@@ -1782,32 +1775,18 @@ function DashboardPage(): JSX.Element {
                     </button>
                   </div>
                 </div>
-                {/* <div className="flex flex-wrap items-center gap-3 mt-4">
-                  <div className="px-3.5 py-2 rounded-lg bg-white/82 dark:bg-slate-900/65 border border-zinc-200/80 dark:border-slate-700/80 shadow-sm">
-                    <div className="text-[0.66rem] uppercase tracking-[0.14em] font-bold text-zinc-500 dark:text-slate-400">Epics</div>
-                    <div className="text-[1rem] font-bold text-olive-950 dark:text-slate-100">{activeProjectEpics.length}</div>
-                  </div>
-                  <div className="px-3.5 py-2 rounded-lg bg-white/82 dark:bg-slate-900/65 border border-zinc-200/80 dark:border-slate-700/80 shadow-sm">
-                    <div className="text-[0.66rem] uppercase tracking-[0.14em] font-bold text-zinc-500 dark:text-slate-400">Visible Tasks</div>
-                    <div className="text-[1rem] font-bold text-olive-950 dark:text-slate-100">{visibleTasks.length}</div>
-                  </div>
-                  <div className="px-3.5 py-2 rounded-lg bg-white/82 dark:bg-slate-900/65 border border-zinc-200/80 dark:border-slate-700/80 shadow-sm">
-                    <div className="text-[0.66rem] uppercase tracking-[0.14em] font-bold text-zinc-500 dark:text-slate-400">Role</div>
-                    <div className="text-[1rem] font-bold text-olive-950 dark:text-slate-100">{activeProject.currentUserRole}</div>
-                  </div>
-                </div> */}
               </div>
-              <div className="flex flex-1 min-h-0 overflow-hidden gap-4 p-4 md:p-5">
+              <div className="flex flex-1 min-h-0 overflow-hidden gap-5 p-5 bg-slate-50/50 dark:bg-slate-950/20">
                 {/* Column 1 — Epics */}
-                <div className="flex flex-col w-[330px] shrink-0 h-full rounded-xl border border-zinc-200/80 dark:border-slate-700/80 bg-white/82 dark:bg-slate-900/58 shadow-sm  overflow-hidden">
-                  <div className="flex items-center justify-between px-6 py-5 border-b border-zinc-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-900 dark:bg-white dark:bg-slate-900">
+                <div className="flex flex-col w-[330px] shrink-0 h-full rounded-2xl border border-zinc-200/60 dark:border-slate-800/60 bg-white/95 dark:bg-slate-900/90 shadow-sm overflow-hidden transition-all duration-300">
+                  <div className="flex items-center justify-between px-6 py-6 border-b border-zinc-100 dark:border-slate-800 bg-linear-to-b from-white to-slate-50/30 dark:from-slate-900 dark:to-slate-900/50">
                     <div>
-                      <span className="text-[0.68rem] uppercase tracking-[0.18em] font-bold text-zinc-500 dark:text-slate-400">Column 1</span>
-                      <h3 className="text-[1.05rem] font-bold font-['Outfit'] text-olive-950 dark:text-slate-100 m-0 mt-1 tracking-tight">Epics</h3>
+                      <span className="text-[0.6rem] uppercase tracking-[0.2em] font-black text-olive-600 dark:text-blue-400 opacity-80">Infrastructure</span>
+                      <h3 className="text-[1.1rem] font-extrabold font-['Outfit'] text-olive-950 dark:text-slate-50 m-0 mt-1 tracking-tight">Epics</h3>
                       <p className="text-zinc-500 dark:text-slate-400 text-[0.78rem] m-0 mt-1">{activeProject.name}</p>
                     </div>
                     <button
-                      className="flex items-center justify-center w-10 h-10 bg-olive-900 dark:bg-blue-600 hover:bg-olive-800 dark:hover:bg-blue-500 text-white rounded-lg shadow-sm transition-all active:scale-95 disabled:opacity-40"
+                      className="flex items-center justify-center w-10 h-10 bg-olive-900 dark:bg-olive-600 hover:bg-olive-800 dark:hover:bg-olive-500 text-white rounded-lg shadow-sm transition-all active:scale-95 disabled:opacity-40"
                       disabled={!canManageActiveProject}
                       onClick={() => setIsEpicCreateModalOpen(true)}
                       title="New Epic"
@@ -1824,7 +1803,7 @@ function DashboardPage(): JSX.Element {
                         <div
                           key={epic.id}
                           className={`relative flex flex-col gap-3 p-4 rounded-xl border transition-all cursor-pointer shadow-sm ${isActive
-                            ? 'bg-blue-50/80 dark:bg-blue-500/8 border-blue-400/60 dark:border-blue-500/40 ring-1 ring-blue-500/20'
+                            ? 'bg-blue-50/80 dark:bg-blue-500/8 border-blue-400/60 dark:border-olive-500/40 ring-1 ring-olive-500/20'
                             : 'bg-white/92 dark:bg-slate-800/44 border-zinc-200/80 dark:border-slate-700 hover:border-zinc-300 dark:hover:border-slate-600 hover:-translate-y-[2px]'
                             }`}
                           onClick={() => handleEpicSelect(isActive ? null : epic.id)}
@@ -1849,7 +1828,7 @@ function DashboardPage(): JSX.Element {
                           {/* Action Toolbar — Always Visible & Integrated */}
                           <div className="flex items-center gap-1.5 mt-2 pt-3 border-t border-zinc-100/90 dark:border-slate-700/50">
                             <button
-                              className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-slate-700 text-zinc-400 hover:text-blue-600 transition-colors"
+                              className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-slate-700 text-zinc-400 hover:text-olive-600 transition-colors"
                               onClick={(e) => { e.stopPropagation(); handleOpenEpicNotesPanel(epic); }}
                               title="Notes"
                             >
@@ -1901,17 +1880,17 @@ function DashboardPage(): JSX.Element {
 
                 {/* Column 2 — Tasks */}
                 {selectedEpicId && (
-                  <div className="flex flex-col w-[480px] shrink-0 h-full rounded-xl border border-zinc-200/80 dark:border-slate-700/80 bg-white/82 dark:bg-slate-900/58 shadow-sm  overflow-hidden animate-slideInRight">
-                    <div className="flex items-center justify-between px-6 py-5 bg-white dark:bg-slate-900 dark:bg-white dark:bg-slate-900 border-b border-zinc-200/80 dark:border-slate-700/80">
+                  <div className="flex flex-col w-[480px] shrink-0 h-full rounded-2xl border border-zinc-200/60 dark:border-slate-800/60 bg-white/95 dark:bg-slate-900/90 shadow-md overflow-hidden animate-slideInRight duration-500">
+                    <div className="flex items-center justify-between px-6 py-6 bg-linear-to-b from-white to-slate-50/30 dark:from-slate-900 dark:to-slate-900/50 border-b border-zinc-100 dark:border-slate-800">
                       <div>
-                        <span className="text-[0.68rem] uppercase tracking-[0.18em] font-bold text-zinc-500 dark:text-slate-400">Column 2</span>
-                        <h3 className="text-[1.05rem] font-bold font-['Outfit'] text-olive-950 dark:text-slate-100 m-0 mt-1 tracking-tight">{tasksHeading}</h3>
+                        <span className="text-[0.6rem] uppercase tracking-[0.2em] font-black text-olive-600 dark:text-blue-400 opacity-80">Execution</span>
+                        <h3 className="text-[1.1rem] font-extrabold font-['Outfit'] text-olive-950 dark:text-slate-50 m-0 mt-1 tracking-tight">{tasksHeading}</h3>
                         <p className="text-zinc-500 dark:text-slate-400 text-[0.78rem] m-0 mt-1 truncate max-w-[280px]">
                           {epics.find(e => e.id === selectedEpicId)?.name}
                         </p>
                       </div>
                       <button
-                        className="flex items-center justify-center w-10 h-10 bg-olive-900 dark:bg-blue-600 hover:bg-olive-800 dark:hover:bg-blue-500 text-white rounded-lg shadow-sm transition-all duration-300 hover:scale-[1.03] active:scale-95 disabled:opacity-40"
+                        className="flex items-center justify-center w-10 h-10 bg-olive-900 dark:bg-olive-600 hover:bg-olive-800 dark:hover:bg-olive-500 text-white rounded-lg shadow-sm transition-all duration-300 hover:scale-[1.03] active:scale-95 disabled:opacity-40"
                         disabled={!canManageActiveProject}
                         onClick={() => {
                           setTaskModalProjectId(activeProject?.id ?? null);
@@ -1956,15 +1935,15 @@ function DashboardPage(): JSX.Element {
 
                 {/* Column 3 — Subtasks */}
                 {selectedTaskId && activeTask && (
-                  <div className="flex flex-col flex-1 min-w-0 h-full rounded-xl border border-zinc-200/80 dark:border-slate-700/80 bg-white/82 dark:bg-slate-900/58 shadow-sm  overflow-hidden animate-slideInRight">
-                    <div className="flex items-center justify-between px-6 py-5 bg-white dark:bg-slate-900 dark:bg-white dark:bg-slate-900 border-b border-zinc-200/80 dark:border-slate-700/80">
+                  <div className="flex flex-col flex-1 min-w-0 h-full rounded-2xl border border-zinc-200/60 dark:border-slate-800/60 bg-white/95 dark:bg-slate-900/90 shadow-lg overflow-hidden animate-slideInRight duration-700">
+                    <div className="flex items-center justify-between px-6 py-6 bg-linear-to-b from-white to-slate-50/30 dark:from-slate-900 dark:to-slate-900/50 border-b border-zinc-100 dark:border-slate-800">
                       <div>
-                        <span className="text-[0.68rem] uppercase tracking-[0.18em] font-bold text-zinc-500 dark:text-slate-400">Column 3</span>
-                        <h3 className="text-[1.05rem] font-bold font-['Outfit'] text-olive-950 dark:text-slate-100 m-0 mt-1 tracking-tight">Subtasks</h3>
+                        <span className="text-[0.6rem] uppercase tracking-[0.2em] font-black text-olive-600 dark:text-blue-400 opacity-80">Granular Tasks</span>
+                        <h3 className="text-[1.1rem] font-extrabold font-['Outfit'] text-olive-950 dark:text-slate-50 m-0 mt-1 tracking-tight">Subtasks</h3>
                         <p className="text-zinc-500 dark:text-slate-400 text-[0.78rem] m-0 mt-1 truncate max-w-[320px]">{activeTask.title}</p>
                       </div>
                       <button
-                        className="flex items-center justify-center w-10 h-10 bg-olive-900 dark:bg-blue-600 hover:bg-olive-800 dark:hover:bg-blue-500 text-white rounded-lg shadow-sm transition-all duration-300 hover:scale-[1.03] active:scale-95 disabled:opacity-40"
+                        className="flex items-center justify-center w-10 h-10 bg-olive-900 dark:bg-olive-600 hover:bg-olive-800 dark:hover:bg-olive-500 text-white rounded-lg shadow-sm transition-all duration-300 hover:scale-[1.03] active:scale-95 disabled:opacity-40"
                         disabled={!activeTask.permissions.canUpdate}
                         onClick={() => setSubtaskModalTask(activeTask)}
                         title="New Subtask"
@@ -1978,7 +1957,7 @@ function DashboardPage(): JSX.Element {
                       {activeTask.subtasks.map(subtask => {
                         const isEditingThisSubtask = editingSubtask?.task.id === activeTask.id && editingSubtask?.subtask.id === subtask.id;
                         return (
-                          <div key={subtask.id} className="group relative bg-white dark:bg-slate-900 dark:bg-white dark:bg-slate-900 border border-zinc-200/70 dark:border-slate-700/80 rounded-xl p-5 transition-all duration-300 shadow-sm hover:-translate-y-[2px] hover:border-zinc-300 dark:hover:border-slate-600">
+                          <div key={subtask.id} className="group relative bg-white dark:bg-slate-900 border border-zinc-200/70 dark:border-slate-700/80 rounded-xl p-5 transition-all duration-300 shadow-sm hover:-translate-y-[2px] hover:border-zinc-300 dark:hover:border-slate-600">
                             <div className="flex items-start justify-between gap-6">
                               <div className="flex items-start gap-4.5 flex-1 min-w-0">
                                 <div className="mt-1 relative flex items-center justify-center">
@@ -1991,12 +1970,21 @@ function DashboardPage(): JSX.Element {
                                   />
                                 </div>
                                 <div className="flex flex-col gap-1.5 min-w-0">
-                                  <span className={`text-[1rem] transition-all duration-300 ${subtask.status === 'completed'
-                                    ? 'text-zinc-400 dark:text-slate-500 line-through'
-                                    : 'text-olive-900 dark:text-slate-200 font-semibold tracking-tight'
-                                    }`}>
-                                    {subtask.title}
-                                  </span>
+                                  <div className="flex items-center gap-3 min-w-0">
+                                    <span className={`text-[1rem] transition-all duration-300 ${subtask.status === 'completed'
+                                      ? 'text-zinc-400 dark:text-slate-500 line-through'
+                                      : 'text-olive-900 dark:text-slate-200 font-semibold tracking-tight'
+                                      }`}>
+                                      {subtask.title}
+                                    </span>
+                                    {subtask.assignedToUser && (
+                                      <UserAvatar 
+                                        name={subtask.assignedToUser.name}
+                                        email={subtask.assignedToUser.email}
+                                        size="sm"
+                                      />
+                                    )}
+                                  </div>
                                   {!isEditingThisSubtask && subtask.description && (
                                     <p className="text-zinc-400 dark:text-slate-500 text-[0.82rem] leading-relaxed line-clamp-2 opacity-80">{subtask.description}</p>
                                   )}
@@ -2020,7 +2008,7 @@ function DashboardPage(): JSX.Element {
                                   <Edit3 size={16} />
                                 </button>
                                 <button
-                                  className="p-2 rounded-xl hover:bg-indigo-50 dark:hover:bg-slate-700/50 text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all"
+                                  className="p-2 rounded-xl hover:bg-indigo-50 dark:hover:bg-slate-700/50 text-zinc-400 hover:text-olive-600 dark:hover:text-blue-400 transition-all"
                                   onClick={() => handleOpenSubtaskNote(activeTask, subtask)}
                                   title="Subtask Note"
                                   type="button"
@@ -2047,6 +2035,7 @@ function DashboardPage(): JSX.Element {
                                   onSave={(patch) => void handleUpdateSubtask(activeTask, subtask, patch)}
                                   onCancel={() => setEditingSubtask(null)}
                                   isSaving={actionTaskId === activeTask.id}
+                                  members={activeProjectMembers}
                                 />
                               </div>
                             )}
@@ -2060,13 +2049,13 @@ function DashboardPage(): JSX.Element {
 
                       {/* Task detail footer */}
                       <div className="mt-8 mb-4">
-                        <div className="bg-white dark:bg-slate-900 dark:bg-white dark:bg-slate-900 border border-zinc-200/70 dark:border-slate-700/80 rounded-xl p-8 shadow-sm relative overflow-hidden group/detail">
+                        <div className="bg-white dark:bg-slate-900 border border-zinc-200/70 dark:border-slate-700/80 rounded-xl p-8 shadow-sm relative overflow-hidden group/detail">
                           {/* Decorative Glow */}
                           <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-500/5 rounded-full blur-3xl group-hover/detail:bg-blue-500/10 transition-all duration-700" />
 
                           <h4 className="text-[1.05rem] font-bold font-['Outfit'] text-olive-900 dark:text-slate-100 m-0 mb-6 flex items-center gap-3">
                             <div className="p-2.5 bg-blue-50 dark:bg-blue-500/10 rounded-lg">
-                              <Layout size={20} className="text-blue-600 dark:text-blue-400" />
+                              <Layout size={20} className="text-olive-600 dark:text-blue-400" />
                             </div>
                             Task Properties
                           </h4>
@@ -2083,19 +2072,10 @@ function DashboardPage(): JSX.Element {
                               {activeTask.status.replace('_', ' ')}
                             </div>
                             <SourceBadge source={activeTask.source} />
-                            {activeTask.assignedToUser ? (
-                              <div className="flex items-center gap-2 px-4 py-2 rounded-lg border text-[0.72rem] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/30">
-                                Assigned to {activeTask.assignedToUser.name || activeTask.assignedToUser.email}
-                              </div>
-                            ) : activeTask.projectId ? (
-                              <div className="flex items-center gap-2 px-4 py-2 rounded-lg border text-[0.72rem] font-black uppercase tracking-wider bg-zinc-100 text-zinc-600 border-zinc-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700">
-                                Unassigned
-                              </div>
-                            ) : null}
                           </div>
 
                           <button
-                            className="w-full group/btn relative flex items-center justify-center gap-3 px-6 py-4 bg-olive-900 dark:bg-white text-white dark:text-olive-950 rounded-xl font-bold text-[0.95rem] shadow-sm shadow-zinc-900/20 dark:shadow-white/5 hover:scale-[1.01] active:scale-[0.98] transition-all duration-300 overflow-hidden"
+                            className="w-full group/btn relative flex items-center justify-center gap-3 px-6 py-4 bg-olive-900 dark:bg-white text-white dark:text-olive-950 rounded-xl font-bold text-[0.95rem] shadow-sm shadow-olive-900/20 dark:shadow-white/5 hover:scale-[1.01] active:scale-[0.98] transition-all duration-300 overflow-hidden"
                             onClick={() => handleOpenTaskNote(activeTask)}
                             type="button"
                           >
@@ -2132,7 +2112,7 @@ function DashboardPage(): JSX.Element {
             onClick={() => setIsChatPanelOpen(false)}
           />
           {/* Chat Drawer Container */}
-          <div className="fixed top-0 right-0 h-full w-full md:w-[450px] lg:max-w-[550px] bg-white dark:bg-slate-900 z-[5001] shadow-2xl animate-in slide-in-from-right duration-500 overflow-hidden border-l border-zinc-200 dark:border-slate-800 flex flex-col">
+          <div className="fixed top-0 right-0 h-full w-full md:w-[600px] lg:max-w-[700px] bg-white dark:bg-slate-900 z-[5001] shadow-2xl animate-in slide-in-from-right duration-500 overflow-hidden border-l border-zinc-200 dark:border-slate-800 flex flex-col">
             <ChatPanel
               project={activeProject}
               members={activeProjectMembers}
@@ -2230,7 +2210,6 @@ function DashboardPage(): JSX.Element {
           <EditTaskForm
             epics={epics}
             onSubmit={handleUpdateTask}
-            projectMembersByProject={projectMembersByProject}
             projects={projects}
             task={editingTask}
           />
@@ -2241,7 +2220,7 @@ function DashboardPage(): JSX.Element {
           onClose={() => setSubtaskModalTask(null)}
           title={`Create Subtask for ${subtaskModalTask.title}`}
         >
-          <SubtaskForm onSubmit={handleCreateSubtask} />
+          <SubtaskForm members={activeProjectMembers} onSubmit={handleCreateSubtask} />
         </Modal>
       ) : null}
       {activeNoteEditor ? (

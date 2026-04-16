@@ -7,7 +7,8 @@ import {
   Shield,
   Smartphone,
   Sparkles,
-  Settings2
+  Settings2,
+  UserCircle
 } from 'lucide-react';
 
 import ManageDevicesModal from '@/components/ManageDevicesModal';
@@ -1338,7 +1339,7 @@ const chatGptIntegrationSteps = [
 ];
 
 function SettingsPanel(): JSX.Element {
-  const { refreshUser, session, user } = useAuth();
+  const { refreshUser, session, user, updateProfile } = useAuth();
   const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -1349,6 +1350,33 @@ function SettingsPanel(): JSX.Element {
   const [isGeneratingCompanionKey, setIsGeneratingCompanionKey] = useState<boolean>(false);
   const [deviceName, setDeviceName] = useState<string>('');
   const [deviceType, setDeviceType] = useState<string>('mobile');
+
+  // Profile management state
+  const [firstName, setFirstName] = useState(user?.firstName || '');
+  const [lastName, setLastName] = useState(user?.lastName || '');
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+  const [profileSuccess, setProfileSuccess] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setFirstName(user.firstName || '');
+      setLastName(user.lastName || '');
+    }
+  }, [user]);
+
+  const handleUpdateProfile = async () => {
+    setIsUpdatingProfile(true);
+    setProfileSuccess(false);
+    try {
+      await updateProfile({ firstName, lastName });
+      setProfileSuccess(true);
+      setTimeout(() => setProfileSuccess(false), 3000);
+    } catch {
+      setErrorMessage('Failed to update profile.');
+    } finally {
+      setIsUpdatingProfile(false);
+    }
+  };
   const [generatedCompanionKey, setGeneratedCompanionKey] = useState<{
     key: string;
     deviceName: string;
@@ -1443,21 +1471,91 @@ function SettingsPanel(): JSX.Element {
   };
 
   const ghostBtn = 'inline-flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded text-zinc-600 dark:text-slate-300 text-sm hover:bg-zinc-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors';
-  const primaryBtn = 'inline-flex items-center gap-1.5 px-4 py-2 bg-olive-900 dark:bg-blue-600 text-white rounded text-sm font-medium hover:bg-olive-800 dark:hover:bg-blue-500 disabled:opacity-50 transition-colors';
+  const primaryBtn = 'inline-flex items-center gap-1.5 px-4 py-2 bg-olive-900 dark:bg-olive-600 text-white rounded text-sm font-medium hover:bg-olive-800 dark:hover:bg-olive-500 disabled:opacity-50 transition-colors';
 
   return (
     <div className="grid gap-8 p-1">
+      <div className="grid gap-1 mb-2">
+        <h2 className="text-[1.5rem] font-bold text-olive-950 dark:text-white m-0">Settings</h2>
+        <p className="text-zinc-500 dark:text-slate-400 m-0">Manage your profile, account security, and integrations.</p>
+      </div>
+
+      {/* Profile Section */}
+      <SectionCard>
+        <div className="flex items-start justify-between gap-4 mb-6">
+          <div>
+            <span className="text-olive-600 dark:text-blue-400 text-[0.72rem] tracking-[0.12em] uppercase font-semibold">Account</span>
+            <h2 className="mt-1 mb-1 text-olive-950 dark:text-slate-100">Profile Information</h2>
+            <p className="text-zinc-500 dark:text-slate-400 m-0 text-sm">Update your personal details used across the workspace.</p>
+          </div>
+          <span className="flex items-center justify-center w-10 h-10 bg-olive-600/8 dark:bg-blue-400/12 rounded-xl text-olive-600 dark:text-blue-400 shrink-0">
+            <UserCircle size={18} />
+          </span>
+        </div>
+
+        <div className="grid gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <label className="text-sm font-semibold text-olive-900 dark:text-slate-300">First Name</label>
+              <input
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-olive-500/20 focus:border-olive-500 transition-all text-olive-950 dark:text-slate-100"
+                placeholder="Enter your first name"
+              />
+            </div>
+            <div className="grid gap-2">
+              <label className="text-sm font-semibold text-olive-900 dark:text-slate-300">Last Name</label>
+              <input
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-olive-500/20 focus:border-olive-500 transition-all text-olive-950 dark:text-slate-100"
+                placeholder="Enter your last name"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-2">
+            <label className="text-sm font-semibold text-olive-900 dark:text-slate-300">Email Address</label>
+            <input
+              type="email"
+              value={user?.email || ''}
+              readOnly
+              className="w-full px-4 py-2.5 bg-zinc-100 dark:bg-slate-900 border border-zinc-200 dark:border-slate-800 rounded-xl text-zinc-500 cursor-not-allowed"
+            />
+            <p className="text-[0.7rem] text-zinc-400 mt-1">Email cannot be changed directly. Contact support for help.</p>
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <button
+              onClick={handleUpdateProfile}
+              disabled={isUpdatingProfile || (firstName === (user?.firstName || '') && lastName === (user?.lastName || ''))}
+              className="flex items-center gap-2 px-6 py-2.5 bg-olive-900 text-white rounded-xl font-bold text-sm hover:bg-olive-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            >
+              {isUpdatingProfile ? (
+                 <RefreshCcw className="w-4 h-4 animate-spin" />
+              ) : profileSuccess ? (
+                <Check className="w-4 h-4" />
+              ) : null}
+              {isUpdatingProfile ? 'Saving...' : profileSuccess ? 'Saved' : 'Save Changes'}
+            </button>
+          </div>
+        </div>
+      </SectionCard>
+
       {/* Top grid: Security + Devices */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Sync API Key card */}
         <SectionCard>
           <div className="flex items-start justify-between gap-4 mb-6">
             <div>
-              <span className="text-blue-600 dark:text-blue-400 text-[0.72rem] tracking-[0.12em] uppercase font-semibold">Security</span>
+              <span className="text-olive-600 dark:text-blue-400 text-[0.72rem] tracking-[0.12em] uppercase font-semibold">Security</span>
               <h2 className="mt-1 mb-1 text-olive-950 dark:text-slate-100">Sync API Key</h2>
               <p className="text-zinc-500 dark:text-slate-400 m-0 text-sm">Your unique key for connecting external task tools.</p>
             </div>
-            <span className="flex items-center justify-center w-10 h-10 bg-blue-600/8 dark:bg-blue-400/12 rounded-xl text-blue-600 dark:text-blue-400 shrink-0">
+            <span className="flex items-center justify-center w-10 h-10 bg-olive-600/8 dark:bg-blue-400/12 rounded-xl text-olive-600 dark:text-blue-400 shrink-0">
               <Shield size={18} />
             </span>
           </div>
@@ -1493,11 +1591,11 @@ function SettingsPanel(): JSX.Element {
         <SectionCard>
           <div className="flex items-start justify-between gap-4 mb-6">
             <div>
-              <span className="text-blue-600 dark:text-blue-400 text-[0.72rem] tracking-[0.12em] uppercase font-semibold">Devices</span>
+              <span className="text-olive-600 dark:text-blue-400 text-[0.72rem] tracking-[0.12em] uppercase font-semibold">Devices</span>
               <h2 className="mt-1 mb-1 text-olive-950 dark:text-slate-100">Companion Access</h2>
               <p className="text-zinc-500 dark:text-slate-400 m-0 text-sm">Manage secure keys for mobile, desktop, or voice apps.</p>
             </div>
-            <span className="flex items-center justify-center w-10 h-10 bg-blue-600/8 dark:bg-blue-400/12 rounded-xl text-blue-600 dark:text-blue-400 shrink-0">
+            <span className="flex items-center justify-center w-10 h-10 bg-olive-600/8 dark:bg-blue-400/12 rounded-xl text-olive-600 dark:text-blue-400 shrink-0">
               <Smartphone size={18} />
             </span>
           </div>
@@ -1531,13 +1629,13 @@ function SettingsPanel(): JSX.Element {
                   <p className="text-[0.65rem] font-bold text-zinc-400 dark:text-slate-500 uppercase tracking-widest mb-2">New Device Key</p>
                   <div className="grid grid-cols-2 gap-3">
                     <input
-                      className="bg-white/50 dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-sm text-olive-950 dark:text-slate-100 transition-all focus:outline-none focus:border-blue-500"
+                      className="bg-white/50 dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-sm text-olive-950 dark:text-slate-100 transition-all focus:outline-none focus:border-olive-500"
                       onChange={(event) => setDeviceName(event.target.value)}
                       placeholder="e.g. Work Mobile"
                       value={deviceName}
                     />
                     <select
-                      className="bg-white/50 dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-sm text-olive-950 dark:text-slate-100 transition-all focus:outline-none focus:border-blue-500"
+                      className="bg-white/50 dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-sm text-olive-950 dark:text-slate-100 transition-all focus:outline-none focus:border-olive-500"
                       onChange={(event) => setDeviceType(event.target.value)}
                       value={deviceType}
                     >
@@ -1547,7 +1645,7 @@ function SettingsPanel(): JSX.Element {
                       </select>
                   </div>
                   <button
-                    className="w-full mt-2 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-400 text-white rounded-lg text-sm font-semibold shadow-lg shadow-blue-500/20 transition-all disabled:opacity-50"
+                    className="w-full mt-2 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-olive-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-400 text-white rounded-lg text-sm font-semibold shadow-lg shadow-blue-500/20 transition-all disabled:opacity-50"
                     disabled={isGeneratingCompanionKey || !deviceName.trim() || devices.length >= 5}
                     onClick={() => void handleGenerateCompanionKey()}
                     type="button"
@@ -1580,11 +1678,11 @@ function SettingsPanel(): JSX.Element {
       <SectionCard>
         <div className="flex items-start justify-between gap-4 mb-6">
           <div>
-            <span className="text-blue-600 dark:text-blue-400 text-[0.72rem] tracking-[0.12em] uppercase font-semibold">A.I.</span>
+            <span className="text-olive-600 dark:text-blue-400 text-[0.72rem] tracking-[0.12em] uppercase font-semibold">A.I.</span>
             <h2 className="mt-1 mb-1 text-olive-950 dark:text-slate-100">ChatGPT Integration</h2>
             <p className="text-zinc-500 dark:text-slate-400 m-0 text-sm">Configure a custom GPT to manage your tasks via voice or chat.</p>
           </div>
-          <span className="flex items-center justify-center w-10 h-10 bg-blue-600/8 dark:bg-blue-400/12 rounded-xl text-blue-600 dark:text-blue-400 shrink-0">
+          <span className="flex items-center justify-center w-10 h-10 bg-olive-600/8 dark:bg-blue-400/12 rounded-xl text-olive-600 dark:text-blue-400 shrink-0">
             <Sparkles size={18} />
           </span>
         </div>

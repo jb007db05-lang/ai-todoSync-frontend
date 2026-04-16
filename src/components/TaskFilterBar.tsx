@@ -59,13 +59,13 @@ const TaskFilterBar: React.FC<TaskFilterBarProps> = ({
       <div className="flex flex-wrap items-center gap-3">
         {/* Search */}
         <div className="relative flex-1 min-w-[200px] group">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-olive-500 transition-colors" />
           <input
             type="text"
             placeholder="Search tasks..."
             value={filters.search}
             onChange={handleSearchChange}
-            className="w-full pl-10 pr-4 py-2 bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all"
+            className="w-full pl-10 pr-4 py-2 bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-olive-500/20 focus:border-olive-500/50 transition-all"
           />
           {filters.search && (
             <button 
@@ -83,14 +83,14 @@ const TaskFilterBar: React.FC<TaskFilterBarProps> = ({
           className={[
             "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300",
             activeFilterCount > 0 || isExpanded
-              ? "bg-blue-600 text-white shadow-lg shadow-blue-500/25"
+              ? "bg-olive-600 text-white shadow-lg shadow-blue-500/25"
               : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-blue-400"
           ].join(' ')}
         >
           <Filter className="w-4 h-4" />
           <span>Filters</span>
           {activeFilterCount > 0 && (
-            <span className="flex items-center justify-center w-5 h-5 bg-white text-blue-600 rounded-full text-[10px] font-black">
+            <span className="flex items-center justify-center w-5 h-5 bg-white text-olive-600 rounded-full text-[10px] font-black">
               {activeFilterCount}
             </span>
           )}
@@ -118,7 +118,7 @@ const TaskFilterBar: React.FC<TaskFilterBarProps> = ({
             <select
               value={filters.status}
               onChange={(e) => updateFilter('status', e.target.value)}
-              className="w-full p-2.5 bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="w-full p-2.5 bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-olive-500/20"
             >
               <option value="all">All Statuses</option>
               {[...TASK_WORKFLOW_STATUS_OPTIONS, { value: 'rolled_over', label: 'Rolled Over' }].map(opt => (
@@ -135,7 +135,7 @@ const TaskFilterBar: React.FC<TaskFilterBarProps> = ({
             <select
               value={filters.assigneeId}
               onChange={(e) => updateFilter('assigneeId', e.target.value)}
-              className="w-full p-2.5 bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="w-full p-2.5 bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-olive-500/20"
             >
               <option value="all">All Members</option>
               {members.map(member => (
@@ -152,7 +152,7 @@ const TaskFilterBar: React.FC<TaskFilterBarProps> = ({
             <select
               value={filters.epicId}
               onChange={(e) => updateFilter('epicId', e.target.value)}
-              className="w-full p-2.5 bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="w-full p-2.5 bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-olive-500/20"
             >
               <option value="all">All Epics</option>
               {epics.map(epic => (
@@ -169,7 +169,7 @@ const TaskFilterBar: React.FC<TaskFilterBarProps> = ({
             <select
               value={filters.source}
               onChange={(e) => updateFilter('source', e.target.value)}
-              className="w-full p-2.5 bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="w-full p-2.5 bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-olive-500/20"
             >
               <option value="all">All Sources</option>
               <option value="manual">Manual</option>

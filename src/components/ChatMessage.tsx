@@ -123,6 +123,13 @@ function ChatMessageComponent({
     [message.reactions, currentUserId]
   );
 
+  // Sync editContent when message content changes OR when editing is toggled
+  const handleStartEdit = useCallback(() => {
+    setEditContent(message.content);
+    setIsEditing(true);
+    setShowActions(false);
+  }, [message.content]);
+
   // Handle edit submit
   const handleEditSubmit = useCallback(() => {
     const trimmed = editContent.trim();
@@ -130,7 +137,6 @@ function ChatMessageComponent({
       onEdit(message.id, trimmed);
     }
     setIsEditing(false);
-    setEditContent(message.content);
   }, [editContent, message.content, message.id, onEdit]);
 
   // Handle edit cancel
@@ -162,9 +168,9 @@ function ChatMessageComponent({
   // Render system message
   if (isSystemMessage) {
     return (
-      <div className="flex items-center justify-center py-2 my-2">
-        <div className="flex items-center gap-2 px-4 py-1.5 bg-slate-100 dark:bg-slate-800/50 rounded-full">
-          <span className="text-xs text-slate-500 dark:text-slate-400">
+      <div className="flex items-center justify-center py-2 my-1">
+        <div className="flex items-center gap-2 px-4 py-1.5 bg-slate-100/50 dark:bg-slate-800/30 rounded-full border border-slate-200/50 dark:border-slate-700/50">
+          <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
             {message.content}
           </span>
           <span className="text-[10px] text-slate-400 dark:text-slate-500">
@@ -178,8 +184,8 @@ function ChatMessageComponent({
   // Render deleted message
   if (isDeleted) {
     return (
-      <div className="flex items-center justify-center py-1 my-1 opacity-50">
-        <span className="text-xs text-slate-400 dark:text-slate-500 italic">
+      <div className="flex items-center justify-center py-2 my-1 opacity-50">
+        <span className="text-[11px] text-slate-400 dark:text-slate-500 italic px-4 py-1 bg-slate-50 dark:bg-slate-900 rounded-lg">
           Message deleted
         </span>
       </div>
@@ -190,15 +196,15 @@ function ChatMessageComponent({
     <div
       id={`message-${message.id}`}
       className={[
-        'group flex gap-4 px-4 py-3 transition-all duration-200 relative w-full hover:bg-slate-50 dark:hover:bg-slate-900/40',
+        'group flex gap-4 px-6 py-2 transition-all duration-300 relative w-full hover:bg-slate-50/80 dark:hover:bg-slate-800/20',
         isOwnMessage ? 'flex-row-reverse' : 'flex-row',
       ].join(' ')}
     >
       {/* Avatar */}
       <div
         className={[
-          'flex-shrink-0 w-9 h-9 rounded-2xl flex items-center justify-center shadow-lg transform transition-transform group-hover:scale-105',
-          'text-white text-sm font-bold select-none ring-2 ring-white dark:ring-slate-900',
+          'flex-shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center shadow-md transform transition-transform group-hover:scale-105',
+          'text-white text-sm font-black select-none ring-2 ring-white dark:ring-slate-900',
           getAvatarColor(message.senderId),
         ].join(' ')}
       >
@@ -206,46 +212,20 @@ function ChatMessageComponent({
       </div>
 
       {/* Message content */}
-      <div className={['flex flex-col max-w-[75%] min-w-0', isOwnMessage ? 'items-end' : 'items-start'].join(' ')}>
-        {/* Header (Sender Name) */}
-        {!isOwnMessage && (
-          <div className="flex items-center gap-2 mb-1 px-1">
-            <span className="text-[12px] font-bold text-slate-700 dark:text-slate-300 tracking-wide uppercase">
-              {message.sender?.name || message.sender?.email || 'Unknown'}
-            </span>
-          </div>
-        )}
-
-        {/* Reply preview */}
-        {message.replyTo && (
-          <div
-            className={[
-              'flex items-center gap-2 mb-1 p-1.5 rounded',
-              'bg-slate-100 dark:bg-slate-800/50 border-l-2 border-blue-400',
-              'cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800',
-              isOwnMessage ? 'flex-row-reverse border-r-2 border-l-0' : '',
-            ].join(' ')}
-            onClick={() => onLoadThread?.(message.replyTo!.id)}
-          >
-            <CornerDownRight className="w-3 h-3 text-slate-400" />
-            <span className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[200px]">
-              {message.replyTo.sender?.name || message.replyTo.sender?.email}: {message.replyTo.content}
-            </span>
-          </div>
-        )}
-
-        {/* Message body */}
-        <div className="relative group/bubble">
+      <div className={['flex flex-col max-w-[92%] min-w-0', isOwnMessage ? 'items-end' : 'items-start'].join(' ')}>
+        
+        {/* The Card Bubble */}
+        <div className="relative group/bubble w-full min-w-[200px]">
           {isEditing ? (
-            <div className="flex flex-col gap-2 min-w-[300px]">
+            <div className="flex flex-col gap-3 min-w-[300px] w-full bg-white dark:bg-slate-900 p-4 rounded-2xl border-2 border-olive-500 shadow-2xl">
               <textarea
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
                 className={[
-                  'w-full px-4 py-3 text-sm rounded-2xl resize-none shadow-xl transition-all',
-                  'bg-white dark:bg-slate-800 border-2 border-blue-500/50',
+                  'w-full px-4 py-3 text-sm rounded-xl resize-none outline-none',
+                  'bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700',
                   'text-slate-900 dark:text-slate-100',
-                  'focus:outline-none focus:ring-4 focus:ring-blue-500/10',
+                  'focus:ring-2 focus:ring-olive-500/20',
                 ].join(' ')}
                 rows={3}
                 autoFocus
@@ -262,44 +242,71 @@ function ChatMessageComponent({
               <div className="flex items-center gap-2 justify-end">
                 <button
                   onClick={handleEditCancel}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                  className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
                 >
                   <X className="w-3.5 h-3.5" />
                   Cancel
                 </button>
                 <button
                   onClick={handleEditSubmit}
-                  className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold bg-blue-600 text-white rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+                  className="flex items-center gap-1.5 px-6 py-2 text-xs font-black bg-olive-600 text-white rounded-xl hover:bg-olive-700 shadow-lg shadow-olive-500/20 active:scale-95 transition-all"
                 >
                   <Check className="w-3.5 h-3.5" />
-                  Save Changes
+                  Save
                 </button>
               </div>
             </div>
           ) : (
             <div
               className={[
-                'inline-block px-4 py-2.5 text-sm shadow-sm transition-all duration-200',
+                'flex flex-col shadow-sm transition-all duration-300 overflow-hidden',
                 isOwnMessage
-                  ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-tl-2xl rounded-tr-sm rounded-br-2xl rounded-bl-2xl'
-                  : 'bg-white dark:bg-slate-800 border border-slate-200/50 dark:border-slate-700/50 text-slate-800 dark:text-slate-200 rounded-tl-sm rounded-tr-2xl rounded-br-2xl rounded-bl-2xl',
+                  ? 'bg-olive-600 dark:bg-olive-700 text-white rounded-tl-2xl rounded-tr-md rounded-br-2xl rounded-bl-2xl'
+                  : 'bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 text-slate-800 dark:text-slate-200 rounded-tl-md rounded-tr-2xl rounded-br-2xl rounded-bl-2xl',
               ].join(' ')}
-              style={{ wordBreak: 'break-word' }}
             >
-              <div className="leading-relaxed">{message.content}</div>
-              
-              {/* Internal Timestamp (Subtle) */}
-              <div className={['mt-1 text-[10px] select-none block', isOwnMessage ? 'text-blue-100/60' : 'text-slate-400/70'].join(' ')}>
-                {formatTime(message.createdAt)}
-                {message.isEdited && <span className="ml-1 opacity-70">(edited)</span>}
+              {/* Card Header (Owner Name) */}
+              <div className={['px-4 py-2 text-[0.72rem] font-black uppercase tracking-[0.15em] border-b', 
+                isOwnMessage ? 'border-white/10 text-white/90' : 'border-slate-100 dark:border-slate-700/50 text-olive-600 dark:text-blue-400'
+              ].join(' ')}>
+                {((name) => name.length > 10 ? name.slice(0, 10) + '…' : name)(message.sender?.name || 'Unknown')}
+              </div>
+
+              {/* Card Body */}
+              <div className="px-5 py-3.5">
+                {/* Reply preview inside bubble */}
+                {message.replyTo && (
+                  <div
+                    className={[
+                      'mb-3 p-2 rounded-lg text-xs flex items-center gap-3 transition-colors',
+                      isOwnMessage ? 'bg-black/10 hover:bg-black/20 text-white/80' : 'bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 text-slate-500',
+                      'cursor-pointer border-l-2',
+                      isOwnMessage ? 'border-white/30' : 'border-olive-500'
+                    ].join(' ')}
+                    onClick={() => onLoadThread?.(message.replyTo!.id)}
+                  >
+                    <CornerDownRight className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">{message.replyTo.content}</span>
+                  </div>
+                )}
+
+                <div className="leading-relaxed text-[0.92rem] whitespace-pre-wrap" style={{ wordBreak: 'break-word' }}>
+                  {message.content}
+                </div>
+
+                {/* Footer Info */}
+                <div className={['mt-3 flex items-center justify-between gap-4 text-[10px] uppercase font-bold tracking-wider opacity-60'].join(' ')}>
+                  <span>{formatTime(message.createdAt)}</span>
+                  {message.isEdited && <span>(edited)</span>}
+                </div>
               </div>
             </div>
           )}
         </div>
 
-        {/* Reactions */}
+        {/* Dynamic Horizontal Reactions Bar */}
         {groupedReactions.size > 0 && (
-          <div className={['flex flex-wrap gap-1 mt-1', isOwnMessage ? 'justify-end' : ''].join(' ')}>
+          <div className={['flex flex-wrap gap-1.5 mt-2', isOwnMessage ? 'justify-end' : ''].join(' ')}>
             {Array.from(groupedReactions.entries()).map(([emoji, users]) => {
               const hasReacted = userReactions.includes(emoji);
               return (
@@ -307,19 +314,17 @@ function ChatMessageComponent({
                   key={emoji}
                   onClick={() => handleReactionClick(emoji)}
                   className={[
-                    'flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs',
-                    'border transition-colors',
+                    'flex items-center gap-2 px-2.5 py-1 rounded-full text-[11px] font-bold shadow-xs transition-all active:scale-90',
+                    'border',
                     hasReacted
-                      ? 'bg-blue-50 border-blue-300 dark:bg-blue-900/30 dark:border-blue-600'
-                      : 'bg-slate-50 border-slate-200 dark:bg-slate-800 dark:border-slate-700',
-                    'hover:border-blue-300 dark:hover:border-blue-600',
+                      ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/30 dark:border-blue-700/50 dark:text-blue-300'
+                      : 'bg-white border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400',
+                    'hover:border-blue-400 dark:hover:border-blue-500'
                   ].join(' ')}
                   title={`Reacted by ${users.length} user${users.length > 1 ? 's' : ''}`}
                 >
-                  <span>{emoji}</span>
-                  <span className={hasReacted ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}>
-                    {users.length}
-                  </span>
+                  <span className="text-base leading-none">{emoji}</span>
+                  <span>{users.length}</span>
                 </button>
               );
             })}
@@ -331,110 +336,102 @@ function ChatMessageComponent({
           <button
             onClick={() => onLoadThread?.(message.id)}
             className={[
-              'mt-1 text-xs text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300',
-              'flex items-center gap-1',
+              'mt-2 text-[0.72rem] font-black uppercase tracking-widest text-olive-600 hover:text-olive-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors',
+              'flex items-center gap-1.5',
               isOwnMessage ? 'justify-end' : '',
             ].join(' ')}
           >
-            <CornerDownRight className="w-3 h-3" />
+            <CornerDownRight className="w-3.5 h-3.5" />
             {message.replyCount} {message.replyCount === 1 ? 'reply' : 'replies'}
           </button>
         )}
       </div>
 
-      {/* Actions */}
+      {/* Floating Actions Overlay */}
       {!isEditing && (
         <div
           className={[
-            'flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity',
-            'flex-shrink-0',
+            'flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-200 mt-1',
+            isOwnMessage ? 'mr-2' : 'ml-2',
           ].join(' ')}
         >
-          {/* Emoji picker */}
-          <div className="relative">
-            <button
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              className="p-1.5 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 rounded hover:bg-slate-100 dark:hover:bg-slate-800"
-              title="Add reaction"
-            >
-              <Smile className="w-4 h-4" />
-            </button>
+          <div className="flex bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200/50 dark:border-slate-700/50 p-1">
+            {/* Emoji toggle icon */}
+            <div className="relative">
+              <button
+                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                className="p-2 text-slate-500 hover:text-olive-600 dark:text-slate-400 dark:hover:text-blue-400 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                title="Add reaction"
+              >
+                <Smile size={16} />
+              </button>
 
-            {showEmojiPicker && (
-              <>
-                <div
-                  className="fixed inset-0 z-40"
-                  onClick={() => setShowEmojiPicker(false)}
-                />
-                <div className="absolute right-0 bottom-full mb-1 p-2 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 z-50">
-                  <div className="flex flex-wrap gap-1">
-                    {QUICK_REACTIONS.map((emoji) => (
-                      <button
-                        key={emoji}
-                        onClick={() => handleReactionClick(emoji)}
-                        className="w-8 h-8 flex items-center justify-center text-lg rounded hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                      >
-                        {emoji}
-                      </button>
-                    ))}
+              {showEmojiPicker && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowEmojiPicker(false)} />
+                  <div className="absolute right-0 bottom-full mb-3 p-2 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 z-50">
+                    <div className="grid grid-cols-4 gap-1 min-w-[160px]">
+                      {QUICK_REACTIONS.map((emoji) => (
+                        <button
+                          key={emoji}
+                          onClick={() => handleReactionClick(emoji)}
+                          className="w-10 h-10 flex items-center justify-center text-xl rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-all hover:scale-110 active:scale-90"
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              </>
-            )}
-          </div>
+                </>
+              )}
+            </div>
 
-          {/* Reply button */}
-          <button
-            onClick={() => onReply(message)}
-            className="p-1.5 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 rounded hover:bg-slate-100 dark:hover:bg-slate-800"
-            title="Reply"
-          >
-            <CornerDownRight className="w-4 h-4" />
-          </button>
-
-          {/* More actions */}
-          <div className="relative">
             <button
-              onClick={() => setShowActions(!showActions)}
-              className="p-1.5 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 rounded hover:bg-slate-100 dark:hover:bg-slate-800"
+              onClick={() => onReply(message)}
+              className="p-2 text-slate-500 hover:text-olive-600 dark:text-slate-400 dark:hover:text-blue-400 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+              title="Reply"
             >
-              <MoreHorizontal className="w-4 h-4" />
+              <CornerDownRight size={16} />
             </button>
 
-            {showActions && (
-              <>
-                <div
-                  className="fixed inset-0 z-40"
-                  onClick={() => setShowActions(false)}
-                />
-                <div className="absolute right-0 top-full mt-1 py-1 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 z-50 min-w-[120px]">
-                  {canEdit && (
-                    <button
-                      onClick={() => {
-                        setIsEditing(true);
-                        setShowActions(false);
-                      }}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                      Edit
-                    </button>
-                  )}
-                  {canDelete && (
-                    <button
-                      onClick={() => {
-                        handleDelete();
-                        setShowActions(false);
-                      }}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-slate-100 dark:hover:bg-slate-700"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      Delete
-                    </button>
-                  )}
-                </div>
-              </>
-            )}
+            {/* Overflow Actions */}
+            <div className="relative">
+              <button
+                onClick={() => setShowActions(!showActions)}
+                className="p-2 text-slate-500 hover:text-olive-600 dark:text-slate-400 dark:hover:text-blue-400 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+              >
+                <MoreHorizontal size={16} />
+              </button>
+
+              {showActions && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowActions(false)} />
+                  <div className="absolute right-0 top-full mt-2 py-1.5 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 z-50 min-w-[140px] overflow-hidden">
+                    {canEdit && (
+                      <button
+                        onClick={handleStartEdit}
+                        className="w-full flex items-center gap-3 px-4 py-2 text-[0.82rem] font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                      >
+                        <Edit2 size={14} />
+                        Edit Message
+                      </button>
+                    )}
+                    {canDelete && (
+                      <button
+                        onClick={() => {
+                          handleDelete();
+                          setShowActions(false);
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-2 text-[0.82rem] font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                      >
+                        <Trash2 size={14} />
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}

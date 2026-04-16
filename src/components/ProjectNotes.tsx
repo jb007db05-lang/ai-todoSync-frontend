@@ -47,12 +47,12 @@ function ProjectNotes({
       {/* Header */}
       <div className="flex items-start gap-3 justify-between">
         <div>
-          <span className="text-blue-600 dark:text-blue-400 text-[0.72rem] tracking-[0.12em] uppercase font-semibold">Notes</span>
+          <span className="text-olive-600 dark:text-blue-400 text-[0.72rem] tracking-[0.12em] uppercase font-semibold">Notes</span>
           <h3 className="mt-1 mb-0 text-olive-950 dark:text-slate-100">{heading}</h3>
         </div>
         {onCreateNote ? (
           <button
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-olive-900 dark:bg-blue-600 text-white rounded text-sm font-medium hover:bg-olive-800 dark:hover:bg-blue-500 transition-colors shrink-0"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-olive-900 dark:bg-olive-600 text-white rounded text-sm font-medium hover:bg-olive-800 dark:hover:bg-olive-500 transition-colors shrink-0"
             onClick={onCreateNote}
             type="button"
           >

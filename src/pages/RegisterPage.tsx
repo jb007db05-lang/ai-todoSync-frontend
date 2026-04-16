@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/context/AuthContext';
 
-const inputCls = 'w-full bg-white/82 dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded-md text-olive-950 dark:text-slate-100 px-4 py-3.5 transition-all duration-200 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10';
+const inputCls = 'w-full bg-white/82 dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded-md text-olive-950 dark:text-slate-100 px-4 py-3.5 transition-all duration-200 focus:outline-none focus:border-olive-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-olive-500/10';
 const labelCls = 'grid gap-2 font-medium text-[0.95rem] text-olive-950 dark:text-slate-100';
 
 function RegisterPage(): JSX.Element {
@@ -11,6 +11,8 @@ function RegisterPage(): JSX.Element {
   const { register, loading, error, user } = useAuth();
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
+  const [firstName, setFirstName] = useState<string>('');
+  const [lastName, setLastName] = useState<string>('');
   const apiBase = useMemo(
     () => (import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api').replace(/\/$/, ''),
     []
@@ -18,7 +20,7 @@ function RegisterPage(): JSX.Element {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
-    await register(email, password);
+    await register({ email, password, firstName, lastName });
     navigate('/', { replace: true });
   };
 
@@ -50,6 +52,16 @@ function RegisterPage(): JSX.Element {
         <p className="text-center text-zinc-400 dark:text-slate-500 text-sm m-0">or create an email account</p>
 
         <form className="grid gap-[18px]" onSubmit={(event) => void handleSubmit(event)}>
+          <div className="grid grid-cols-2 gap-4">
+            <label className={labelCls}>
+              <span>First name</span>
+              <input autoComplete="given-name" className={inputCls} name="firstName" onChange={(event) => setFirstName(event.target.value)} required type="text" value={firstName} />
+            </label>
+            <label className={labelCls}>
+              <span>Last name</span>
+              <input autoComplete="family-name" className={inputCls} name="lastName" onChange={(event) => setLastName(event.target.value)} required type="text" value={lastName} />
+            </label>
+          </div>
           <label className={labelCls}>
             <span>Email</span>
             <input autoComplete="email" className={inputCls} name="email" onChange={(event) => setEmail(event.target.value)} required type="email" value={email} />
@@ -61,7 +73,7 @@ function RegisterPage(): JSX.Element {
           {user != null ? <p className="text-zinc-400 dark:text-slate-500 m-0 text-sm">You already have an active session. Redirecting...</p> : null}
           {error ? <p className="text-red-600 dark:text-red-400 m-0 text-[0.9rem]">{error}</p> : null}
           <button
-            className="bg-olive-900 dark:bg-blue-600 text-white rounded-md px-4 py-2.5 text-[0.9rem] font-medium hover:bg-olive-800 dark:hover:bg-blue-500 disabled:opacity-50 transition-colors"
+            className="bg-olive-900 dark:bg-olive-600 text-white rounded-md px-4 py-2.5 text-[0.9rem] font-medium hover:bg-olive-800 dark:hover:bg-olive-500 disabled:opacity-50 transition-colors"
             disabled={loading}
             type="submit"
           >
@@ -70,7 +82,7 @@ function RegisterPage(): JSX.Element {
         </form>
 
         <p className="text-zinc-500 dark:text-slate-400 m-0 text-sm">
-          Already registered? <Link className="text-blue-600 dark:text-blue-400 hover:underline" to="/login">Login</Link>
+          Already registered? <Link className="text-olive-600 dark:text-blue-400 hover:underline" to="/login">Login</Link>
         </p>
       </section>
 

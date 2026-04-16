@@ -8,6 +8,8 @@ interface AuthProfile {
   email: string;
   syncApiKey: string;
   name: string | null;
+  firstName: string | null;
+  lastName: string | null;
   authProvider: 'local' | 'google';
 }
 
@@ -29,9 +31,10 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<void>;
   loginWithCompanionKey: (key: string) => Promise<void>;
   authenticateWithToken: (token: string) => Promise<void>;
-  register: (email: string, password: string) => Promise<void>;
+  register: (payload: { email: string; password: string; firstName: string; lastName: string }) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
+  updateProfile: (data: { firstName?: string; lastName?: string }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -148,15 +151,30 @@ function AuthProvider({ children }: AuthProviderProps): JSX.Element {
     }
   };
 
-  const register = async (email: string, password: string): Promise<void> => {
+  const register = async (payload: { email: string; password: string; firstName: string; lastName: string }): Promise<void> => {
     setLoading(true);
     setError(null);
 
     try {
-      const response = await api.post<AuthResponse>('/auth/register', { email, password });
+      const response = await api.post<AuthResponse>('/auth/register', payload);
       handleAuthSuccess(response.data.data);
     } catch (error) {
       setError('Registration failed. Please try again.');
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateProfile = async (data: { firstName?: string; lastName?: string }): Promise<void> => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await api.patch<{ message: string; data: { user: AuthProfile } }>('/auth/profile', data);
+      setUser(response.data.data.user);
+    } catch (error) {
+      setError('Failed to update profile.');
       throw error;
     } finally {
       setLoading(false);
@@ -206,9 +224,10 @@ function AuthProvider({ children }: AuthProviderProps): JSX.Element {
       register,
       logout,
       refreshUser,
-      authenticateWithToken
+      authenticateWithToken,
+      updateProfile
     }),
-    [authenticateWithToken, error, loading, login, loginWithCompanionKey, logout, refreshUser, register, session, token, user]
+    [authenticateWithToken, error, loading, login, loginWithCompanionKey, logout, refreshUser, register, session, token, updateProfile, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

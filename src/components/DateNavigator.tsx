@@ -86,7 +86,7 @@ function DateNavigator({ date, disabled = false, onChange }: DateNavigatorProps)
           type="date"
           value={date}
         />
-        <span className="text-[0.75rem] font-semibold text-blue-600 dark:text-blue-400 whitespace-nowrap">
+        <span className="text-[0.75rem] font-semibold text-olive-600 dark:text-blue-400 whitespace-nowrap">
           {new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
         </span>
       </div>

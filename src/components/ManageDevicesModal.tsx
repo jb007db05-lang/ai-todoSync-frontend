@@ -184,7 +184,7 @@ function ManageDevicesModal({ onClose, onDevicesChanged }: ManageDevicesModalPro
                     <div className="flex flex-col gap-1.5">
                       <label className="text-[0.65rem] font-bold text-zinc-400 dark:text-slate-500 uppercase tracking-widest pl-1">Name</label>
                       <input 
-                        className="bg-zinc-50 dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-olive-950 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="bg-zinc-50 dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-olive-950 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-olive-500"
                         value={draft.deviceName}
                         onChange={e => handleDraftChange(device.id, 'deviceName', e.target.value)}
                       />
@@ -192,7 +192,7 @@ function ManageDevicesModal({ onClose, onDevicesChanged }: ManageDevicesModalPro
                     <div className="flex flex-col gap-1.5">
                       <label className="text-[0.65rem] font-bold text-zinc-400 dark:text-slate-500 uppercase tracking-widest pl-1">Category</label>
                       <select 
-                        className="bg-zinc-50 dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-olive-950 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="bg-zinc-50 dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-olive-950 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-olive-500"
                         value={draft.deviceType}
                         onChange={e => handleDraftChange(device.id, 'deviceType', e.target.value)}
                       >

@@ -32,7 +32,7 @@ interface TaskCardProps {
 
 const statusPillClasses: Record<string, string> = {
   pending: 'bg-amber-50 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-100 dark:border-amber-500/30',
-  in_progress: 'bg-blue-50 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-100 dark:border-blue-500/30',
+  in_progress: 'bg-blue-50 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-100 dark:border-olive-500/30',
   in_review: 'bg-purple-50 dark:bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-100 dark:border-purple-500/30',
   completed: 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-500/30',
   done: 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-500/30',
@@ -81,7 +81,7 @@ function TaskCard({
             {task.description || 'No description provided.'}
           </p>
 
-          {(projectName || epicName || task.subtasks.length > 0 || task.assignedToUser) && (
+          {(projectName || epicName || task.subtasks.length > 0) && (
             <div className="flex flex-wrap items-center gap-3 mt-5 pt-4 border-t border-zinc-100/90 dark:border-slate-700/50 text-zinc-400 dark:text-slate-400">
               {task.subtasks.length > 0 && (
                 <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-100/80 dark:bg-slate-800/90">
@@ -103,14 +103,6 @@ function TaskCard({
                   <span className="text-[0.65rem] font-bold uppercase tracking-widest truncate max-w-[120px]">{epicName}</span>
                 </div>
               )}
-              {task.assignedToUser && (
-                <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-50/90 dark:bg-emerald-500/10">
-                  <div className="w-1 h-1 rounded-full bg-emerald-500/50" />
-                  <span className="text-[0.65rem] font-bold uppercase tracking-widest truncate max-w-[150px]">
-                    {task.assignedToUser.name || task.assignedToUser.email}
-                  </span>
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -118,7 +110,7 @@ function TaskCard({
         <div className="flex flex-col gap-1.5">
           {onEditTask && (
             <button
-              className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-800/90 border border-zinc-200/80 dark:border-slate-700 text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors disabled:opacity-40 shadow-sm"
+              className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-800/90 border border-zinc-200/80 dark:border-slate-700 text-zinc-400 hover:text-olive-600 dark:hover:text-blue-400 transition-colors disabled:opacity-40 shadow-sm"
               disabled={!task.permissions.canEdit}
               onClick={(e) => { e.stopPropagation(); onEditTask(task); }}
               title="Edit Task"

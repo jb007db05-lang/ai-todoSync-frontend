@@ -37,12 +37,12 @@ function EpicManager({
       {/* Intro */}
       <div className="flex items-flex-start justify-between gap-4">
         <div>
-          <span className="text-blue-600 dark:text-blue-400 font-['Space_Grotesk'] text-[0.72rem] tracking-[0.12em] uppercase">Epic layer</span>
+          <span className="text-olive-600 dark:text-blue-400 font-['Space_Grotesk'] text-[0.72rem] tracking-[0.12em] uppercase">Epic layer</span>
           <h3 className="my-1 text-olive-950 dark:text-slate-100">{projectName} epics</h3>
           <p className="text-zinc-500 dark:text-slate-400 m-0 text-sm">Create, reorder, rename, or remove epics without affecting the underlying tasks.</p>
         </div>
         <button
-          className="inline-flex items-center gap-1.5 px-4 py-2 bg-olive-900 dark:bg-blue-600 text-white rounded text-sm font-medium hover:bg-olive-800 dark:hover:bg-blue-500 transition-colors shrink-0"
+          className="inline-flex items-center gap-1.5 px-4 py-2 bg-olive-900 dark:bg-olive-600 text-white rounded text-sm font-medium hover:bg-olive-800 dark:hover:bg-olive-500 transition-colors shrink-0"
           onClick={onCreateEpic}
           type="button"
         >
@@ -65,7 +65,7 @@ function EpicManager({
             >
               {/* Copy */}
               <div className="grid gap-1.5">
-                <span className="text-blue-600 dark:text-blue-400 font-['Space_Grotesk'] text-[0.72rem] tracking-[0.12em] uppercase">
+                <span className="text-olive-600 dark:text-blue-400 font-['Space_Grotesk'] text-[0.72rem] tracking-[0.12em] uppercase">
                   Epic #{index + 1}
                 </span>
                 <strong className="text-olive-950 dark:text-slate-100 text-[1.05rem]">{epic.name}</strong>
