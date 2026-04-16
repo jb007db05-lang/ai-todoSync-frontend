@@ -11,6 +11,7 @@ interface AddTaskFormProps {
   onCreateTask: (payload: {
     title: string;
     description?: string;
+    note?: string;
     status?: TaskWorkflowStatus;
     projectId?: string | null;
     epicId?: string | null;
@@ -18,12 +19,13 @@ interface AddTaskFormProps {
   projects: Project[];
 }
 
-const inputCls = 'w-full bg-white/82 dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded-md text-olive-950 dark:text-slate-100 px-4 py-3.5 transition-all duration-200 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10';
+const inputCls = 'w-full bg-white/82 dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded-md text-olive-950 dark:text-slate-100 px-4 py-3.5 transition-all duration-200 focus:outline-none focus:border-olive-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-olive-500/10';
 const labelCls = 'grid gap-2 font-medium text-[0.95rem] text-olive-950 dark:text-slate-100';
 
 function AddTaskForm({ epics, initialProjectId = null, onCreateTask, projects }: AddTaskFormProps): JSX.Element {
   const [title, setTitle] = useState<string>('');
   const [description, setDescription] = useState<string>('');
+  const [note, setNote] = useState<string>('');
   const [status, setStatus] = useState<TaskWorkflowStatus>('pending');
   const [projectId, setProjectId] = useState<string>(initialProjectId ?? '');
   const [epicId, setEpicId] = useState<string>('');
@@ -48,12 +50,14 @@ function AddTaskForm({ epics, initialProjectId = null, onCreateTask, projects }:
       await onCreateTask({
         title: title.trim(),
         description: description.trim() || undefined,
+        note: note.trim() || undefined,
         status,
         projectId: projectId || undefined,
         epicId: projectId ? epicId || null : null
       });
       setTitle('');
       setDescription('');
+      setNote('');
       setStatus('pending');
       setProjectId(initialProjectId ?? '');
       setEpicId('');
@@ -86,6 +90,17 @@ function AddTaskForm({ epics, initialProjectId = null, onCreateTask, projects }:
           placeholder="Optional details"
           type="text"
           value={description}
+        />
+      </label>
+      
+      <label className={labelCls}>
+        <span>Internal Note <span className="text-zinc-400 dark:text-slate-500 font-normal text-[0.82rem]">(optional)</span></span>
+        <textarea
+          className={`${inputCls} min-h-[80px] resize-y`}
+          onChange={(event) => setNote(event.target.value)}
+          placeholder="Private notes for this task"
+          rows={2}
+          value={note}
         />
       </label>
 
@@ -132,7 +147,7 @@ function AddTaskForm({ epics, initialProjectId = null, onCreateTask, projects }:
       </label>
 
       <button
-        className="bg-olive-900 dark:bg-blue-600 text-white rounded-md px-4 py-2.5 text-[0.9rem] font-medium hover:bg-olive-800 dark:hover:bg-blue-500 disabled:opacity-50 transition-colors"
+        className="bg-olive-900 dark:bg-olive-600 text-white rounded-md px-4 py-2.5 text-[0.9rem] font-medium hover:bg-olive-800 dark:hover:bg-olive-500 disabled:opacity-50 transition-colors"
         disabled={submitting}
         type="submit"
       >

@@ -32,7 +32,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             "w-12 h-12 flex items-center justify-center rounded-lg shrink-0",
             isDanger 
               ? "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400" 
-              : "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+              : "bg-blue-50 dark:bg-blue-900/20 text-olive-600 dark:text-blue-400"
           ].join(' ')}>
             {isDanger ? <AlertCircle size={24} /> : <HelpCircle size={24} />}
           </div>
@@ -57,7 +57,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
               "px-6 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2",
               isDanger 
                 ? "bg-red-600 hover:bg-red-700 shadow-red-500/20" 
-                : "bg-blue-600 hover:bg-blue-700 shadow-blue-500/20"
+                : "bg-olive-600 hover:bg-blue-700 shadow-blue-500/20"
             ].join(' ')}
             disabled={isLoading}
             onClick={onConfirm}

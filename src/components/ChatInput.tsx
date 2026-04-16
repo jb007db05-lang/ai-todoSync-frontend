@@ -130,10 +130,10 @@ function ChatInput({
     <div className="bg-white dark:bg-slate-900 border-t border-slate-200/50 dark:border-slate-800/50">
       {/* Reply preview */}
       {replyingTo && (
-        <div className="mx-4 mt-3 flex items-center gap-3 px-4 py-2.5 bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-2xl animate-in fade-in slide-in-from-bottom-2 duration-300">
+        <div className="mx-4 mt-3 flex items-center gap-3 px-4 py-2.5 bg-olive-50/50 dark:bg-olive-900/10 border border-olive-100 dark:border-olive-900/30 rounded-2xl animate-in fade-in slide-in-from-bottom-2 duration-300">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-0.5">
-              <span className="text-[10px] uppercase font-bold text-blue-600 dark:text-blue-400 tracking-wider">
+              <span className="text-[10px] uppercase font-bold text-olive-600 dark:text-olive-500 tracking-wider">
                 Replying to
               </span>
               <span className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">
@@ -169,7 +169,7 @@ function ChatInput({
               'bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800',
               'text-slate-900 dark:text-slate-100 text-sm leading-relaxed',
               'placeholder:text-slate-400 dark:placeholder:text-slate-600',
-              'focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500/50 focus:bg-white dark:focus:bg-slate-900',
+              'focus:outline-none focus:ring-4 focus:ring-olive-500/10 focus:border-olive-500/50 focus:bg-white dark:focus:bg-slate-900',
               'disabled:opacity-50 disabled:cursor-not-allowed group-hover:border-slate-300 dark:group-hover:border-slate-700',
             ].join(' ')}
             style={{ minHeight: '48px', maxHeight: '150px' }}
@@ -200,7 +200,7 @@ function ChatInput({
             'flex-shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center',
             'transition-all duration-300 transform active:scale-90',
             content.trim() && !disabled && !isAtLimit
-              ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-xl shadow-blue-500/25 hover:shadow-blue-500/40 hover:-translate-y-0.5'
+              ? 'bg-olive-600 text-white shadow-xl shadow-olive-500/25 hover:shadow-olive-500/40 hover:-translate-y-0.5'
               : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed',
           ].join(' ')}
         >

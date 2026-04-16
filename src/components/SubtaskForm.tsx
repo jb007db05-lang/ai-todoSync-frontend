@@ -2,33 +2,40 @@ import { FormEvent, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 
 import { TASK_WORKFLOW_STATUS_OPTIONS, type TaskWorkflowStatus } from '@/types/task';
+import type { ProjectMember } from '@/types/project';
+import UserAvatar from './UserAvatar';
 
 interface SubtaskDraft {
   id: string;
   title: string;
   description?: string;
+  note?: string;
   status: TaskWorkflowStatus;
+  assignedToUserId?: string | null;
 }
 
 interface SubtaskFormProps {
-  onSubmit: (payload: Array<{ title: string; description?: string; status: TaskWorkflowStatus }>) => Promise<void>;
+  onSubmit: (payload: Array<{ title: string; description?: string; note?: string; status: TaskWorkflowStatus; assignedToUserId?: string | null }>) => Promise<void>;
+  members: ProjectMember[];
 }
 
 const createDraft = (): SubtaskDraft => ({
   id: crypto.randomUUID(),
   title: '',
   description: '',
-  status: 'pending'
+  note: '',
+  status: 'pending',
+  assignedToUserId: null
 });
 
-const inputCls = 'w-full bg-white/82 dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded-md text-olive-950 dark:text-slate-100 px-4 py-3.5 transition-all duration-200 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10';
+const inputCls = 'w-full bg-white/82 dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded-md text-olive-950 dark:text-slate-100 px-4 py-3.5 transition-all duration-200 focus:outline-none focus:border-olive-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-olive-500/10';
 
-function SubtaskForm({ onSubmit }: SubtaskFormProps): JSX.Element {
+function SubtaskForm({ onSubmit, members }: SubtaskFormProps): JSX.Element {
   const [drafts, setDrafts] = useState<SubtaskDraft[]>([createDraft()]);
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const updateDraft = (draftId: string, field: keyof Omit<SubtaskDraft, 'id'>, value: string): void => {
+  const updateDraft = (draftId: string, field: keyof Omit<SubtaskDraft, 'id'>, value: string | null): void => {
     setDrafts((current) =>
       current.map((draft) => (draft.id === draftId ? { ...draft, [field]: value } : draft))
     );
@@ -49,7 +56,9 @@ function SubtaskForm({ onSubmit }: SubtaskFormProps): JSX.Element {
       .map((draft) => ({
         title: draft.title.trim(),
         description: draft.description?.trim() || undefined,
-        status: draft.status
+        note: draft.note?.trim() || undefined,
+        status: draft.status,
+        assignedToUserId: draft.assignedToUserId
       }))
       .filter((draft) => draft.title !== '');
 
@@ -66,7 +75,9 @@ function SubtaskForm({ onSubmit }: SubtaskFormProps): JSX.Element {
         normalizedDrafts.map((draft) => ({
           title: draft.title,
           description: draft.description,
-          status: draft.status
+          note: draft.note,
+          status: draft.status,
+          assignedToUserId: draft.assignedToUserId
         }))
       );
       setDrafts([createDraft()]);
@@ -122,6 +133,17 @@ function SubtaskForm({ onSubmit }: SubtaskFormProps): JSX.Element {
             </label>
 
             <label className="grid gap-2 text-sm font-medium text-zinc-700 dark:text-slate-300">
+              <span>Internal Note</span>
+              <input
+                className={inputCls}
+                onChange={(event) => updateDraft(draft.id, 'note', event.target.value)}
+                placeholder="Optional private note"
+                type="text"
+                value={draft.note}
+              />
+            </label>
+
+            <label className="grid gap-2 text-sm font-medium text-zinc-700 dark:text-slate-300">
               <span>Status</span>
               <select
                 className={inputCls}
@@ -134,6 +156,32 @@ function SubtaskForm({ onSubmit }: SubtaskFormProps): JSX.Element {
                   </option>
                 ))}
               </select>
+            </label>
+
+            <label className="grid gap-2 text-sm font-medium text-zinc-700 dark:text-slate-300">
+              <span>Assign To</span>
+              <div className="flex items-center gap-3">
+                <select
+                  className={`${inputCls} !py-2.5`}
+                  onChange={(event) => updateDraft(draft.id, 'assignedToUserId', event.target.value || null)}
+                  value={draft.assignedToUserId || ''}
+                >
+                  <option value="">Unassigned</option>
+                  {members.map((member) => (
+                    <option key={member.id} value={member.userId}>
+                      {member.user.name || member.user.email}
+                    </option>
+                  ))}
+                </select>
+                {draft.assignedToUserId && (
+                  <UserAvatar 
+                    name={members.find(m => m.userId === draft.assignedToUserId)?.user.name || null}
+                    email={members.find(m => m.userId === draft.assignedToUserId)?.user.email || ''}
+                    size="md"
+                    showTooltip={false}
+                  />
+                )}
+              </div>
             </label>
           </div>
         ))}
@@ -150,7 +198,7 @@ function SubtaskForm({ onSubmit }: SubtaskFormProps): JSX.Element {
           <Plus size={16} /> Add another sub-task
         </button>
         <button
-          className="px-4 py-2 bg-olive-900 dark:bg-blue-600 text-white rounded text-sm font-medium hover:bg-olive-800 dark:hover:bg-blue-500 disabled:opacity-50 transition-colors"
+          className="px-4 py-2 bg-olive-900 dark:bg-olive-600 text-white rounded text-sm font-medium hover:bg-olive-800 dark:hover:bg-olive-500 disabled:opacity-50 transition-colors"
           disabled={submitting}
           type="submit"
         >

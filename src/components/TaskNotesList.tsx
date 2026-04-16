@@ -102,7 +102,7 @@ function TaskNotesList({
             type="button"
           >
             <strong className="text-olive-950 dark:text-slate-100 text-[0.98rem]">{entry.label}</strong>
-            <span className="inline-block text-[0.72rem] font-semibold px-2 py-0.5 rounded bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
+            <span className="inline-block text-[0.72rem] font-semibold px-2 py-0.5 rounded bg-blue-50 text-olive-600 dark:bg-blue-900/30 dark:text-blue-300">
               {entry.kind === 'task' ? 'Task note' : 'Subtask note'}
             </span>
             <span className="text-zinc-400 dark:text-slate-500 text-sm truncate">

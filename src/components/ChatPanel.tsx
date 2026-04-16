@@ -226,10 +226,10 @@ function ChatPanel({ project, members, isOpen }: ChatPanelProps) {
           <button
             onClick={() => setShowSearch(!showSearch)}
             className={[
-              'p-2 rounded-xl transition-all duration-200 backdrop-blur-sm',
+              'p-2 rounded-xl transition-all duration-200',
               showSearch
-                ? 'bg-white text-blue-600 shadow-inner scale-95'
-                : 'text-white hover:bg-white/10 active:scale-90',
+                ? 'bg-olive-50 text-olive-600 shadow-inner scale-95'
+                : 'text-zinc-600 hover:bg-zinc-100 dark:text-slate-400 dark:hover:bg-slate-800 active:scale-90',
             ].join(' ')}
             title="Search messages"
           >
@@ -238,7 +238,7 @@ function ChatPanel({ project, members, isOpen }: ChatPanelProps) {
 
           <button
             onClick={() => setNotificationsEnabled(!notificationsEnabled)}
-            className="p-2 rounded-xl text-white hover:bg-white/10 transition-all active:scale-90 backdrop-blur-sm"
+            className="p-2 rounded-xl text-zinc-600 hover:bg-zinc-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-all active:scale-90"
             title={notificationsEnabled ? 'Mute' : 'Unmute'}
           >
             {notificationsEnabled ? (
@@ -259,9 +259,9 @@ function ChatPanel({ project, members, isOpen }: ChatPanelProps) {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search in conversation..."
-              className="w-full px-4 py-2.5 pl-11 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-900 dark:text-slate-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition-all group-hover:border-slate-300 dark:group-hover:border-slate-600"
+              className="w-full px-4 py-2.5 pl-11 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-900 dark:text-slate-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-olive-500/30 transition-all group-hover:border-slate-300 dark:group-hover:border-slate-600"
             />
-            <Search className="absolute left-4 top-3 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+            <Search className="absolute left-4 top-3 w-4 h-4 text-slate-400 group-focus-within:text-olive-500 transition-colors" />
             {isSearching && (
               <Loader2 className="absolute right-4 top-3 w-4 h-4 text-slate-400 animate-spin" />
             )}
@@ -272,7 +272,7 @@ function ChatPanel({ project, members, isOpen }: ChatPanelProps) {
       {/* Messages */}
       <div
         ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar bg-slate-50/50 dark:bg-slate-950/20"
+        className="flex-1 overflow-y-auto p-6 space-y-1.5 custom-scrollbar bg-slate-50/50 dark:bg-slate-950/20"
       >
         {isLoading && messages.length === 0 ? (
           <div className="flex items-center justify-center h-full">

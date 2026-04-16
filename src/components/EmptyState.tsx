@@ -21,7 +21,7 @@ function EmptyState({ compact = false, description, icon: Icon, title }: EmptySt
         aria-hidden="true"
         className={[
           'inline-flex items-center justify-center bg-white dark:bg-slate-800',
-          'border border-zinc-200 dark:border-slate-700 rounded-md text-blue-600 dark:text-blue-400',
+          'border border-zinc-200 dark:border-slate-700 rounded-md text-olive-600 dark:text-blue-400',
           compact ? 'w-9 h-9' : 'w-11 h-11'
         ].join(' ')}
       >

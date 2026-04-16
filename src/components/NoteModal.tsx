@@ -137,7 +137,7 @@ function NoteModal({
           <label className="grid gap-2 font-medium text-[0.95rem] text-olive-950 dark:text-slate-100">
             <span>Title</span>
             <input
-              className="w-full bg-white/82 dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded-md text-olive-950 dark:text-slate-100 px-4 py-3.5 transition-all focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+              className="w-full bg-white/82 dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded-md text-olive-950 dark:text-slate-100 px-4 py-3.5 transition-all focus:outline-none focus:border-olive-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-olive-500/10"
               onChange={(event) => setTitle(event.target.value)}
               placeholder={titlePlaceholder}
               type="text"
@@ -170,7 +170,7 @@ function NoteModal({
                     <button
                       key={sz}
                       aria-label={`${labels[idx]} text`}
-                      className={`${toolbarBtnBase} ${fontSize === sz ? 'bg-olive-900 dark:bg-blue-600 text-white dark:text-white border-zinc-900 dark:border-blue-600' : ''}`}
+                      className={`${toolbarBtnBase} ${fontSize === sz ? 'bg-olive-900 dark:bg-olive-600 text-white dark:text-white border-olive-900 dark:border-blue-600' : ''}`}
                       onMouseDown={(e) => handleFontSizeCommand(e, sz)}
                       title={`${labels[idx]} text`}
                       type="button"
@@ -252,7 +252,7 @@ function NoteModal({
               </button>
             ) : null}
             <button
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-olive-900 dark:bg-blue-600 text-white rounded text-sm font-medium hover:bg-olive-800 dark:hover:bg-blue-500 disabled:opacity-50 transition-colors"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-olive-900 dark:bg-olive-600 text-white rounded text-sm font-medium hover:bg-olive-800 dark:hover:bg-olive-500 disabled:opacity-50 transition-colors"
               disabled={submitting}
               type="submit"
             >

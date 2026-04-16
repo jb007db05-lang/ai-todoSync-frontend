@@ -12,7 +12,6 @@ interface ProjectPanelProps {
   onDeleteProject: (projectId: string) => Promise<void>;
   onDeleteProjects: (projectIds: string[]) => Promise<void>;
   projects: Project[];
-  tasksByProject: Map<string | null, number>;
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
@@ -30,7 +29,6 @@ function ProjectPanel({
   onDeleteProject,
   onDeleteProjects,
   projects,
-  tasksByProject,
   currentPage,
   totalPages,
   onPageChange,
@@ -42,7 +40,6 @@ function ProjectPanel({
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onSearch(e.target.value);
   };
-  console.log(tasksByProject)
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
       setSelectedIds(new Set(projects.filter((project) => project.currentUserRole === 'ADMIN').map((project) => project.id)));
@@ -97,7 +94,7 @@ function ProjectPanel({
         <div className="relative flex-1 flex items-center">
           <Search className="absolute left-2.5 text-zinc-400 dark:text-slate-500" size={14} />
           <input
-            className="w-full h-9 pl-[38px] pr-3 text-[0.85rem] bg-white dark:bg-slate-700 border border-zinc-200 dark:border-slate-600 rounded-md shadow-inner transition-all duration-200 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/12 text-olive-950 dark:text-slate-100"
+            className="w-full h-9 pl-[38px] pr-3 text-[0.85rem] bg-white dark:bg-slate-700 border border-zinc-200 dark:border-slate-600 rounded-md shadow-inner transition-all duration-200 focus:outline-none focus:border-olive-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-olive-500/12 text-olive-950 dark:text-slate-100"
             onChange={handleSearchChange}
             placeholder="Filter projects..."
             type="text"
@@ -117,7 +114,7 @@ function ProjectPanel({
         )}
 
         <button
-          className="inline-flex items-center gap-2 h-9 px-4 bg-olive-900 dark:bg-blue-600 text-white rounded text-sm font-medium hover:bg-olive-800 dark:hover:bg-blue-500 transition-colors"
+          className="inline-flex items-center gap-2 h-9 px-4 bg-olive-900 dark:bg-olive-600 text-white rounded text-sm font-medium hover:bg-olive-800 dark:hover:bg-olive-500 transition-colors"
           onClick={onOpenCreateProject}
           type="button"
         >
@@ -188,7 +185,7 @@ function ProjectPanel({
                     </div>
                   </td>
                   {/* <td className="px-5 py-3.5 align-middle">
-                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-[0.7rem] font-bold">
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/40 text-olive-600 dark:text-blue-400 text-[0.7rem] font-bold">
                       {tasksByProject.get(project.id) ?? 0}
                     </span>
                   </td>
@@ -200,7 +197,7 @@ function ProjectPanel({
                   <td className="px-5 py-3 align-middle border-y border-r border-transparent last:rounded-r-xl">
                     <div className="flex items-center justify-end gap-1.5">
                       <button
-                        className={`${rowActionCls} hover:bg-indigo-100 dark:hover:bg-indigo-900/30 hover:text-blue-600 dark:hover:text-blue-400 disabled:opacity-40`}
+                        className={`${rowActionCls} hover:bg-indigo-100 dark:hover:bg-indigo-900/30 hover:text-olive-600 dark:hover:text-blue-400 disabled:opacity-40`}
                         disabled={project.currentUserRole !== 'ADMIN'}
                         onClick={(e) => { e.stopPropagation(); onOpenEpicManager(project); }}
                         title="Epics"
