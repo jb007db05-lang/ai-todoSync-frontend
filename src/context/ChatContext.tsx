@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from './AuthContext';
-import { socketService, SocketEvents, type MessageReceivePayload, type MessageEditPayload, type MessageDeletePayload, type TypingUpdatePayload } from '@/services/socket';
+import { socketService, SocketEvents, type MessageReceivePayload, type MessageEditPayload, type MessageDeletePayload, type TypingUpdatePayload, type ReactionUpdatePayload } from '@/services/socket';
 import { getMessages, getUnreadCount, markMessagesAsRead as apiMarkMessagesAsRead } from '@/services/chat';
 import type { ChatMessage } from '@/types/chat';
 import type { Project } from '@/types/project';
@@ -183,16 +183,31 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
     };
 
+    const handleReactionUpdate = (payload: ReactionUpdatePayload) => {
+      const { messageId, reactions } = payload;
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === messageId
+            ? { ...m, reactions: reactions.map((r) => ({ ...r, messageId })) }
+            : m
+        )
+      );
+    };
+
     socketService.on(SocketEvents.MESSAGE_RECEIVE, handleMessageReceive);
     socketService.on(SocketEvents.MESSAGE_EDIT, handleMessageEdit);
     socketService.on(SocketEvents.MESSAGE_DELETE, handleMessageDelete);
     socketService.on(SocketEvents.TYPING_UPDATE, handleTypingUpdate);
+    socketService.on(SocketEvents.REACTION_ADD, handleReactionUpdate);
+    socketService.on(SocketEvents.REACTION_REMOVE, handleReactionUpdate);
 
     return () => {
       socketService.off(SocketEvents.MESSAGE_RECEIVE, handleMessageReceive);
       socketService.off(SocketEvents.MESSAGE_EDIT, handleMessageEdit);
       socketService.off(SocketEvents.MESSAGE_DELETE, handleMessageDelete);
       socketService.off(SocketEvents.TYPING_UPDATE, handleTypingUpdate);
+      socketService.off(SocketEvents.REACTION_ADD, handleReactionUpdate);
+      socketService.off(SocketEvents.REACTION_REMOVE, handleReactionUpdate);
     };
   }, [isConnected, activeProject, currentUserId, notificationsEnabled]);
 

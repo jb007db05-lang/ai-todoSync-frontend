@@ -302,21 +302,55 @@ function ChatPanel({ project, members, isOpen }: ChatPanelProps) {
             )}
 
             {/* Messages List */}
-            {(showSearch && searchQuery ? searchResults : messages).map((message) => (
-              <ChatMessage
-                key={message.id}
-                message={message}
-                currentUserId={currentUserId}
-                currentUserEmail={user?.email}
-                isAdmin={isAdmin}
-                onEdit={editMessage}
-                onDelete={deleteMessage}
-                onAddReaction={addReaction}
-                onRemoveReaction={removeReaction}
-                onReply={(m) => setReplyingTo(m)}
-                onLoadThread={handleScrollToMessage}
-              />
-            ))}
+            {(() => {
+              const displayMessages = showSearch && searchQuery ? searchResults : messages;
+              let lastDateLabel = '';
+
+              const getDateLabel = (dateString: string): string => {
+                const date = new Date(dateString);
+                const now = new Date();
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                const yesterday = new Date(today);
+                yesterday.setDate(yesterday.getDate() - 1);
+                const msgDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+                if (msgDate.getTime() === today.getTime()) return 'Today';
+                if (msgDate.getTime() === yesterday.getTime()) return 'Yesterday';
+                return date.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+              };
+
+              return displayMessages.map((message) => {
+                const dateLabel = getDateLabel(message.createdAt);
+                const showSeparator = dateLabel !== lastDateLabel;
+                lastDateLabel = dateLabel;
+
+                return (
+                  <div key={message.id}>
+                    {showSeparator && (
+                      <div className="flex items-center gap-4 py-4 px-6">
+                        <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700/60" />
+                        <span className="text-[0.68rem] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 select-none whitespace-nowrap">
+                          {dateLabel}
+                        </span>
+                        <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700/60" />
+                      </div>
+                    )}
+                    <ChatMessage
+                      message={message}
+                      currentUserId={currentUserId}
+                      currentUserEmail={user?.email}
+                      isAdmin={isAdmin}
+                      onEdit={editMessage}
+                      onDelete={deleteMessage}
+                      onAddReaction={addReaction}
+                      onRemoveReaction={removeReaction}
+                      onReply={(m) => setReplyingTo(m)}
+                      onLoadThread={handleScrollToMessage}
+                    />
+                  </div>
+                );
+              });
+            })()}
 
             {showSearch && searchQuery && searchResults.length === 0 && (
               <div className="text-center py-8 text-slate-400 dark:text-slate-500">

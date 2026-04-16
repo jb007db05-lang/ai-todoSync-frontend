@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import {
   Edit2,
   Trash2,
@@ -106,6 +106,8 @@ function ChatMessageComponent({
   const [editContent, setEditContent] = useState(message.content);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showActions, setShowActions] = useState(false);
+  const emojiButtonRef = useRef<HTMLButtonElement>(null);
+  const [emojiPickerPos, setEmojiPickerPos] = useState<{ top: number; left: number } | null>(null);
   const isOwnMessage = 
     message.senderId === currentUserId || 
     (currentUserEmail && message.sender?.email?.toLowerCase() === currentUserEmail.toLowerCase());
@@ -203,7 +205,7 @@ function ChatMessageComponent({
       {/* Avatar */}
       <div
         className={[
-          'flex-shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center shadow-md transform transition-transform group-hover:scale-105',
+          'flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center shadow-md transform transition-transform group-hover:scale-105',
           'text-white text-sm font-black select-none ring-2 ring-white dark:ring-slate-900',
           getAvatarColor(message.senderId),
         ].join(' ')}
@@ -359,23 +361,40 @@ function ChatMessageComponent({
             {/* Emoji toggle icon */}
             <div className="relative">
               <button
-                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                ref={emojiButtonRef}
+                onClick={() => {
+                  if (!showEmojiPicker && emojiButtonRef.current) {
+                    const rect = emojiButtonRef.current.getBoundingClientRect();
+                    setEmojiPickerPos({
+                      top: rect.top - 8,
+                      left: Math.max(8, rect.left - 120),
+                    });
+                  }
+                  setShowEmojiPicker(!showEmojiPicker);
+                }}
                 className="p-2 text-slate-500 hover:text-olive-600 dark:text-slate-400 dark:hover:text-blue-400 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
                 title="Add reaction"
               >
                 <Smile size={16} />
               </button>
 
-              {showEmojiPicker && (
+              {showEmojiPicker && emojiPickerPos && (
                 <>
-                  <div className="fixed inset-0 z-40" onClick={() => setShowEmojiPicker(false)} />
-                  <div className="absolute right-0 bottom-full mb-3 p-2 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 z-50">
-                    <div className="grid grid-cols-4 gap-1 min-w-[160px]">
+                  <div className="fixed inset-0 z-[6000]" onClick={() => setShowEmojiPicker(false)} />
+                  <div
+                    className="fixed p-2.5 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 z-[6001]"
+                    style={{
+                      top: `${emojiPickerPos.top}px`,
+                      left: `${emojiPickerPos.left}px`,
+                      transform: 'translateY(-100%)',
+                    }}
+                  >
+                    <div className="grid grid-cols-4 gap-1.5 min-w-[180px]">
                       {QUICK_REACTIONS.map((emoji) => (
                         <button
                           key={emoji}
                           onClick={() => handleReactionClick(emoji)}
-                          className="w-10 h-10 flex items-center justify-center text-xl rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-all hover:scale-110 active:scale-90"
+                          className="w-10 h-10 flex items-center justify-center text-xl rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-all hover:scale-110 active:scale-90"
                         >
                           {emoji}
                         </button>
