@@ -1627,13 +1627,13 @@ function DashboardPage(): JSX.Element {
             )}
 
             {/* Chat Trigger */}
-            <button
+            {/* <button
               onClick={() => setIsChatPanelOpen(true)}
               className="relative flex items-center justify-center p-2 rounded-full text-zinc-600 hover:bg-zinc-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
               aria-label="Open chat"
             >
               <MessageSquare className="w-5 h-5" />
-            </button>
+            </button> */}
 
             {/* Notification Bell */}
             <div className="relative">
