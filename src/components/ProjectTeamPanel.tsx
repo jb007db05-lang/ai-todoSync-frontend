@@ -35,19 +35,16 @@ function ProjectTeamPanel({
           <div>
             <span className="inline-flex items-center gap-2 text-[0.68rem] uppercase tracking-[0.18em] font-bold text-blue-600 dark:text-blue-300">
               <Users size={13} className="text-blue-500" />
-              Team Directory
+              Team Members
             </span>
-            <h3 className="m-0 mt-2 text-[1.2rem] font-bold text-zinc-900 dark:text-slate-100">
+            <h3 className="m-0 mt-2 text-[1.2rem] font-bold text-olive-950 dark:text-slate-100">
               Project members
             </h3>
-            <p className="m-0 mt-1 text-[0.82rem] text-zinc-500 dark:text-slate-400 max-w-[36rem]">
-              Review everyone on the project, manage admin access, and add registered users by email.
-            </p>
           </div>
 
-          <div className="px-3.5 py-2 rounded-lg border border-zinc-200/80 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 shadow-sm">
+          <div className="px-3.5 flex items-center justify-between gap-2 py-2 rounded-lg border border-zinc-200/80 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 shadow-sm">
             <div className="text-[0.68rem] uppercase tracking-[0.14em] font-bold text-zinc-500 dark:text-slate-400">Members</div>
-            <div className="text-[1.05rem] font-bold text-zinc-900 dark:text-slate-100">{members.length}</div>
+            <div className="text-[14px] font-bold text-olive-950 dark:text-slate-100">{members.length}</div>
           </div>
         </div>
 
@@ -72,7 +69,7 @@ function ProjectTeamPanel({
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <div className="text-[0.92rem] font-semibold text-zinc-900 dark:text-slate-100 truncate">
+                      <div className="text-[0.92rem] font-semibold text-olive-950 dark:text-slate-100 truncate">
                         {member.user.name || member.user.email}
                       </div>
                       <div className="text-[0.78rem] text-zinc-500 dark:text-slate-400 truncate">
@@ -81,11 +78,10 @@ function ProjectTeamPanel({
                     </div>
 
                     <span
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[0.68rem] font-bold uppercase tracking-[0.08em] ${
-                        isAdmin
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[0.68rem] font-bold uppercase tracking-[0.08em] ${isAdmin
                           ? 'bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300'
                           : 'bg-zinc-100 text-zinc-600 dark:bg-slate-700 dark:text-slate-300'
-                      }`}
+                        }`}
                     >
                       {isAdmin ? <Shield size={12} /> : null}
                       {member.role}
@@ -116,7 +112,7 @@ function ProjectTeamPanel({
         {canManageTeam ? (
           <div className="grid gap-3 rounded-xl border border-zinc-200/80 dark:border-slate-700 bg-white/76 dark:bg-slate-800/62 p-4 md:p-5">
             <div>
-              <h4 className="m-0 text-[0.92rem] font-bold text-zinc-900 dark:text-slate-100">Add registered user</h4>
+              <h4 className="m-0 text-[0.92rem] font-bold text-olive-950 dark:text-slate-100">Add registered user</h4>
               <p className="m-0 mt-1 text-[0.78rem] text-zinc-500 dark:text-slate-400">
                 Search by email and add them as a project member.
               </p>
@@ -125,7 +121,7 @@ function ProjectTeamPanel({
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-slate-500" size={14} />
               <input
-                className="w-full h-12 rounded-lg border border-zinc-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-10 pr-4 text-sm text-zinc-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="w-full h-12 rounded-lg border border-zinc-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-10 pr-4 text-sm text-olive-950 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 onChange={(event) => onSearchChange(event.target.value)}
                 placeholder="Search registered users by email"
                 type="text"
@@ -149,7 +145,7 @@ function ProjectTeamPanel({
                         className="flex items-center justify-between gap-3 px-3 py-3 rounded-xl border border-zinc-200 dark:border-slate-700 bg-white dark:bg-slate-800/60"
                       >
                         <div className="min-w-0">
-                          <div className="text-[0.84rem] font-semibold text-zinc-900 dark:text-slate-100 truncate">
+                          <div className="text-[0.84rem] font-semibold text-olive-950 dark:text-slate-100 truncate">
                             {user.name || user.email}
                           </div>
                           <div className="text-[0.74rem] text-zinc-500 dark:text-slate-400 truncate">
@@ -158,7 +154,7 @@ function ProjectTeamPanel({
                         </div>
 
                         <button
-                          className="inline-flex items-center gap-2 px-3 py-2.5 rounded-xl bg-zinc-900 dark:bg-blue-600 text-white text-[0.78rem] font-semibold disabled:opacity-50 shadow-sm"
+                          className="inline-flex items-center gap-2 px-3 py-2.5 rounded-xl bg-olive-900 dark:bg-blue-600 text-white text-[0.78rem] font-semibold disabled:opacity-50 shadow-sm"
                           disabled={existingMember || isMutating}
                           onClick={() => void onAddMember(user.id)}
                           type="button"

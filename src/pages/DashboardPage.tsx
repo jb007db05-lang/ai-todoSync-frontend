@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 
 import AddTaskForm from '@/components/AddTaskForm';
 import DateNavigator from '@/components/DateNavigator';
@@ -15,7 +15,10 @@ import ProjectTeamPanel from '@/components/ProjectTeamPanel';
 import SettingsPanel from '@/components/SettingsPanel';
 import SubtaskForm from '@/components/SubtaskForm';
 import ChatPanel from '@/components/ChatPanel';
+import { useChat } from '@/context/ChatContext';
+import NotificationBox, { Notification } from '@/components/NotificationBox';
 import TaskList from '@/components/TaskList';
+import TaskFilterBar, { TaskFilters } from '@/components/TaskFilterBar';
 import SourceBadge from '@/components/SourceBadge';
 import {
   Calendar,
@@ -28,6 +31,7 @@ import {
   Layout,
   List,
   LogOut,
+  Bell,
   MessageCircle,
   MessageSquare,
   NotebookPen,
@@ -135,6 +139,16 @@ function DashboardPage(): JSX.Element {
   const [actionNoteId, setActionNoteId] = useState<string | null>(null);
   const [taskMutationError, setTaskMutationError] = useState<string | null>(null);
   const [taskMutationSuccess, setTaskMutationSuccess] = useState<string | null>(null);
+
+  // Auto-dismiss success notifications
+  useEffect(() => {
+    if (taskMutationSuccess) {
+      const timer = setTimeout(() => {
+        setTaskMutationSuccess(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [taskMutationSuccess]);
   const [projectMutationError, setProjectMutationError] = useState<string | null>(null);
   const [projectMutationSuccess, setProjectMutationSuccess] = useState<string | null>(null);
   const [epicMutationError, setEpicMutationError] = useState<string | null>(null);
@@ -145,6 +159,24 @@ function DashboardPage(): JSX.Element {
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [isEpicCreateModalOpen, setIsEpicCreateModalOpen] = useState(false);
   const [editingEpic, setEditingEpic] = useState<Epic | null>(null);
+
+  const [taskFilters, setTaskFilters] = useState<TaskFilters>({
+    search: '',
+    status: 'all',
+    assigneeId: 'all',
+    epicId: 'all',
+    source: 'all'
+  });
+
+  const handleClearFilters = () => {
+    setTaskFilters({
+      search: '',
+      status: 'all',
+      assigneeId: 'all',
+      epicId: 'all',
+      source: 'all'
+    });
+  };
   const [isProjectNotesModalOpen, setIsProjectNotesModalOpen] = useState(false);
   const [isEpicNotesModalOpen, setIsEpicNotesModalOpen] = useState(false);
   const [isTaskCreateModalOpen, setIsTaskCreateModalOpen] = useState(false);
@@ -171,6 +203,8 @@ function DashboardPage(): JSX.Element {
   const [activeEpicForNotes, setActiveEpicForNotes] = useState<Epic | null>(null);
   const [activeNoteEditor, setActiveNoteEditor] = useState<ActiveNoteEditor | null>(null);
   const [isChatPanelOpen, setIsChatPanelOpen] = useState(false);
+  const { lastMessage, clearLastMessage, setActiveProject } = useChat();
+
 
   const loadDashboard = useCallback(async (): Promise<void> => {
     setLoading(true);
@@ -1225,15 +1259,110 @@ function DashboardPage(): JSX.Element {
 
     return projects.find((project) => project.id === selectedProjectView) ?? null;
   }, [projects, selectedProjectView]);
+
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const prevProjectsRef = useRef<Project[]>([]);
+
+  // Track project list changes for 'Added to Team' notifications
+  useEffect(() => {
+    if (projects.length > 0 && prevProjectsRef.current.length > 0) {
+      const newProjects = projects.filter(p => !prevProjectsRef.current.find(prev => prev.id === p.id));
+      newProjects.forEach(project => {
+        const notification: Notification = {
+          id: `team-${project.id}-${Date.now()}`,
+          type: 'team_join',
+          title: 'Added to Team',
+          message: `You were added to the project "${project.name}"`,
+          timestamp: new Date(),
+          isRead: false,
+          projectId: project.id,
+        };
+        setNotifications(prev => [notification, ...prev]);
+      });
+    }
+    prevProjectsRef.current = projects;
+  }, [projects]);
+
+  // Convert lastMessage to notification
+  useEffect(() => {
+    if (lastMessage && !isChatPanelOpen) {
+      if (lastMessage.sender?.id === user?.id || lastMessage.senderId === user?.id) return;
+
+      const newNotification: Notification = {
+        id: lastMessage.id,
+        type: 'message',
+        title: `Message from ${lastMessage.sender?.name || lastMessage.sender?.email}`,
+        message: lastMessage.content,
+        timestamp: new Date(lastMessage.createdAt),
+        isRead: false,
+        projectId: activeProject?.id,
+      };
+      
+      setNotifications((prev: Notification[]) => {
+        // Avoid duplicates if lastMessage is re-emitted
+        if (prev.some(n => n.id === lastMessage.id)) return prev;
+        return [newNotification, ...prev];
+      });
+    }
+  }, [lastMessage, isChatPanelOpen, activeProject, user?.id]);
+
+  const handleMarkAsRead = (id: string) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+  };
+
+  const handleClearAll = () => {
+    setNotifications([]);
+  };
+
+  const handleNotificationClick = (notification: Notification) => {
+    handleMarkAsRead(notification.id);
+    if (notification.type === 'message') {
+      setIsChatPanelOpen(true);
+    }
+    setIsNotificationsOpen(false);
+  };
   const activeProjectMembers = activeProject ? (projectMembersByProject[activeProject.id] ?? []) : [];
   const canManageActiveProject = activeProject?.currentUserRole === 'ADMIN';
   const visibleTasks = useMemo(() => {
-    if (selectedProjectView === ALL_PROJECTS_VALUE) {
-      return tasks;
+    let filtered = tasks;
+    
+    // Project filter
+    if (selectedProjectView !== ALL_PROJECTS_VALUE) {
+      filtered = filtered.filter((task) => task.projectId === selectedProjectView);
     }
 
-    return tasks.filter((task) => task.projectId === selectedProjectView);
-  }, [selectedProjectView, tasks]);
+    // Status filter
+    if (taskFilters.status !== 'all') {
+      filtered = filtered.filter((task) => task.status === taskFilters.status);
+    }
+
+    // Assignee filter
+    if (taskFilters.assigneeId !== 'all') {
+      filtered = filtered.filter((task) => task.assignedToUserId === taskFilters.assigneeId);
+    }
+
+    // Epic filter
+    if (taskFilters.epicId !== 'all') {
+      filtered = filtered.filter((task) => task.epicId === taskFilters.epicId);
+    }
+
+    // Source filter
+    if (taskFilters.source !== 'all') {
+      filtered = filtered.filter((task) => task.source === taskFilters.source);
+    }
+
+    // Search filter
+    if (taskFilters.search.trim()) {
+      const term = taskFilters.search.toLowerCase();
+      filtered = filtered.filter((task) => 
+        task.title.toLowerCase().includes(term) || 
+        task.description?.toLowerCase().includes(term)
+      );
+    }
+
+    return filtered;
+  }, [selectedProjectView, tasks, taskFilters]);
   const tasksHeading = useMemo(() => {
     if (selectedProjectView === ALL_PROJECTS_VALUE) {
       return `All tasks for ${selectedDate}`;
@@ -1259,19 +1388,30 @@ function DashboardPage(): JSX.Element {
     if (activeProject == null) {
       setMemberSearchResults([]);
       setMemberSearchTerm('');
+      setActiveProject(null);
       return;
     }
+
+    setActiveProject(activeProject);
 
     if (projectMembersByProject[activeProject.id] == null) {
       void loadProjectTeam(activeProject.id);
     }
-  }, [activeProject, loadProjectTeam, projectMembersByProject]);
+  }, [activeProject, loadProjectTeam, projectMembersByProject, setActiveProject]);
 
   useEffect(() => {
     if (editingTask?.projectId && projectMembersByProject[editingTask.projectId] == null) {
       void loadProjectTeam(editingTask.projectId);
     }
   }, [editingTask, loadProjectTeam, projectMembersByProject]);
+
+  useEffect(() => {
+    if (lastMessage && !isChatPanelOpen) {
+      // Notification is handled by the dedicated useEffect above
+      // setTaskMutationSuccess(...) is removed in favor of the notification bell
+      clearLastMessage();
+    }
+  }, [lastMessage, isChatPanelOpen, clearLastMessage]);
 
   const handleLogout = async () => {
     const isConfirmed = await confirm({
@@ -1317,8 +1457,8 @@ function DashboardPage(): JSX.Element {
     return tasks.find(t => t.id === selectedTaskId) ?? null;
   }, [selectedTaskId, tasks]);
 
-  const sideNavItem = 'flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-[0.9rem] font-medium text-slate-400 hover:text-slate-100 hover:bg-white/10 transition-all duration-200 justify-start';
-  const sideNavItemActive = 'bg-white/16 text-white';
+  // const sideNavItem = 'flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-[0.9rem] font-medium text-slate-400 hover:text-slate-100 hover:bg-white/10 transition-all duration-200 justify-start';
+  // const sideNavItemActive = 'bg-olive-700 text-white font-bold shadow-sm';
 
   const statusPillCls: Record<string, string> = {
     planned: 'bg-blue-500/20 text-blue-300',
@@ -1377,48 +1517,63 @@ function DashboardPage(): JSX.Element {
         </div>
       )}
       {/* Sidebar */}
-      <aside className="flex flex-col w-[240px] shrink-0 bg-zinc-900 dark:bg-[#0c1525] border-r border-white/8 h-full">
+      <aside className="flex flex-col w-[260px] shrink-0 bg-slate-50 dark:bg-slate-900 border-r border-zinc-200 dark:border-slate-800 h-full shadow-[4px_0_24px_rgba(0,0,0,0.02)] dark:shadow-none z-10">
         {/* Logo */}
-        <div className="flex items-center gap-2.5 px-5 py-4.5 border-b border-white/8">
-          <Layout className="text-blue-400" size={22} />
-          <span className="font-['Outfit'] font-bold text-white text-[1.1rem] tracking-tight">Task Manager</span>
+        <div className="flex items-center gap-3 px-6 h-[72px] border-b border-zinc-200 dark:border-slate-800 shrink-0">
+          <Layout className="text-olive-600 dark:text-olive-500" size={24} strokeWidth={2.5} />
+          <span className="font-['Outfit'] font-extrabold text-olive-950 dark:text-white text-[1.25rem] tracking-tight">Task Manager</span>
         </div>
 
         {/* Project nav */}
-        <div className="flex flex-col gap-1 p-3 flex-1 overflow-y-auto">
-          <p className="text-[0.65rem] uppercase tracking-[0.1em] text-slate-500 font-bold px-3 pt-2 pb-1">Workspace</p>
+        <div className="flex flex-col gap-1.5 p-4 flex-1 overflow-y-auto">
+          <p className="text-[0.7rem] uppercase tracking-widest text-zinc-400 dark:text-slate-500 font-bold px-3 pt-2 pb-2">Workspace</p>
           <button
-            className={`${sideNavItem} ${selectedProjectView === ALL_PROJECTS_VALUE ? sideNavItemActive : ''}`}
+            className={[
+              'flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-[0.95rem] font-medium transition-all duration-200 justify-start',
+              selectedProjectView === ALL_PROJECTS_VALUE && activeView !== 'settings'
+                ? 'bg-olive-700 text-white shadow-md shadow-olive-700/20' 
+                : 'text-zinc-600 hover:text-olive-950 hover:bg-zinc-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800'
+            ].join(' ')}
             onClick={() => handleProjectSelect(ALL_PROJECTS_VALUE)}
             type="button"
           >
-            <Folder size={16} />
+            <Folder size={18} strokeWidth={2} />
             <span>All Projects</span>
           </button>
 
           <button
-            className={`${sideNavItem} text-blue-400 hover:text-blue-200 hover:bg-blue-600/15`}
+            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-[0.95rem] font-medium text-olive-600 hover:text-olive-700 hover:bg-olive-50 dark:text-olive-500 dark:hover:bg-olive-900/40 transition-all duration-200 justify-start mt-1 border border-dashed border-olive-200 dark:border-olive-800"
             onClick={() => setIsProjectCreateModalOpen(true)}
             type="button"
           >
-            <Plus size={16} />
+            <Plus size={18} strokeWidth={2.5} />
             <span>New Project</span>
           </button>
         </div>
 
         {/* Footer */}
-        <div className="flex flex-col gap-1 p-3 border-t border-white/8">
+        <div className="flex flex-col gap-1 p-4 border-t border-zinc-200 dark:border-slate-800 shrink-0">
           <button
-            className={`${sideNavItem} ${activeView === 'settings' ? sideNavItemActive : ''}`}
+            className={[
+              'flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-[0.95rem] font-medium transition-all duration-200 justify-start',
+              activeView === 'settings' 
+                ? 'bg-olive-700 text-white shadow-md shadow-olive-700/20' 
+                : 'text-zinc-600 hover:text-olive-950 hover:bg-zinc-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800'
+            ].join(' ')}
             onClick={() => setActiveView('settings')}
             title="Settings"
             type="button"
           >
-            <Settings size={16} />
+            <Settings size={18} strokeWidth={2} />
             <span>Settings</span>
           </button>
-          <button className={sideNavItem} onClick={handleLogout} title="Sign out" type="button">
-            <LogOut size={16} />
+          <button 
+             className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-[0.95rem] font-medium text-zinc-500 hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:text-red-400 dark:hover:bg-red-900/20 transition-all duration-200 justify-start mt-1"
+             onClick={handleLogout} 
+             title="Sign out" 
+             type="button"
+          >
+            <LogOut size={18} strokeWidth={2} />
             <span>Sign out</span>
           </button>
         </div>
@@ -1427,18 +1582,101 @@ function DashboardPage(): JSX.Element {
       {/* Right side wrapper */}
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         {/* Top bar */}
-        <header className="flex items-center justify-between gap-4 px-6 h-14 shrink-0 bg-white/92 dark:bg-slate-900/92 border-b border-zinc-200 dark:border-slate-700 backdrop-blur-md">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white text-sm font-bold">
-              {user?.email?.[0].toUpperCase()}
+        {/* Top bar (Redesigned Header matching Image) */}
+        <header className="relative z-50 flex items-center justify-between gap-4 px-8 h-[72px] shrink-0 bg-white dark:bg-slate-900 border-b border-zinc-200 dark:border-slate-800 transition-colors">
+          <div className="flex flex-col justify-center">
+            <h1 className="text-[1.15rem] font-bold text-olive-950 dark:text-white leading-tight">
+              {activeView === 'settings' ? 'Settings' : (activeProject ? activeProject.name : 'All Projects')}
+            </h1>
+            <div className="flex items-center text-[0.75rem] font-semibold text-zinc-400 dark:text-slate-500 mt-0.5 gap-1.5">
+              <button 
+                onClick={() => { setActiveView('dashboard'); handleProjectSelect(ALL_PROJECTS_VALUE); }}
+                className="hover:text-olive-600 dark:hover:text-olive-400 transition-colors"
+                type="button"
+              >
+                Dashboard
+              </button>
+              
+              <span className="text-zinc-300 dark:text-slate-600">/</span>
+
+              {activeView === 'settings' ? (
+                <span className="text-zinc-600 dark:text-slate-300">Settings</span>
+              ) : activeProject ? (
+                <>
+                  <button 
+                    onClick={() => { setActiveView('dashboard'); handleProjectSelect(ALL_PROJECTS_VALUE); }}
+                    className="hover:text-olive-600 dark:hover:text-olive-400 transition-colors"
+                    type="button"
+                  >
+                    Projects
+                  </button>
+                  <span className="text-zinc-300 dark:text-slate-600">/</span>
+                  <span className="text-zinc-600 dark:text-slate-300">{activeProject.name}</span>
+                </>
+              ) : (
+                <span className="text-zinc-600 dark:text-slate-300">All Projects</span>
+              )}
             </div>
-            <span className="text-zinc-600 dark:text-slate-400 text-sm">{user?.email}</span>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-5">
             {activeView !== 'settings' && (
-              <DateNavigator date={selectedDate} disabled={loading} onChange={setSelectedDate} />
+              <div className="mr-2">
+                <DateNavigator date={selectedDate} disabled={loading} onChange={setSelectedDate} />
+              </div>
             )}
+
+            {/* Chat Trigger */}
+            <button
+              onClick={() => setIsChatPanelOpen(true)}
+              className="relative flex items-center justify-center p-2 rounded-full text-zinc-600 hover:bg-zinc-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
+              aria-label="Open chat"
+            >
+              <MessageSquare className="w-5 h-5" />
+            </button>
+
+            {/* Notification Bell */}
+            <div className="relative">
+              <button
+                className="relative flex items-center justify-center p-2 rounded-full text-zinc-600 hover:bg-zinc-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
+                onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                title="Notifications"
+                type="button"
+              >
+                <Bell className="w-5 h-5" />
+                {notifications.some(n => !n.isRead) && (
+                  <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-olive-600 text-[10px] font-bold text-white ring-2 ring-white dark:ring-slate-900">
+                    {notifications.filter(n => !n.isRead).length > 9 ? '9+' : notifications.filter(n => !n.isRead).length}
+                  </span>
+                )}
+              </button>
+
+              {isNotificationsOpen && (
+                <NotificationBox
+                  notifications={notifications}
+                  onClose={() => setIsNotificationsOpen(false)}
+                  onMarkAsRead={handleMarkAsRead}
+                  onClearAll={handleClearAll}
+                  onNotificationClick={handleNotificationClick}
+                />
+              )}
+            </div>
+
+            {/* User Profile Pill */}
+            <div className="flex items-center gap-3 pl-5 border-l border-zinc-200 dark:border-slate-800">
+              <div className="flex items-center justify-center w-9 h-9 rounded-full bg-olive-100 dark:bg-olive-800/50 text-olive-700 dark:text-olive-300 text-sm font-bold shadow-sm border border-olive-200/50 dark:border-olive-700/50">
+                {user?.name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
+              </div>
+              <div className="hidden sm:flex flex-col">
+                <span className="text-[0.8rem] font-bold text-olive-900 dark:text-slate-200 leading-tight">
+                  {user?.name || 'Current User'}
+                </span>
+                <span className="text-[0.7rem] text-zinc-500 dark:text-slate-400 font-medium">
+                  {user?.email}
+                </span>
+              </div>
+              <ChevronDown className="w-4 h-4 text-zinc-400" />
+            </div>
           </div>
         </header>
 
@@ -1447,7 +1685,7 @@ function DashboardPage(): JSX.Element {
           {activeView === 'settings' ? (
             <div className="h-full overflow-y-auto">
               <div className="px-8 py-6 border-b border-zinc-200 dark:border-slate-700 bg-white/60 dark:bg-slate-900/60">
-                <h3 className="text-xl font-semibold text-zinc-900 dark:text-slate-100 m-0">Settings</h3>
+                <h3 className="text-xl font-semibold text-olive-950 dark:text-slate-100 m-0">Settings</h3>
                 <p className="text-zinc-500 dark:text-slate-400 m-0 text-sm mt-0.5">Account &amp; Preferences</p>
               </div>
               <div className="p-8">
@@ -1485,83 +1723,79 @@ function DashboardPage(): JSX.Element {
             <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-slate-900 dark:bg-white dark:bg-slate-900">
               <div className="shrink-0 px-6 py-5 border-b border-zinc-200/80 dark:border-slate-700/80 bg-white/78 dark:bg-slate-950/38 ">
                 <div className="flex items-start justify-between gap-5">
-                  <div className="flex items-start gap-4">
+                  <div className="flex items-center gap-4">
                     <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-blue-600 text-white shadow-lg shadow-blue-500/25 shrink-0">
                       <Folder size={20} />
                     </div>
                     <div className="grid gap-1">
-                      <span className="text-[0.68rem] uppercase tracking-[0.18em] font-bold text-zinc-500 dark:text-slate-400">Project Workspace</span>
                       <div className="relative flex items-center">
-                    <select
-                      className="appearance-none bg-transparent border-none text-[1.35rem] font-bold text-zinc-900 dark:text-slate-100 focus:outline-none focus:ring-0 cursor-pointer pr-6 m-0 p-0 tracking-tight"
-                      onChange={(e) => handleProjectSelect(e.target.value)}
-                      value={activeProject.id}
-                    >
-                      {projects.map((project) => (
-                        <option
-                          className="text-zinc-900 dark:text-slate-100 bg-white dark:bg-slate-800 text-base font-normal"
-                          key={project.id}
-                          value={project.id}
+                        <select
+                          className="appearance-none bg-transparent border-none text-[1.35rem] font-bold text-olive-950 dark:text-slate-100 focus:outline-none focus:ring-0 cursor-pointer pr-6 m-0 p-0 tracking-tight"
+                          onChange={(e) => handleProjectSelect(e.target.value)}
+                          value={activeProject.id}
                         >
-                          {project.name}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center">
-                      <ChevronDown className="text-zinc-500 dark:text-slate-400" size={16} />
-                    </div>
+                          {projects.map((project) => (
+                            <option
+                              className="text-olive-950 dark:text-slate-100 bg-white dark:bg-slate-800 text-base font-normal"
+                              key={project.id}
+                              value={project.id}
+                            >
+                              {project.name}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center">
+                          <ChevronDown className="text-zinc-500 dark:text-slate-400" size={16} />
+                        </div>
                       </div>
-                      <p className="m-0 text-[0.84rem] text-zinc-500 dark:text-slate-400">
-                        Navigate epics, manage scheduled tasks, and review execution details for {selectedDate}.
-                      </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2.5">
-                  <button
-                    className="flex items-center gap-2 px-3.5 py-2.5 bg-white dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded-lg text-sm font-medium text-zinc-600 dark:text-slate-300 hover:bg-zinc-50 dark:hover:bg-slate-700 shadow-sm transition-colors"
-                    onClick={() => handleOpenProjectNotesPanel(activeProject)}
-                    type="button"
-                  >
-                    <MessageSquare size={16} />
-                    Project Notes
-                  </button>
-                  <button
-                    className={[
-                      'flex items-center gap-2 px-3.5 py-2.5 border rounded-lg text-sm font-medium shadow-sm transition-colors',
-                      isChatPanelOpen
-                        ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400'
-                        : 'bg-white dark:bg-slate-800 border-zinc-200 dark:border-slate-600 text-zinc-600 dark:text-slate-300 hover:bg-zinc-50 dark:hover:bg-slate-700'
-                    ].join(' ')}
-                    onClick={() => setIsChatPanelOpen(!isChatPanelOpen)}
-                    type="button"
-                  >
-                    <MessageCircle size={16} />
-                    Chat
-                  </button>
-                  <button
-                    className="flex items-center gap-2 px-3.5 py-2.5 bg-white dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded-lg text-sm font-medium text-zinc-600 dark:text-slate-300 hover:bg-zinc-50 dark:hover:bg-slate-700 shadow-sm transition-colors"
-                    onClick={() => setIsProjectTeamModalOpen(true)}
-                    type="button"
-                  >
-                    <Users size={16} />
-                    Team
-                  </button>
+                    <button
+                      className="flex items-center gap-2 px-3.5 py-2.5 bg-white dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded-lg text-sm font-medium text-zinc-600 dark:text-slate-300 hover:bg-zinc-50 dark:hover:bg-slate-700 shadow-sm transition-colors"
+                      onClick={() => handleOpenProjectNotesPanel(activeProject)}
+                      type="button"
+                    >
+                      <MessageSquare size={16} />
+                      Project Notes
+                    </button>
+                    <button
+                      className={[
+                        'flex items-center gap-2 px-4 py-2.5 border rounded-xl text-sm font-bold shadow-sm transition-all duration-300 transform active:scale-95',
+                        isChatPanelOpen
+                          ? 'bg-gradient-to-r from-blue-600 to-indigo-600 border-blue-600 text-white shadow-blue-500/25'
+                          : 'bg-white dark:bg-slate-800 border-zinc-200 dark:border-slate-600 text-zinc-600 dark:text-slate-300 hover:border-blue-400 dark:hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'
+                      ].join(' ')}
+                      onClick={() => setIsChatPanelOpen(!isChatPanelOpen)}
+                      type="button"
+                    >
+                      <MessageCircle size={18} className={isChatPanelOpen ? 'text-white' : 'text-blue-500'} />
+                      Chat
+                    </button>
+                    <button
+                      className="flex items-center gap-2 px-3.5 py-2.5 bg-white dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded-lg text-sm font-medium text-zinc-600 dark:text-slate-300 hover:bg-zinc-50 dark:hover:bg-slate-700 shadow-sm transition-colors"
+                      onClick={() => setIsProjectTeamModalOpen(true)}
+                      type="button"
+                    >
+                      <Users size={16} />
+                      Team
+                    </button>
                   </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-3 mt-4">
+                {/* <div className="flex flex-wrap items-center gap-3 mt-4">
                   <div className="px-3.5 py-2 rounded-lg bg-white/82 dark:bg-slate-900/65 border border-zinc-200/80 dark:border-slate-700/80 shadow-sm">
                     <div className="text-[0.66rem] uppercase tracking-[0.14em] font-bold text-zinc-500 dark:text-slate-400">Epics</div>
-                    <div className="text-[1rem] font-bold text-zinc-900 dark:text-slate-100">{activeProjectEpics.length}</div>
+                    <div className="text-[1rem] font-bold text-olive-950 dark:text-slate-100">{activeProjectEpics.length}</div>
                   </div>
                   <div className="px-3.5 py-2 rounded-lg bg-white/82 dark:bg-slate-900/65 border border-zinc-200/80 dark:border-slate-700/80 shadow-sm">
                     <div className="text-[0.66rem] uppercase tracking-[0.14em] font-bold text-zinc-500 dark:text-slate-400">Visible Tasks</div>
-                    <div className="text-[1rem] font-bold text-zinc-900 dark:text-slate-100">{visibleTasks.length}</div>
+                    <div className="text-[1rem] font-bold text-olive-950 dark:text-slate-100">{visibleTasks.length}</div>
                   </div>
                   <div className="px-3.5 py-2 rounded-lg bg-white/82 dark:bg-slate-900/65 border border-zinc-200/80 dark:border-slate-700/80 shadow-sm">
                     <div className="text-[0.66rem] uppercase tracking-[0.14em] font-bold text-zinc-500 dark:text-slate-400">Role</div>
-                    <div className="text-[1rem] font-bold text-zinc-900 dark:text-slate-100">{activeProject.currentUserRole}</div>
+                    <div className="text-[1rem] font-bold text-olive-950 dark:text-slate-100">{activeProject.currentUserRole}</div>
                   </div>
-                </div>
+                </div> */}
               </div>
               <div className="flex flex-1 min-h-0 overflow-hidden gap-4 p-4 md:p-5">
                 {/* Column 1 — Epics */}
@@ -1569,11 +1803,11 @@ function DashboardPage(): JSX.Element {
                   <div className="flex items-center justify-between px-6 py-5 border-b border-zinc-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-900 dark:bg-white dark:bg-slate-900">
                     <div>
                       <span className="text-[0.68rem] uppercase tracking-[0.18em] font-bold text-zinc-500 dark:text-slate-400">Column 1</span>
-                      <h3 className="text-[1.05rem] font-bold font-['Outfit'] text-zinc-900 dark:text-slate-100 m-0 mt-1 tracking-tight">Epics</h3>
+                      <h3 className="text-[1.05rem] font-bold font-['Outfit'] text-olive-950 dark:text-slate-100 m-0 mt-1 tracking-tight">Epics</h3>
                       <p className="text-zinc-500 dark:text-slate-400 text-[0.78rem] m-0 mt-1">{activeProject.name}</p>
                     </div>
                     <button
-                      className="flex items-center justify-center w-10 h-10 bg-zinc-900 dark:bg-blue-600 hover:bg-zinc-700 dark:hover:bg-blue-500 text-white rounded-lg shadow-sm transition-all active:scale-95 disabled:opacity-40"
+                      className="flex items-center justify-center w-10 h-10 bg-olive-900 dark:bg-blue-600 hover:bg-olive-800 dark:hover:bg-blue-500 text-white rounded-lg shadow-sm transition-all active:scale-95 disabled:opacity-40"
                       disabled={!canManageActiveProject}
                       onClick={() => setIsEpicCreateModalOpen(true)}
                       title="New Epic"
@@ -1596,7 +1830,7 @@ function DashboardPage(): JSX.Element {
                           onClick={() => handleEpicSelect(isActive ? null : epic.id)}
                         >
                           <div className="flex items-start justify-between gap-3">
-                            <h4 className={`text-[0.95rem] font-bold m-0 leading-tight transition-colors ${isActive ? 'text-blue-900 dark:text-blue-100' : 'text-zinc-800 dark:text-slate-200'
+                            <h4 className={`text-[0.95rem] font-bold m-0 leading-tight transition-colors ${isActive ? 'text-blue-900 dark:text-blue-100' : 'text-olive-900 dark:text-slate-200'
                               }`}>
                               {epic.name}
                             </h4>
@@ -1631,7 +1865,7 @@ function DashboardPage(): JSX.Element {
                             </button>
                             <div className="flex-1" />
                             <button
-                              className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-slate-700 text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors disabled:opacity-40"
+                              className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-slate-700 text-zinc-400 hover:text-olive-950 dark:hover:text-white transition-colors disabled:opacity-40"
                               disabled={!canManageActiveProject}
                               onClick={(e) => { e.stopPropagation(); handleMoveEpic(epic, 'up'); }}
                               title="Up"
@@ -1639,7 +1873,7 @@ function DashboardPage(): JSX.Element {
                               <ChevronUp size={14} />
                             </button>
                             <button
-                              className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-slate-700 text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors disabled:opacity-40"
+                              className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-slate-700 text-zinc-400 hover:text-olive-950 dark:hover:text-white transition-colors disabled:opacity-40"
                               disabled={!canManageActiveProject}
                               onClick={(e) => { e.stopPropagation(); handleMoveEpic(epic, 'down'); }}
                               title="Down"
@@ -1671,13 +1905,13 @@ function DashboardPage(): JSX.Element {
                     <div className="flex items-center justify-between px-6 py-5 bg-white dark:bg-slate-900 dark:bg-white dark:bg-slate-900 border-b border-zinc-200/80 dark:border-slate-700/80">
                       <div>
                         <span className="text-[0.68rem] uppercase tracking-[0.18em] font-bold text-zinc-500 dark:text-slate-400">Column 2</span>
-                        <h3 className="text-[1.05rem] font-bold font-['Outfit'] text-zinc-900 dark:text-slate-100 m-0 mt-1 tracking-tight">{tasksHeading}</h3>
+                        <h3 className="text-[1.05rem] font-bold font-['Outfit'] text-olive-950 dark:text-slate-100 m-0 mt-1 tracking-tight">{tasksHeading}</h3>
                         <p className="text-zinc-500 dark:text-slate-400 text-[0.78rem] m-0 mt-1 truncate max-w-[280px]">
                           {epics.find(e => e.id === selectedEpicId)?.name}
                         </p>
                       </div>
                       <button
-                        className="flex items-center justify-center w-10 h-10 bg-zinc-900 dark:bg-blue-600 hover:bg-zinc-700 dark:hover:bg-blue-500 text-white rounded-lg shadow-sm transition-all duration-300 hover:scale-[1.03] active:scale-95 disabled:opacity-40"
+                        className="flex items-center justify-center w-10 h-10 bg-olive-900 dark:bg-blue-600 hover:bg-olive-800 dark:hover:bg-blue-500 text-white rounded-lg shadow-sm transition-all duration-300 hover:scale-[1.03] active:scale-95 disabled:opacity-40"
                         disabled={!canManageActiveProject}
                         onClick={() => {
                           setTaskModalProjectId(activeProject?.id ?? null);
@@ -1689,6 +1923,15 @@ function DashboardPage(): JSX.Element {
                         <Plus size={18} />
                       </button>
                     </div>
+
+                    <TaskFilterBar 
+                      filters={taskFilters}
+                      onFilterChange={setTaskFilters}
+                      members={activeProjectMembers}
+                      epics={epics.filter(e => e.projectId === (activeProject?.id || ''))}
+                      onClear={handleClearFilters}
+                    />
+
                     <div className="flex-1 overflow-y-auto p-5 content-start bg-white dark:bg-slate-900">
                       <TaskList
                         epics={epics}
@@ -1717,11 +1960,11 @@ function DashboardPage(): JSX.Element {
                     <div className="flex items-center justify-between px-6 py-5 bg-white dark:bg-slate-900 dark:bg-white dark:bg-slate-900 border-b border-zinc-200/80 dark:border-slate-700/80">
                       <div>
                         <span className="text-[0.68rem] uppercase tracking-[0.18em] font-bold text-zinc-500 dark:text-slate-400">Column 3</span>
-                        <h3 className="text-[1.05rem] font-bold font-['Outfit'] text-zinc-900 dark:text-slate-100 m-0 mt-1 tracking-tight">Subtasks</h3>
+                        <h3 className="text-[1.05rem] font-bold font-['Outfit'] text-olive-950 dark:text-slate-100 m-0 mt-1 tracking-tight">Subtasks</h3>
                         <p className="text-zinc-500 dark:text-slate-400 text-[0.78rem] m-0 mt-1 truncate max-w-[320px]">{activeTask.title}</p>
                       </div>
                       <button
-                        className="flex items-center justify-center w-10 h-10 bg-zinc-900 dark:bg-blue-600 hover:bg-zinc-700 dark:hover:bg-blue-500 text-white rounded-lg shadow-sm transition-all duration-300 hover:scale-[1.03] active:scale-95 disabled:opacity-40"
+                        className="flex items-center justify-center w-10 h-10 bg-olive-900 dark:bg-blue-600 hover:bg-olive-800 dark:hover:bg-blue-500 text-white rounded-lg shadow-sm transition-all duration-300 hover:scale-[1.03] active:scale-95 disabled:opacity-40"
                         disabled={!activeTask.permissions.canUpdate}
                         onClick={() => setSubtaskModalTask(activeTask)}
                         title="New Subtask"
@@ -1750,7 +1993,7 @@ function DashboardPage(): JSX.Element {
                                 <div className="flex flex-col gap-1.5 min-w-0">
                                   <span className={`text-[1rem] transition-all duration-300 ${subtask.status === 'completed'
                                     ? 'text-zinc-400 dark:text-slate-500 line-through'
-                                    : 'text-zinc-800 dark:text-slate-200 font-semibold tracking-tight'
+                                    : 'text-olive-900 dark:text-slate-200 font-semibold tracking-tight'
                                     }`}>
                                     {subtask.title}
                                   </span>
@@ -1821,7 +2064,7 @@ function DashboardPage(): JSX.Element {
                           {/* Decorative Glow */}
                           <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-500/5 rounded-full blur-3xl group-hover/detail:bg-blue-500/10 transition-all duration-700" />
 
-                          <h4 className="text-[1.05rem] font-bold font-['Outfit'] text-zinc-800 dark:text-slate-100 m-0 mb-6 flex items-center gap-3">
+                          <h4 className="text-[1.05rem] font-bold font-['Outfit'] text-olive-900 dark:text-slate-100 m-0 mb-6 flex items-center gap-3">
                             <div className="p-2.5 bg-blue-50 dark:bg-blue-500/10 rounded-lg">
                               <Layout size={20} className="text-blue-600 dark:text-blue-400" />
                             </div>
@@ -1852,7 +2095,7 @@ function DashboardPage(): JSX.Element {
                           </div>
 
                           <button
-                            className="w-full group/btn relative flex items-center justify-center gap-3 px-6 py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-bold text-[0.95rem] shadow-sm shadow-zinc-900/20 dark:shadow-white/5 hover:scale-[1.01] active:scale-[0.98] transition-all duration-300 overflow-hidden"
+                            className="w-full group/btn relative flex items-center justify-center gap-3 px-6 py-4 bg-olive-900 dark:bg-white text-white dark:text-olive-950 rounded-xl font-bold text-[0.95rem] shadow-sm shadow-zinc-900/20 dark:shadow-white/5 hover:scale-[1.01] active:scale-[0.98] transition-all duration-300 overflow-hidden"
                             onClick={() => handleOpenTaskNote(activeTask)}
                             type="button"
                           >
@@ -1869,13 +2112,7 @@ function DashboardPage(): JSX.Element {
                 )}
               </div>
 
-              {/* Chat Panel */}
-              <ChatPanel
-                project={activeProject}
-                members={activeProjectMembers}
-                isOpen={isChatPanelOpen}
-                onClose={() => setIsChatPanelOpen(false)}
-              />
+
             </div>
           )}
         </main>
@@ -1886,6 +2123,24 @@ function DashboardPage(): JSX.Element {
         <Modal onClose={() => setIsProjectCreateModalOpen(false)} title="Create Project">
           <ProjectForm onSubmit={handleCreateProject} />
         </Modal>
+      ) : null}
+      {isChatPanelOpen && activeProject ? (
+        <>
+          {/* Chat Drawer Backdrop */}
+          <div 
+            className="fixed inset-0 bg-olive-900/20 backdrop-blur-[2px] z-[2000] animate-in fade-in duration-300"
+            onClick={() => setIsChatPanelOpen(false)}
+          />
+          {/* Chat Drawer Container */}
+          <div className="fixed top-0 right-0 h-full w-full md:w-[450px] lg:max-w-[550px] bg-white dark:bg-slate-900 z-[5001] shadow-2xl animate-in slide-in-from-right duration-500 overflow-hidden border-l border-zinc-200 dark:border-slate-800 flex flex-col">
+            <ChatPanel
+              project={activeProject}
+              members={activeProjectMembers}
+              isOpen={isChatPanelOpen}
+              onClose={() => setIsChatPanelOpen(false)}
+            />
+          </div>
+        </>
       ) : null}
       {editingProject ? (
         <Modal onClose={() => setEditingProject(null)} title="Update Project">

@@ -101,7 +101,7 @@ function TaskNotesList({
             onClick={entry.onOpen}
             type="button"
           >
-            <strong className="text-zinc-900 dark:text-slate-100 text-[0.98rem]">{entry.label}</strong>
+            <strong className="text-olive-950 dark:text-slate-100 text-[0.98rem]">{entry.label}</strong>
             <span className="inline-block text-[0.72rem] font-semibold px-2 py-0.5 rounded bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
               {entry.kind === 'task' ? 'Task note' : 'Subtask note'}
             </span>

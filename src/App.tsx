@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 
 import AuthProvider from '@/context/AuthContext';
+import { ChatProvider } from '@/context/ChatContext';
 import { ConfirmationProvider } from '@/context/ConfirmationContext';
 import ThemeProvider from '@/context/ThemeContext';
 import DashboardPage from '@/pages/DashboardPage';
@@ -13,7 +14,8 @@ function App(): JSX.Element {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <ConfirmationProvider>
+        <ChatProvider>
+          <ConfirmationProvider>
           <BrowserRouter>
             <Routes>
               <Route
@@ -44,6 +46,7 @@ function App(): JSX.Element {
             </Routes>
           </BrowserRouter>
         </ConfirmationProvider>
+        </ChatProvider>
       </AuthProvider>
     </ThemeProvider>
   );

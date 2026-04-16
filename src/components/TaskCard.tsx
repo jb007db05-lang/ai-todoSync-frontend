@@ -73,7 +73,7 @@ function TaskCard({
             </div>
           </div>
 
-          <h3 className="text-[1.05rem] font-bold tracking-tight text-zinc-900 dark:text-slate-100 m-0 leading-snug line-clamp-2">
+          <h3 className="text-[1.05rem] font-bold tracking-tight text-olive-950 dark:text-slate-100 m-0 leading-snug line-clamp-2">
             {task.title}
           </h3>
 

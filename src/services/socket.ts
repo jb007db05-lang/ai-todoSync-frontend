@@ -1,8 +1,8 @@
 import { io, type Socket } from 'socket.io-client';
 import { TOKEN_STORAGE_KEY } from '@/services/api';
-import type { ChatMessage, TypingUser, PresenceUpdate } from '@/types/chat';
+import type { ChatMessage } from '@/types/chat';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL ?? import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL ?? import.meta.env.VITE_API_URL?.replace('/api', '') ?? 'http://localhost:3000';
 
 /**
  * Socket.IO events
@@ -358,6 +358,16 @@ class SocketService {
     this.socket.on('error', (data: { message: string }) => {
       console.error('[Socket] Error:', data.message);
       this.emit('error', data);
+    });
+
+    // Re-register all application-level listeners from our Map
+    this.eventListeners.forEach((callbacks, event) => {
+      // Don't duplicate internal handlers that we already set up above
+      if (['connect', 'disconnect', 'connect_error', 'error'].includes(event)) return;
+      
+      callbacks.forEach((callback) => {
+        this.socket?.on(event, callback);
+      });
     });
   }
 

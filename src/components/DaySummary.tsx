@@ -35,7 +35,7 @@ function DaySummary({ controls = null, date, error = null, loading = false, summ
       {/* Header */}
       <div className="flex items-start justify-between gap-1.5">
         <div className="grid gap-1.5">
-          <h2 className="text-xl font-semibold text-zinc-900 dark:text-slate-100 m-0">Daily summary</h2>
+          <h2 className="text-xl font-semibold text-olive-950 dark:text-slate-100 m-0">Daily summary</h2>
           <p className="text-zinc-500 dark:text-slate-400 m-0 text-sm">{date}</p>
         </div>
         {controls ? <div className="shrink-0 max-w-full">{controls}</div> : null}

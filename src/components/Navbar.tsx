@@ -21,8 +21,8 @@ function Navbar(): JSX.Element {
             [
               'font-semibold no-underline text-[0.95rem] px-3 py-2 rounded-lg transition-all duration-200',
               isActive
-                ? 'text-zinc-900 dark:text-white bg-zinc-900/10 dark:bg-slate-300/10'
-                : 'text-zinc-500 dark:text-slate-400 hover:text-zinc-800 dark:hover:text-white hover:bg-zinc-900/6'
+                ? 'text-olive-950 dark:text-white bg-olive-900/10 dark:bg-slate-300/10'
+                : 'text-zinc-500 dark:text-slate-400 hover:text-olive-900 dark:hover:text-white hover:bg-olive-900/6'
             ].join(' ')
           }
           to="/"

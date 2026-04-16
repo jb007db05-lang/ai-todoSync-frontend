@@ -14,6 +14,7 @@ import { MessageType } from '@/types/chat';
 interface ChatMessageProps {
   message: ChatMessage;
   currentUserId: string;
+  currentUserEmail?: string;
   isAdmin: boolean;
   onEdit: (messageId: string, content: string) => void;
   onDelete: (messageId: string) => void;
@@ -33,16 +34,16 @@ const formatTime = (dateString: string): string => {
 };
 
 // Format date for tooltip
-const formatFullDate = (dateString: string): string => {
-  const date = new Date(dateString);
-  return date.toLocaleString([], {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-};
+// const formatFullDate = (dateString: string): string => {
+//   const date = new Date(dateString);
+//   return date.toLocaleString([], {
+//     year: 'numeric',
+//     month: 'short',
+//     day: 'numeric',
+//     hour: '2-digit',
+//     minute: '2-digit',
+//   });
+// };
 
 // Get user initials for avatar
 const getInitials = (user: MessageSender | null): string => {
@@ -92,6 +93,7 @@ const groupReactions = (reactions: MessageReaction[]): Map<string, string[]> => 
 function ChatMessageComponent({
   message,
   currentUserId,
+  currentUserEmail,
   isAdmin,
   onEdit,
   onDelete,
@@ -104,14 +106,15 @@ function ChatMessageComponent({
   const [editContent, setEditContent] = useState(message.content);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showActions, setShowActions] = useState(false);
-
-  const isOwnMessage = message.senderId === currentUserId;
+  const isOwnMessage = 
+    message.senderId === currentUserId || 
+    (currentUserEmail && message.sender?.email?.toLowerCase() === currentUserEmail.toLowerCase());
   const isSystemMessage = message.type === MessageType.SYSTEM;
   const isDeleted = message.isDeleted;
 
-  // Can edit/delete?
+  // Can edit?
   const canEdit = isOwnMessage && !isDeleted && !isSystemMessage;
-  const canDelete = (isOwnMessage || isAdmin) && !isDeleted;
+  const canDelete = !isDeleted && !isSystemMessage && (isOwnMessage || isAdmin);
 
   // Group reactions
   const groupedReactions = useMemo(() => groupReactions(message.reactions), [message.reactions]);
@@ -185,19 +188,17 @@ function ChatMessageComponent({
 
   return (
     <div
+      id={`message-${message.id}`}
       className={[
-        'group flex gap-3 p-2 rounded-lg transition-colors',
-        'hover:bg-slate-50 dark:hover:bg-slate-800/50',
-        isOwnMessage ? 'flex-row-reverse' : '',
+        'group flex gap-4 px-4 py-3 transition-all duration-200 relative w-full hover:bg-slate-50 dark:hover:bg-slate-900/40',
+        isOwnMessage ? 'flex-row-reverse' : 'flex-row',
       ].join(' ')}
-      onMouseEnter={() => setShowActions(true)}
-      onMouseLeave={() => setShowActions(false)}
     >
       {/* Avatar */}
       <div
         className={[
-          'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center',
-          'text-white text-xs font-medium select-none',
+          'flex-shrink-0 w-9 h-9 rounded-2xl flex items-center justify-center shadow-lg transform transition-transform group-hover:scale-105',
+          'text-white text-sm font-bold select-none ring-2 ring-white dark:ring-slate-900',
           getAvatarColor(message.senderId),
         ].join(' ')}
       >
@@ -205,20 +206,15 @@ function ChatMessageComponent({
       </div>
 
       {/* Message content */}
-      <div className={['flex-1 min-w-0', isOwnMessage ? 'items-end' : 'items-start'].join(' ')}>
-        {/* Header */}
-        <div className={['flex items-center gap-2 mb-0.5', isOwnMessage ? 'justify-end' : ''].join(' ')}>
-          <span className="text-sm font-medium text-slate-900 dark:text-slate-200">
-            {message.sender?.name || message.sender?.email || 'Unknown'}
-          </span>
-          <span
-            className="text-[11px] text-slate-400 dark:text-slate-500 cursor-default"
-            title={formatFullDate(message.createdAt)}
-          >
-            {formatTime(message.createdAt)}
-            {message.isEdited && <span className="ml-1">(edited)</span>}
-          </span>
-        </div>
+      <div className={['flex flex-col max-w-[75%] min-w-0', isOwnMessage ? 'items-end' : 'items-start'].join(' ')}>
+        {/* Header (Sender Name) */}
+        {!isOwnMessage && (
+          <div className="flex items-center gap-2 mb-1 px-1">
+            <span className="text-[12px] font-bold text-slate-700 dark:text-slate-300 tracking-wide uppercase">
+              {message.sender?.name || message.sender?.email || 'Unknown'}
+            </span>
+          </div>
+        )}
 
         {/* Reply preview */}
         {message.replyTo && (
@@ -239,60 +235,67 @@ function ChatMessageComponent({
         )}
 
         {/* Message body */}
-        {isEditing ? (
-          <div className="flex flex-col gap-2">
-            <textarea
-              value={editContent}
-              onChange={(e) => setEditContent(e.target.value)}
-              className={[
-                'w-full px-3 py-2 text-sm rounded-lg resize-none',
-                'bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600',
-                'text-slate-900 dark:text-slate-100',
-                'focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500',
-              ].join(' ')}
-              rows={2}
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleEditSubmit();
-                }
-                if (e.key === 'Escape') {
-                  handleEditCancel();
-                }
-              }}
-            />
-            <div className="flex items-center gap-2 justify-end">
-              <button
-                onClick={handleEditCancel}
-                className="flex items-center gap-1 px-2 py-1 text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-              >
-                <X className="w-3 h-3" />
-                Cancel
-              </button>
-              <button
-                onClick={handleEditSubmit}
-                className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
-              >
-                <Check className="w-3 h-3" />
-                Save
-              </button>
+        <div className="relative group/bubble">
+          {isEditing ? (
+            <div className="flex flex-col gap-2 min-w-[300px]">
+              <textarea
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                className={[
+                  'w-full px-4 py-3 text-sm rounded-2xl resize-none shadow-xl transition-all',
+                  'bg-white dark:bg-slate-800 border-2 border-blue-500/50',
+                  'text-slate-900 dark:text-slate-100',
+                  'focus:outline-none focus:ring-4 focus:ring-blue-500/10',
+                ].join(' ')}
+                rows={3}
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleEditSubmit();
+                  }
+                  if (e.key === 'Escape') {
+                    handleEditCancel();
+                  }
+                }}
+              />
+              <div className="flex items-center gap-2 justify-end">
+                <button
+                  onClick={handleEditCancel}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  Cancel
+                </button>
+                <button
+                  onClick={handleEditSubmit}
+                  className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold bg-blue-600 text-white rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  Save Changes
+                </button>
+              </div>
             </div>
-          </div>
-        ) : (
-          <div
-            className={[
-              'inline-block max-w-full px-3 py-2 rounded-lg text-sm break-words',
-              'text-slate-900 dark:text-slate-100',
-              isOwnMessage
-                ? 'bg-blue-500 text-white dark:bg-blue-600'
-                : 'bg-slate-100 dark:bg-slate-800',
-            ].join(' ')}
-            style={{ wordBreak: 'break-word' }}
-          >
-            {message.content}
-          </div>
-        )}
+          ) : (
+            <div
+              className={[
+                'inline-block px-4 py-2.5 text-sm shadow-sm transition-all duration-200',
+                isOwnMessage
+                  ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-tl-2xl rounded-tr-sm rounded-br-2xl rounded-bl-2xl'
+                  : 'bg-white dark:bg-slate-800 border border-slate-200/50 dark:border-slate-700/50 text-slate-800 dark:text-slate-200 rounded-tl-sm rounded-tr-2xl rounded-br-2xl rounded-bl-2xl',
+              ].join(' ')}
+              style={{ wordBreak: 'break-word' }}
+            >
+              <div className="leading-relaxed">{message.content}</div>
+              
+              {/* Internal Timestamp (Subtle) */}
+              <div className={['mt-1 text-[10px] select-none block', isOwnMessage ? 'text-blue-100/60' : 'text-slate-400/70'].join(' ')}>
+                {formatTime(message.createdAt)}
+                {message.isEdited && <span className="ml-1 opacity-70">(edited)</span>}
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Reactions */}
         {groupedReactions.size > 0 && (
@@ -423,7 +426,7 @@ function ChatMessageComponent({
                         handleDelete();
                         setShowActions(false);
                       }}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-slate-100 dark:hover:bg-slate-700"
                     >
                       <Trash2 className="w-4 h-4" />
                       Delete

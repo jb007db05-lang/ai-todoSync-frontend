@@ -7,39 +7,19 @@ import {
 } from 'react';
 import {
   MessageSquare,
-  Users,
   Search,
-  X,
-  MoreVertical,
   Bell,
   BellOff,
-  ChevronDown,
   Loader2,
+  Users,
 } from 'lucide-react';
-import type { ChatMessage as ChatMessageType, TypingUser } from '@/types/chat';
-import { MessageType } from '@/types/chat';
+import type { ChatMessage as ChatMessageType } from '@/types/chat';
 import type { Project, ProjectMember } from '@/types/project';
 import { useAuth } from '@/context/AuthContext';
+import { useChat } from '@/context/ChatContext';
 import {
-  getMessages,
-  sendMessage as apiSendMessage,
-  editMessage as apiEditMessage,
-  deleteMessage as apiDeleteMessage,
-  addReaction,
-  removeReaction,
-  markMessagesAsRead,
-  getUnreadCount,
   searchMessages,
 } from '@/services/chat';
-import {
-  socketService,
-  SocketEvents,
-  type MessageReceivePayload,
-  type MessageEditPayload,
-  type MessageDeletePayload,
-  type TypingUpdatePayload,
-  type JoinProjectResponse,
-} from '@/services/socket';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 
@@ -50,363 +30,107 @@ interface ChatPanelProps {
   onClose: () => void;
 }
 
-interface TypingIndicator {
-  userId: string;
-  userName: string;
-  timeout?: NodeJS.Timeout;
-}
-
-function ChatPanel({ project, members, isOpen, onClose }: ChatPanelProps) {
+function ChatPanel({ project, members, isOpen }: ChatPanelProps) {
   const { user } = useAuth();
-  const [messages, setMessages] = useState<ChatMessageType[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [replyingTo, setReplyingTo] = useState<ChatMessageType | null>(null);
-  const [typingUsers, setTypingUsers] = useState<Map<string, TypingIndicator>>(new Map());
+  const {
+    messages,
+    isLoading,
+    hasMore,
+    isConnected,
+    notificationsEnabled,
+    setNotificationsEnabled,
+    sendMessage,
+    editMessage,
+    deleteMessage,
+    addReaction,
+    removeReaction,
+    loadMoreMessages,
+    markAsRead,
+    startTyping,
+    stopTyping,
+    typingUsers,
+    setActiveProject,
+  } = useChat();
+
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<ChatMessageType[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const typingTimeoutRefs = useRef<Map<string, NodeJS.Timeout>>(new Map());
-  const oldestMessageIdRef = useRef<string | null>(null);
 
   const currentUserId = user?.id ?? '';
   const isAdmin = project.currentUserRole === 'ADMIN';
 
-  // Get member name by ID
-  const getMemberName = useCallback(
-    (userId: string): string => {
-      const member = members.find((m) => m.userId === userId);
-      return member?.user.name || member?.user.email || 'Unknown';
-    },
-    [members]
-  );
+  // Set active project for context
+  useEffect(() => {
+    setActiveProject(project);
+    return () => setActiveProject(null);
+  }, [project, setActiveProject]);
 
-  // Fetch initial messages
-  const fetchMessages = useCallback(
-    async (before?: string) => {
-      try {
-        const result = await getMessages(project.id, {
-          limit: 50,
-          before,
-        });
+  const lastScrollHeightRef = useRef<number>(0);
+  const isAtBottomRef = useRef<boolean>(true);
+  const prevMessagesLength = useRef<number>(messages.length);
 
-        if (before) {
-          setMessages((prev) => [...result.messages, ...prev]);
-        } else {
-          setMessages(result.messages);
-        }
+  // Mark as read when messages load or change
+  useEffect(() => {
+    markAsRead();
+  }, [messages, markAsRead]);
 
-        setHasMore(result.hasMore);
+  // Handle scroll position maintenance and smart scroll-to-bottom
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
 
-        if (result.messages.length > 0) {
-          oldestMessageIdRef.current = result.messages[0].id;
-        }
-      } catch (error) {
-        console.error('Failed to fetch messages:', error);
-      }
-    },
-    [project.id]
-  );
+    const messageCountDiff = messages.length - prevMessagesLength.current;
 
-  // Fetch unread count
-  const fetchUnreadCount = useCallback(async () => {
-    try {
-      const count = await getUnreadCount(project.id);
-      setUnreadCount(count);
-    } catch (error) {
-      console.error('Failed to fetch unread count:', error);
+    // If messages were added at the TOP (infinite scroll)
+    if (messageCountDiff > 0 && container.scrollTop < 50 && lastScrollHeightRef.current > 0) {
+      const newScrollHeight = container.scrollHeight;
+      container.scrollTop = newScrollHeight - lastScrollHeightRef.current;
     }
-  }, [project.id]);
-
-  // Initialize chat
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const initChat = async () => {
-      setIsLoading(true);
-      await fetchMessages();
-      await fetchUnreadCount();
-      setIsLoading(false);
-    };
-
-    initChat();
-  }, [isOpen, fetchMessages, fetchUnreadCount]);
-
-  // Connect to socket and join project room
-  useEffect(() => {
-    if (!isOpen || !project.id) return;
-
-    // Connect socket
-    socketService.connect();
-
-    const handleConnected = () => {
-      setIsConnected(true);
-      // Join project room
-      socketService.joinProject(project.id).then((response: JoinProjectResponse) => {
-        if (response.success) {
-          console.info('[Chat] Joined project room:', project.id);
-          if (response.unreadCount !== undefined) {
-            setUnreadCount(response.unreadCount);
-          }
-        }
-      });
-    };
-
-    const handleDisconnected = () => {
-      setIsConnected(false);
-    };
-
-    if (socketService.isConnected()) {
-      handleConnected();
+    // If a NEW message was added at the BOTTOM
+    else if (messageCountDiff > 0 && (isAtBottomRef.current || messages[messages.length - 1].senderId === currentUserId)) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
 
-    socketService.on('connected', handleConnected);
-    socketService.on('disconnected', handleDisconnected);
+    prevMessagesLength.current = messages.length;
+    lastScrollHeightRef.current = container.scrollHeight;
+  }, [messages, currentUserId]);
 
-    return () => {
-      socketService.off('connected', handleConnected);
-      socketService.off('disconnected', handleDisconnected);
-      socketService.leaveProject();
-    };
-  }, [isOpen, project.id]);
-
-  // Setup socket event listeners
+  // Handle auto-scroll on open
   useEffect(() => {
-    if (!isOpen) return;
-
-    // Handle new messages
-    const handleMessageReceive = (payload: MessageReceivePayload) => {
-      const { message } = payload;
-
-      // Only add if it's for this project
-      if (message.projectId === project.id) {
-        setMessages((prev) => {
-          // Avoid duplicates
-          if (prev.some((m) => m.id === message.id)) {
-            return prev;
-          }
-          return [...prev, message];
-        });
-
-        // Scroll to bottom if user is at bottom or message is from current user
-        const isOwnMessage = message.senderId === currentUserId;
-        if (isOwnMessage) {
-          setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-        }
-
-        // Update unread count if not own message
-        if (!isOwnMessage) {
-          setUnreadCount((prev) => prev + 1);
-
-          // Show notification
-          if (notificationsEnabled && 'Notification' in window && Notification.permission === 'granted') {
-            new Notification('New message', {
-              body: `${message.sender?.name || message.sender?.email}: ${message.content.slice(0, 50)}`,
-              icon: '/favicon.ico',
-            });
-          }
-        }
-      }
-    };
-
-    // Handle message edits
-    const handleMessageEdit = (payload: MessageEditPayload) => {
-      const { message } = payload;
-      setMessages((prev) =>
-        prev.map((m) => (m.id === message.id ? message : m))
-      );
-    };
-
-    // Handle message deletes
-    const handleMessageDelete = (payload: MessageDeletePayload) => {
-      const { messageId } = payload;
-      setMessages((prev) =>
-        prev.filter((m) => m.id !== messageId)
-      );
-    };
-
-    // Handle typing updates
-    const handleTypingUpdate = (payload: TypingUpdatePayload) => {
-      const { userId, userName, isTyping } = payload;
-
-      // Don't show typing for self
-      if (userId === currentUserId) return;
-
-      setTypingUsers((prev) => {
-        const next = new Map(prev);
-
-        // Clear existing timeout
-        const existingTimeout = typingTimeoutRefs.current.get(userId);
-        if (existingTimeout) {
-          clearTimeout(existingTimeout);
-        }
-
-        if (isTyping) {
-          next.set(userId, { userId, userName });
-
-          // Auto-remove after 5 seconds
-          const timeout = setTimeout(() => {
-            setTypingUsers((p) => {
-              const n = new Map(p);
-              n.delete(userId);
-              return n;
-            });
-            typingTimeoutRefs.current.delete(userId);
-          }, 5000);
-
-          typingTimeoutRefs.current.set(userId, timeout);
-        } else {
-          next.delete(userId);
-        }
-
-        return next;
-      });
-    };
-
-    socketService.on(SocketEvents.MESSAGE_RECEIVE, handleMessageReceive);
-    socketService.on(SocketEvents.MESSAGE_EDIT, handleMessageEdit);
-    socketService.on(SocketEvents.MESSAGE_DELETE, handleMessageDelete);
-    socketService.on(SocketEvents.TYPING_UPDATE, handleTypingUpdate);
-
-    return () => {
-      socketService.off(SocketEvents.MESSAGE_RECEIVE, handleMessageReceive);
-      socketService.off(SocketEvents.MESSAGE_EDIT, handleMessageEdit);
-      socketService.off(SocketEvents.MESSAGE_DELETE, handleMessageDelete);
-      socketService.off(SocketEvents.TYPING_UPDATE, handleTypingUpdate);
-
-      // Clear typing timeouts
-      typingTimeoutRefs.current.forEach((timeout) => clearTimeout(timeout));
-      typingTimeoutRefs.current.clear();
-    };
-  }, [isOpen, project.id, currentUserId, notificationsEnabled]);
-
-  // Load more messages
-  const handleLoadMore = useCallback(async () => {
-    if (isLoadingMore || !hasMore || !oldestMessageIdRef.current) return;
-
-    setIsLoadingMore(true);
-    await fetchMessages(oldestMessageIdRef.current);
-    setIsLoadingMore(false);
-  }, [fetchMessages, hasMore, isLoadingMore]);
-
-  // Send message
-  const handleSendMessage = useCallback(
-    async (content: string) => {
-      try {
-        // Optimistic update or wait for socket
-        socketService.sendMessage({
-          projectId: project.id,
-          content,
-          replyToId: replyingTo?.id,
-        });
-
-        setReplyingTo(null);
-      } catch (error) {
-        console.error('Failed to send message:', error);
-      }
-    },
-    [project.id, replyingTo]
-  );
-
-  // Edit message
-  const handleEditMessage = useCallback(
-    async (messageId: string, content: string) => {
-      try {
-        socketService.editMessage({
-          projectId: project.id,
-          messageId,
-          content,
-        });
-      } catch (error) {
-        console.error('Failed to edit message:', error);
-      }
-    },
-    [project.id]
-  );
-
-  // Delete message
-  const handleDeleteMessage = useCallback(
-    async (messageId: string) => {
-      try {
-        socketService.deleteMessage({
-          projectId: project.id,
-          messageId,
-        });
-      } catch (error) {
-        console.error('Failed to delete message:', error);
-      }
-    },
-    [project.id]
-  );
-
-  // Add reaction
-  const handleAddReaction = useCallback(
-    async (messageId: string, emoji: string) => {
-      try {
-        socketService.addReaction({
-          projectId: project.id,
-          messageId,
-          emoji,
-        });
-      } catch (error) {
-        console.error('Failed to add reaction:', error);
-      }
-    },
-    [project.id]
-  );
-
-  // Remove reaction
-  const handleRemoveReaction = useCallback(
-    async (messageId: string, emoji: string) => {
-      try {
-        socketService.removeReaction({
-          projectId: project.id,
-          messageId,
-          emoji,
-        });
-      } catch (error) {
-        console.error('Failed to remove reaction:', error);
-      }
-    },
-    [project.id]
-  );
-
-  // Handle reply
-  const handleReply = useCallback((message: ChatMessageType) => {
-    setReplyingTo(message);
-  }, []);
-
-  // Cancel reply
-  const handleCancelReply = useCallback(() => {
-    setReplyingTo(null);
-  }, []);
-
-  // Typing handlers
-  const handleTypingStart = useCallback(() => {
-    socketService.startTyping(project.id);
-  }, [project.id]);
-
-  const handleTypingStop = useCallback(() => {
-    socketService.stopTyping(project.id);
-  }, [project.id]);
-
-  // Toggle notifications
-  const handleToggleNotifications = useCallback(async () => {
-    if (!notificationsEnabled) {
-      if ('Notification' in window && Notification.permission === 'default') {
-        await Notification.requestPermission();
-      }
+    if (isOpen) {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      }, 200);
     }
-    setNotificationsEnabled(!notificationsEnabled);
-  }, [notificationsEnabled]);
+  }, [isOpen]);
+
+  // Scroll listener for infinite scroll and tracking bottom status
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+
+      // Check if we are at the bottom (with some threshold)
+      isAtBottomRef.current = scrollHeight - scrollTop - clientHeight < 100;
+
+      // Update last known scroll height for next render
+      lastScrollHeightRef.current = scrollHeight;
+
+      // Trigger load more when near top
+      if (scrollTop < 100 && hasMore && !isLoading) {
+        loadMoreMessages();
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [hasMore, isLoading, loadMoreMessages]);
 
   // Search messages
   const handleSearch = useCallback(
@@ -437,7 +161,31 @@ function ChatPanel({ project, members, isOpen, onClose }: ChatPanelProps) {
     return () => clearTimeout(timeout);
   }, [searchQuery, handleSearch]);
 
-  // Typing indicator text
+  const [replyingTo, setReplyingTo] = useState<ChatMessageType | null>(null);
+
+  const handleSendMessage = useCallback(
+    async (content: string) => {
+      sendMessage(content, replyingTo?.id);
+      setReplyingTo(null);
+      // Auto-scroll when explicitly sending a new message
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    },
+    [sendMessage, replyingTo]
+  );
+
+  const handleScrollToMessage = useCallback((messageId: string) => {
+    const el = document.getElementById(`message-${messageId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('!bg-olive-100', 'dark:!bg-olive-900/50', 'transition-colors', 'duration-500');
+      setTimeout(() => {
+        el.classList.remove('!bg-olive-100', 'dark:!bg-olive-900/50');
+      }, 2000);
+    }
+  }, []);
+
   const typingText = useMemo(() => {
     const users = Array.from(typingUsers.values());
     if (users.length === 0) return null;
@@ -446,38 +194,52 @@ function ChatPanel({ project, members, isOpen, onClose }: ChatPanelProps) {
     return `${users.length} people are typing...`;
   }, [typingUsers]);
 
-  if (!isOpen) return null;
-
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-700 w-96">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-green-500" />
-          <div>
-            <h3 className="font-semibold text-slate-900 dark:text-slate-100">{project.name}</h3>
-            <span className="text-xs text-slate-500 dark:text-slate-400">
-              {members.length} members
-            </span>
+    <div className="flex flex-col h-full w-full bg-slate-50 dark:bg-slate-900 overflow-hidden relative border-none">
+      {/* Professional Clean Header */}
+      <div className="shrink-0 px-8 py-5 h-[72px] bg-white dark:bg-slate-900 flex items-center justify-between z-20 border-b border-zinc-200 dark:border-slate-800">
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <div className="p-2.5 bg-olive-50 dark:bg-olive-900/30 rounded-xl border border-olive-100 dark:border-olive-800/50 text-olive-600 dark:text-olive-500">
+              <MessageSquare className="w-[18px] h-[18px]" strokeWidth={2.5} />
+            </div>
+            {isConnected && (
+              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white dark:border-slate-900 rounded-full"></span>
+            )}
+          </div>
+          <div className="flex flex-col">
+            <h3 className="text-olive-950 dark:text-white font-bold text-[1.1rem] tracking-tight leading-tight">{project.name} Chat</h3>
+            <div className="flex items-center gap-2 text-zinc-500 dark:text-slate-400 text-[0.7rem] font-semibold mt-0.5">
+              <span className="flex items-center gap-1.5">
+                <Users className="w-3 h-3" />
+                {members.length} Members
+              </span>
+              <span className="w-1 h-1 rounded-full bg-zinc-300 dark:bg-slate-600" />
+              <span className={isConnected ? 'text-olive-600 dark:text-olive-400' : 'text-amber-500'}>
+                {isConnected ? 'LIVE SYNC' : 'RECONNECTING'}
+              </span>
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           <button
             onClick={() => setShowSearch(!showSearch)}
             className={[
-              'p-2 rounded-lg transition-colors',
+              'p-2 rounded-xl transition-all duration-200 backdrop-blur-sm',
               showSearch
-                ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
-                : 'text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300',
+                ? 'bg-white text-blue-600 shadow-inner scale-95'
+                : 'text-white hover:bg-white/10 active:scale-90',
             ].join(' ')}
+            title="Search messages"
           >
             <Search className="w-4 h-4" />
           </button>
 
           <button
-            onClick={handleToggleNotifications}
-            className="p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+            onClick={() => setNotificationsEnabled(!notificationsEnabled)}
+            className="p-2 rounded-xl text-white hover:bg-white/10 transition-all active:scale-90 backdrop-blur-sm"
+            title={notificationsEnabled ? 'Mute' : 'Unmute'}
           >
             {notificationsEnabled ? (
               <Bell className="w-4 h-4" />
@@ -485,30 +247,23 @@ function ChatPanel({ project, members, isOpen, onClose }: ChatPanelProps) {
               <BellOff className="w-4 h-4" />
             )}
           </button>
-
-          <button
-            onClick={onClose}
-            className="p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
-          >
-            <X className="w-4 h-4" />
-          </button>
         </div>
       </div>
 
-      {/* Search bar */}
+      {/* Search area (conditionally rendered below header) */}
       {showSearch && (
-        <div className="px-4 py-2 border-b border-slate-200 dark:border-slate-700">
-          <div className="relative">
+        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 animate-in slide-in-from-top duration-300">
+          <div className="relative group">
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search messages..."
-              className="w-full px-3 py-2 pl-9 text-sm bg-slate-100 dark:bg-slate-800 border-0 rounded-lg text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              placeholder="Search in conversation..."
+              className="w-full px-4 py-2.5 pl-11 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-900 dark:text-slate-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition-all group-hover:border-slate-300 dark:group-hover:border-slate-600"
             />
-            <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+            <Search className="absolute left-4 top-3 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
             {isSearching && (
-              <Loader2 className="absolute right-3 top-2.5 w-4 h-4 text-slate-400 animate-spin" />
+              <Loader2 className="absolute right-4 top-3 w-4 h-4 text-slate-400 animate-spin" />
             )}
           </div>
         </div>
@@ -517,9 +272,9 @@ function ChatPanel({ project, members, isOpen, onClose }: ChatPanelProps) {
       {/* Messages */}
       <div
         ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto p-4 space-y-1"
+        className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar bg-slate-50/50 dark:bg-slate-950/20"
       >
-        {isLoading ? (
+        {isLoading && messages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="w-6 h-6 text-slate-400 animate-spin" />
           </div>
@@ -534,11 +289,11 @@ function ChatPanel({ project, members, isOpen, onClose }: ChatPanelProps) {
             {/* Load more button */}
             {hasMore && (
               <button
-                onClick={handleLoadMore}
-                disabled={isLoadingMore}
+                onClick={loadMoreMessages}
+                disabled={isLoading}
                 className="w-full py-2 text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
               >
-                {isLoadingMore ? (
+                {isLoading ? (
                   <Loader2 className="w-4 h-4 mx-auto animate-spin" />
                 ) : (
                   'Load more messages'
@@ -546,18 +301,20 @@ function ChatPanel({ project, members, isOpen, onClose }: ChatPanelProps) {
               </button>
             )}
 
-            {/* Messages */}
+            {/* Messages List */}
             {(showSearch && searchQuery ? searchResults : messages).map((message) => (
               <ChatMessage
                 key={message.id}
                 message={message}
                 currentUserId={currentUserId}
+                currentUserEmail={user?.email}
                 isAdmin={isAdmin}
-                onEdit={handleEditMessage}
-                onDelete={handleDeleteMessage}
-                onAddReaction={handleAddReaction}
-                onRemoveReaction={handleRemoveReaction}
-                onReply={handleReply}
+                onEdit={editMessage}
+                onDelete={deleteMessage}
+                onAddReaction={addReaction}
+                onRemoveReaction={removeReaction}
+                onReply={(m) => setReplyingTo(m)}
+                onLoadThread={handleScrollToMessage}
               />
             ))}
 
@@ -572,31 +329,37 @@ function ChatPanel({ project, members, isOpen, onClose }: ChatPanelProps) {
         )}
       </div>
 
-      {/* Typing indicator */}
-      {typingText && (
-        <div className="px-4 py-1.5 text-xs text-slate-500 dark:text-slate-400 italic">
-          {typingText}
-        </div>
-      )}
+      {/* Footer Area */}
+      <div className="border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+        {/* Typing indicator */}
+        {typingText && (
+          <div className="px-4 py-1.5 text-xs text-slate-500 dark:text-slate-400 italic">
+            {typingText}
+          </div>
+        )}
 
-      {/* Connection status */}
-      {!isConnected && (
-        <div className="px-4 py-1.5 bg-amber-50 dark:bg-amber-900/20 border-t border-amber-200 dark:border-amber-800">
-          <span className="text-xs text-amber-600 dark:text-amber-400">
-            Reconnecting...
-          </span>
-        </div>
-      )}
+        {/* Connection status (Floating overlay) */}
+        {!isConnected && (
+          <div className="absolute top-20 left-1/2 -translate-x-1/2 z-50">
+            <div className="px-4 py-2 bg-amber-500 text-white text-xs font-bold rounded-full shadow-lg animate-pulse flex items-center gap-2">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              Reconnecting to Chat...
+            </div>
+          </div>
+        )}
 
-      {/* Input */}
-      <ChatInput
-        onSendMessage={handleSendMessage}
-        onTypingStart={handleTypingStart}
-        onTypingStop={handleTypingStop}
-        replyingTo={replyingTo}
-        onCancelReply={handleCancelReply}
-        disabled={!isConnected}
-      />
+        {/* Input */}
+        <div className="p-4">
+          <ChatInput
+            onSendMessage={handleSendMessage}
+            onTypingStart={startTyping}
+            onTypingStop={stopTyping}
+            replyingTo={replyingTo}
+            onCancelReply={() => setReplyingTo(null)}
+            disabled={!isConnected}
+          />
+        </div>
+      </div>
     </div>
   );
 }

@@ -4,8 +4,8 @@ import { KeyRound, Smartphone } from 'lucide-react';
 
 import { useAuth } from '@/context/AuthContext';
 
-const inputCls = 'w-full bg-white/82 dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded-md text-zinc-900 dark:text-slate-100 px-4 py-3.5 transition-all duration-200 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10';
-const labelCls = 'grid gap-2 font-medium text-[0.95rem] text-zinc-900 dark:text-slate-100';
+const inputCls = 'w-full bg-white/82 dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded-md text-olive-950 dark:text-slate-100 px-4 py-3.5 transition-all duration-200 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10';
+const labelCls = 'grid gap-2 font-medium text-[0.95rem] text-olive-950 dark:text-slate-100';
 
 function LoginPage(): JSX.Element {
   const navigate = useNavigate();
@@ -52,7 +52,7 @@ function LoginPage(): JSX.Element {
       {/* Login card */}
       <section className="bg-white dark:bg-slate-900 border border-zinc-200 dark:border-slate-700 rounded-lg shadow-sm p-8 w-full max-w-[480px] grid gap-5">
         <div>
-          <h1 className="text-2xl font-semibold text-zinc-900 dark:text-slate-100 m-0">Login</h1>
+          <h1 className="text-2xl font-semibold text-olive-950 dark:text-slate-100 m-0">Login</h1>
           <p className="text-zinc-500 dark:text-slate-400 mt-1">Sign in to access your synced tasks.</p>
         </div>
 
@@ -86,7 +86,7 @@ function LoginPage(): JSX.Element {
               className={[
                 'flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200',
                 loginMode === key
-                  ? 'bg-white dark:bg-slate-700 text-zinc-900 dark:text-slate-100 shadow-sm'
+                  ? 'bg-white dark:bg-slate-700 text-olive-950 dark:text-slate-100 shadow-sm'
                   : 'text-zinc-500 dark:text-slate-400 hover:text-zinc-700 dark:hover:text-slate-200'
               ].join(' ')}
               onClick={() => setLoginMode(key)}
@@ -111,7 +111,7 @@ function LoginPage(): JSX.Element {
             {user != null ? <p className="text-zinc-400 dark:text-slate-500 m-0 text-sm">You already have an active session. Redirecting...</p> : null}
             {error ? <p className="text-red-600 dark:text-red-400 m-0 text-[0.9rem]">{error}</p> : null}
             <button
-              className="bg-zinc-900 dark:bg-blue-600 text-white rounded-md px-4 py-2.5 text-[0.9rem] font-medium hover:bg-zinc-700 dark:hover:bg-blue-500 disabled:opacity-50 transition-colors"
+              className="bg-olive-900 dark:bg-blue-600 text-white rounded-md px-4 py-2.5 text-[0.9rem] font-medium hover:bg-olive-800 dark:hover:bg-blue-500 disabled:opacity-50 transition-colors"
               disabled={loading}
               type="submit"
             >
@@ -137,7 +137,7 @@ function LoginPage(): JSX.Element {
             </p>
             {error ? <p className="text-red-600 dark:text-red-400 m-0 text-[0.9rem]">{error}</p> : null}
             <button
-              className="bg-zinc-900 dark:bg-blue-600 text-white rounded-md px-4 py-2.5 text-[0.9rem] font-medium hover:bg-zinc-700 dark:hover:bg-blue-500 disabled:opacity-50 transition-colors"
+              className="bg-olive-900 dark:bg-blue-600 text-white rounded-md px-4 py-2.5 text-[0.9rem] font-medium hover:bg-olive-800 dark:hover:bg-blue-500 disabled:opacity-50 transition-colors"
               disabled={loading}
               type="submit"
             >

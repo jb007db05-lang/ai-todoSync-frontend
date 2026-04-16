@@ -48,11 +48,11 @@ function ProjectNotes({
       <div className="flex items-start gap-3 justify-between">
         <div>
           <span className="text-blue-600 dark:text-blue-400 text-[0.72rem] tracking-[0.12em] uppercase font-semibold">Notes</span>
-          <h3 className="mt-1 mb-0 text-zinc-900 dark:text-slate-100">{heading}</h3>
+          <h3 className="mt-1 mb-0 text-olive-950 dark:text-slate-100">{heading}</h3>
         </div>
         {onCreateNote ? (
           <button
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-zinc-900 dark:bg-blue-600 text-white rounded text-sm font-medium hover:bg-zinc-700 dark:hover:bg-blue-500 transition-colors shrink-0"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-olive-900 dark:bg-blue-600 text-white rounded text-sm font-medium hover:bg-olive-800 dark:hover:bg-blue-500 transition-colors shrink-0"
             onClick={onCreateNote}
             type="button"
           >
@@ -79,7 +79,7 @@ function ProjectNotes({
                 onClick={() => onOpenNote(note)}
                 type="button"
               >
-                <strong className="text-zinc-900 dark:text-slate-100 text-[0.98rem]">{note.title}</strong>
+                <strong className="text-olive-950 dark:text-slate-100 text-[0.98rem]">{note.title}</strong>
                 <span className="text-zinc-500 dark:text-slate-400 text-[0.86rem]">Updated {formatTimestamp(note.updatedAt)}</span>
               </button>
               {onDeleteNote ? (
