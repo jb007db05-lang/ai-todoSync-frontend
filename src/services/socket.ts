@@ -42,6 +42,10 @@ export enum SocketEvents {
   PRESENCE_JOIN = 'presence:join',
   PRESENCE_LEAVE = 'presence:leave',
   PRESENCE_UPDATE = 'presence:update',
+
+  // Tasks
+  TASK_ASSIGNED = 'task:assigned',
+  TASK_BULK_ASSIGNED = 'task:bulk_assigned',
 }
 
 /**
