@@ -1,12 +1,15 @@
-export type TaskWorkflowStatus = 'pending' | 'in_progress' | 'in_review' | 'completed';
+export type TaskWorkflowStatus = 'BACKLOG' | 'TODO' | 'IN_PROGRESS' | 'IN_REVIEW' | 'BLOCKED' | 'DONE';
 export type TaskStatus = TaskWorkflowStatus | 'rolled_over';
+export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH';
 export type TaskSource = 'claude' | 'chatgpt' | 'gemini' | 'manual';
 
 export const TASK_WORKFLOW_STATUS_OPTIONS: Array<{ value: TaskWorkflowStatus; label: string }> = [
-  { value: 'pending', label: 'Pending' },
-  { value: 'in_progress', label: 'In Progress' },
-  { value: 'in_review', label: 'In Review' },
-  { value: 'completed', label: 'Completed' }
+  { value: 'BACKLOG', label: 'Backlog' },
+  { value: 'TODO', label: 'To Do' },
+  { value: 'IN_PROGRESS', label: 'In Progress' },
+  { value: 'IN_REVIEW', label: 'In Review' },
+  { value: 'BLOCKED', label: 'Blocked' },
+  { value: 'DONE', label: 'Done' }
 ];
 
 export interface Subtask {
@@ -33,26 +36,48 @@ export interface Task {
   note?: string;
   date: string;
   status: TaskStatus;
+  priority: TaskPriority;
+  isBlocked: boolean;
+  blockedByTaskId: string | null;
+  order: number;
   rolledOver: boolean;
   rolloverCount: number;
   source?: TaskSource;
   projectId: string | null;
   epicId: string | null;
+  assignedTo: {
+    id: string;
+    email: string;
+    name: string | null;
+    firstName?: string;
+    lastName?: string;
+  };
+  assignedBy: {
+    id: string;
+    email: string;
+    name: string | null;
+    firstName?: string;
+    lastName?: string;
+  } | null;
+  assignedAt: string;
   subtasks: Subtask[];
   permissions: {
     canEdit: boolean;
     canDelete: boolean;
     canAssign: boolean;
     canUpdate: boolean;
+    canReassign: boolean;
   };
 }
 
 export interface TaskSummary {
   total: number;
-  pending: number;
+  backlog: number;
+  todo: number;
   inProgress: number;
   inReview: number;
-  completed: number;
+  blocked: number;
+  done: number;
   rolledOver: number;
   date?: string;
 }
@@ -63,9 +88,11 @@ export interface CreateTaskInput {
   note?: string;
   date: string;
   status?: TaskStatus;
+  priority?: TaskPriority;
   source?: TaskSource;
   projectId?: string | null;
   epicId?: string | null;
+  assignedTo?: string;
   subtasks?: Array<{
     title: string;
     note?: string;
@@ -81,8 +108,13 @@ export interface UpdateTaskInput {
   note?: string;
   date?: string;
   status?: TaskStatus;
+  priority?: TaskPriority;
+  isBlocked?: boolean;
+  blockedByTaskId?: string | null;
+  order?: number;
   projectId?: string | null;
   epicId?: string | null;
+  assignedTo?: string;
   subtasks?: Array<{
     title: string;
     note?: string;

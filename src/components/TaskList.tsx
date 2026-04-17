@@ -26,6 +26,8 @@ interface TaskListProps {
   tasks: Task[];
   onSelectTask?: (task: Task) => void;
   selectedTaskId?: string | null;
+  selectedTaskIds?: string[];
+  onToggleSelection?: (taskId: string) => void;
 }
 
 function TaskList({
@@ -35,7 +37,9 @@ function TaskList({
   projects,
   tasks,
   onSelectTask,
-  selectedTaskId
+  selectedTaskId,
+  selectedTaskIds = [],
+  onToggleSelection
 }: TaskListProps): JSX.Element {
   const projectNames = new Map(flattenProjectLabels(projects).map((project) => [project.id, project.label]));
   const epicsByProject = new Map<string, Epic[]>();
@@ -178,6 +182,8 @@ function TaskList({
                               task={task}
                               onSelect={onSelectTask}
                               isSelected={selectedTaskId === task.id}
+                              isMultiSelected={selectedTaskIds.includes(task.id)}
+                              onToggleSelection={onToggleSelection}
                             />
                           ))}
                         </div>
@@ -197,6 +203,8 @@ function TaskList({
                   task={task}
                   onSelect={onSelectTask}
                   isSelected={selectedTaskId === task.id}
+                  isMultiSelected={selectedTaskIds.includes(task.id)}
+                  onToggleSelection={onToggleSelection}
                 />
               ))}
             </div>

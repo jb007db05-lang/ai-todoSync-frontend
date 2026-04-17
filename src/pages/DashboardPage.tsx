@@ -19,14 +19,16 @@ import ActivityHistoryPanel from '@/components/ActivityHistoryPanel';
 import { useChat } from '@/context/ChatContext';
 import NotificationBox, { Notification } from '@/components/NotificationBox';
 import TaskList from '@/components/TaskList';
+import KanbanBoard from '@/components/KanbanBoard';
+import CommentSection from '@/components/CommentSection';
 import TaskFilterBar, { TaskFilters } from '@/components/TaskFilterBar';
 import SourceBadge from '@/components/SourceBadge';
 import UserAvatar from '@/components/UserAvatar';
+import AssigneeSelector from '@/components/AssigneeSelector';
 import {
   Calendar,
   CheckCircle,
   ChevronDown,
-  ChevronUp,
   Edit3,
   FileText,
   Folder,
@@ -41,9 +43,11 @@ import {
   Settings,
   Users,
   Trash2,
-  History
+  History,
+  RefreshCw,
+  X
 } from 'lucide-react';
-import { createEpic, deleteEpic, getEpics, reorderEpics, updateEpic } from '@/services/epics';
+import { createEpic, deleteEpic, getEpics, updateEpic } from '@/services/epics';
 import { createEpicNote, createNote, deleteNote, getEpicNotes, getNote, getProjectNotes, updateNote } from '@/services/notes';
 import {
   addProjectMember,
@@ -55,13 +59,14 @@ import {
   removeProjectMember,
   updateProject
 } from '@/services/projects';
-import { createTask, deleteTask, getTasks, updateTask } from '@/services/tasks';
+import { bulkAssignTasks, createTask, deleteTask, getTasks, updateTask } from '@/services/tasks';
 import { searchUsersByEmail } from '@/services/users';
 import { useAuth } from '@/context/AuthContext';
+import socketService, { SocketEvents } from '@/services/socket';
 import type { Epic, EpicStatus } from '@/types/epic';
 import type { Note } from '@/types/note';
 import type { Project, ProjectMember, UserSearchResult } from '@/types/project';
-import type { Task, TaskWorkflowStatus } from '@/types/task';
+import type { Task, TaskWorkflowStatus, TaskPriority } from '@/types/task';
 import { findProjectByName } from '@/utils/projectTree';
 import { useConfirm } from '@/context/ConfirmationContext';
 
@@ -108,23 +113,23 @@ const deriveTaskStatusFromSubtasks = (
     return currentStatus;
   }
 
-  if (subtasks.every((subtask) => subtask.status === 'completed')) {
-    return 'completed';
+  if (subtasks.every((subtask) => subtask.status === 'DONE')) {
+    return 'DONE';
   }
 
-  if (currentStatus !== 'completed') {
+  if (currentStatus !== 'DONE') {
     return currentStatus;
   }
 
-  if (subtasks.some((subtask) => subtask.status === 'in_review')) {
-    return 'in_review';
+  if (subtasks.some((subtask) => subtask.status === 'IN_REVIEW')) {
+    return 'IN_REVIEW';
   }
 
-  if (subtasks.some((subtask) => subtask.status === 'in_progress')) {
-    return 'in_progress';
+  if (subtasks.some((subtask) => subtask.status === 'IN_PROGRESS')) {
+    return 'IN_PROGRESS';
   }
 
-  return 'pending';
+  return 'TODO';
 };
 
 function DashboardPage(): JSX.Element {
@@ -135,6 +140,7 @@ function DashboardPage(): JSX.Element {
   const [projects, setProjects] = useState<Project[]>([]);
   const [epics, setEpics] = useState<Epic[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
   const [error, setError] = useState<string | null>(null);
   const [actionTaskId, setActionTaskId] = useState<string | null>(null);
   const [actionProjectId, setActionProjectId] = useState<string | null>(null);
@@ -148,6 +154,8 @@ function DashboardPage(): JSX.Element {
   const [epicMutationSuccess, setEpicMutationSuccess] = useState<string | null>(null);
   const [noteMutationError, setNoteMutationError] = useState<string | null>(null);
   const [noteMutationSuccess, setNoteMutationSuccess] = useState<string | null>(null);
+  const [sidePanelTab, setSidePanelTab] = useState<'subtasks' | 'comments'>('subtasks');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // Universal auto-dismiss for all feedback alerts
   useEffect(() => {
@@ -209,6 +217,7 @@ function DashboardPage(): JSX.Element {
   const [subtaskModalTask, setSubtaskModalTask] = useState<Task | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editingSubtask, setEditingSubtask] = useState<{ task: Task; subtask: Task['subtasks'][number] } | null>(null);
+  const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
   const [projectNotes, setProjectNotes] = useState<Record<string, Note[]>>({});
   const [epicNotes, setEpicNotes] = useState<Record<string, Note[]>>({});
   const [projectMembersByProject, setProjectMembersByProject] = useState<Record<string, ProjectMember[]>>({});
@@ -234,7 +243,7 @@ function DashboardPage(): JSX.Element {
 
     try {
       const [taskList, projectData] = await Promise.all([
-        getTasks(selectedDate),
+        getTasks(selectedDate, taskFilters.assigneeId === 'all' ? undefined : taskFilters.assigneeId),
         getProjects({ page: projectPage, limit: 10, search: projectSearchTerm })
       ]);
       const projectList = projectData.projects;
@@ -251,10 +260,25 @@ function DashboardPage(): JSX.Element {
     } finally {
       setLoading(false);
     }
-  }, [selectedDate, projectPage, projectSearchTerm]);
+  }, [selectedDate, projectPage, projectSearchTerm, taskFilters.assigneeId]);
 
   useEffect(() => {
     void loadDashboard();
+  }, [loadDashboard]);
+
+  useEffect(() => {
+    const handleTaskAssigned = () => {
+      void loadDashboard();
+      setTaskMutationSuccess('Tasks updated');
+    };
+
+    socketService.on(SocketEvents.TASK_ASSIGNED, handleTaskAssigned);
+    socketService.on(SocketEvents.TASK_BULK_ASSIGNED, handleTaskAssigned);
+
+    return () => {
+      socketService.off(SocketEvents.TASK_ASSIGNED, handleTaskAssigned);
+      socketService.off(SocketEvents.TASK_BULK_ASSIGNED, handleTaskAssigned);
+    };
   }, [loadDashboard]);
 
   const loadProjectTeam = useCallback(async (projectId: string): Promise<void> => {
@@ -274,21 +298,48 @@ function DashboardPage(): JSX.Element {
     description?: string;
     note?: string;
     status?: TaskWorkflowStatus;
+    priority?: TaskPriority;
     projectId?: string | null;
     epicId?: string | null;
+    assignedTo?: string;
   }): Promise<void> => {
+    console.log('[DEBUG] DashboardPage handleCreateTask payload:', payload);
     await createTask({
       title: payload.title,
       description: payload.description,
       note: payload.note,
       date: selectedDate,
       status: payload.status,
+      priority: payload.priority,
       source: 'manual',
       projectId: payload.projectId,
-      epicId: payload.epicId
+      epicId: payload.epicId,
+      assignedTo: payload.assignedTo
     });
+    console.log('[DEBUG] Task created successfully');
     await loadDashboard();
     setIsTaskCreateModalOpen(false);
+  };
+
+  const handleToggleTaskSelection = (taskId: string) => {
+    setSelectedTaskIds(prev => 
+      prev.includes(taskId) ? prev.filter(id => id !== taskId) : [...prev, taskId]
+    );
+  };
+
+  const handleBulkAssign = async (userId: string) => {
+    if (selectedTaskIds.length === 0) return;
+    try {
+      setLoading(true);
+      await bulkAssignTasks(selectedTaskIds, userId);
+      setTaskMutationSuccess(`Successfully assigned ${selectedTaskIds.length} tasks`);
+      setSelectedTaskIds([]);
+      await loadDashboard();
+    } catch {
+      setTaskMutationError('Failed to bulk assign tasks');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCreateEpic = async (payload: {
@@ -449,41 +500,6 @@ function DashboardPage(): JSX.Element {
       }
     } catch {
       setEpicMutationError('Unable to delete the epic.');
-    } finally {
-      setActionEpicId(null);
-    }
-  };
-
-  const handleMoveEpic = async (epic: Epic, direction: 'up' | 'down'): Promise<void> => {
-    const projectEpics = epics
-      .filter((currentEpic) => currentEpic.projectId === epic.projectId)
-      .sort((left, right) => left.order - right.order);
-    const index = projectEpics.findIndex((currentEpic) => currentEpic.id === epic.id);
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-
-    if (index < 0 || targetIndex < 0 || targetIndex >= projectEpics.length) {
-      return;
-    }
-
-    const reordered = [...projectEpics];
-    const [movedEpic] = reordered.splice(index, 1);
-
-    if (!movedEpic) {
-      return;
-    }
-
-    reordered.splice(targetIndex, 0, movedEpic);
-
-    setActionEpicId(epic.id);
-    setEpicMutationError(null);
-    setEpicMutationSuccess(null);
-
-    try {
-      await reorderEpics(epic.projectId, reordered.map((item) => item.id));
-      await loadDashboard();
-      setEpicMutationSuccess('Epic order updated.');
-    } catch {
-      setEpicMutationError('Unable to reorder epics.');
     } finally {
       setActionEpicId(null);
     }
@@ -731,13 +747,13 @@ function DashboardPage(): JSX.Element {
 
     try {
       const updates =
-        status === 'completed'
+        status === 'DONE'
           ? {
             status,
             subtasks: task.subtasks.map((subtask) => ({
               title: subtask.title,
               note: subtask.note,
-              status: 'completed' as const,
+              status: 'DONE' as const,
               completedAt: subtask.completedAt ?? new Date().toISOString()
             }))
           }
@@ -824,7 +840,7 @@ function DashboardPage(): JSX.Element {
         return {
           ...subtask,
           status,
-          completedAt: status === 'completed' ? new Date().toISOString() : null
+          completedAt: status === 'DONE' ? new Date().toISOString() : null
         };
       });
 
@@ -860,7 +876,7 @@ function DashboardPage(): JSX.Element {
           description: subtask.description,
           note: subtask.note,
           status: subtask.status,
-          completedAt: subtask.status === 'completed' ? new Date().toISOString() : null
+          completedAt: subtask.status === 'DONE' ? new Date().toISOString() : null
         }))
       ];
 
@@ -1785,188 +1801,305 @@ function DashboardPage(): JSX.Element {
                       <History size={16} />
                       History
                     </button>
+                    <button
+                      className="flex items-center gap-2 px-3.5 py-2.5 bg-white dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded-lg text-sm font-medium text-zinc-600 dark:text-slate-300 hover:bg-zinc-50 dark:hover:bg-slate-700 shadow-sm transition-colors group"
+                      onClick={() => loadDashboard()}
+                      title="Refresh all data"
+                      type="button"
+                    >
+                      <RefreshCw size={16} className="group-hover:rotate-180 transition-transform duration-500" />
+                      Refresh
+                    </button>
                   </div>
                 </div>
               </div>
-              <div className="flex flex-1 min-h-0 overflow-hidden gap-5 p-5 bg-slate-50/50 dark:bg-slate-950/20">
-                {/* Column 1 — Epics */}
-                <div className="flex flex-col w-[330px] shrink-0 h-full rounded-2xl border border-zinc-200/60 dark:border-slate-800/60 bg-white/95 dark:bg-slate-900/90 shadow-sm overflow-hidden transition-all duration-300">
-                  <div className="flex items-center justify-between px-6 py-6 border-b border-zinc-100 dark:border-slate-800 bg-linear-to-b from-white to-slate-50/30 dark:from-slate-900 dark:to-slate-900/50">
-                    <div>
-                      <span className="text-[0.6rem] uppercase tracking-[0.2em] font-black text-olive-600 dark:text-blue-400 opacity-80">Infrastructure</span>
-                      <h3 className="text-[1.1rem] font-extrabold font-['Outfit'] text-olive-950 dark:text-slate-50 m-0 mt-1 tracking-tight">Epics</h3>
-                      <p className="text-zinc-500 dark:text-slate-400 text-[0.78rem] m-0 mt-1">{activeProject.name}</p>
-                    </div>
-                    <button
-                      className="flex items-center justify-center w-10 h-10 bg-olive-900 dark:bg-olive-600 hover:bg-olive-800 dark:hover:bg-olive-500 text-white rounded-lg shadow-sm transition-all active:scale-95 disabled:opacity-40"
-                      disabled={!canManageActiveProject}
-                      onClick={() => setIsEpicCreateModalOpen(true)}
-                      title="New Epic"
-                      type="button"
-                    >
-                      <Plus size={16} />
-                    </button>
-                  </div>
-
-                  <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 custom-scrollbar bg-white dark:bg-slate-900">
-                    {activeProjectEpics.map(epic => {
-                      const isActive = selectedEpicId === epic.id;
-                      return (
-                        <div
-                          key={epic.id}
-                          className={`relative flex flex-col gap-3 p-4 rounded-xl border transition-all cursor-pointer shadow-sm ${isActive
-                            ? 'bg-blue-50/80 dark:bg-blue-500/8 border-blue-400/60 dark:border-olive-500/40 ring-1 ring-olive-500/20'
-                            : 'bg-white/92 dark:bg-slate-800/44 border-zinc-200/80 dark:border-slate-700 hover:border-zinc-300 dark:hover:border-slate-600 hover:-translate-y-[2px]'
-                            }`}
-                          onClick={() => handleEpicSelect(isActive ? null : epic.id)}
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <h4 className={`text-[0.95rem] font-bold m-0 leading-tight transition-colors ${isActive ? 'text-blue-900 dark:text-blue-100' : 'text-olive-900 dark:text-slate-200'
-                              }`}>
-                              {epic.name}
-                            </h4>
-                            <span className={`shrink-0 text-[0.6rem] font-bold px-2.5 py-1 rounded-full uppercase tracking-[0.12em] border ${statusPillCls[epic.status] ?? 'bg-zinc-100 dark:bg-slate-800 text-zinc-600 dark:text-slate-400 border-zinc-200 dark:border-slate-700'
-                              }`}>
-                              {epic.status}
-                            </span>
-                          </div>
-
-                          {epic.description && (
-                            <p className="text-[0.82rem] m-0 line-clamp-2 leading-relaxed text-zinc-500 dark:text-slate-400">
-                              {epic.description}
-                            </p>
-                          )}
-
-                          {/* Action Toolbar — Always Visible & Integrated */}
-                          <div className="flex items-center gap-1.5 mt-2 pt-3 border-t border-zinc-100/90 dark:border-slate-700/50">
-                            <button
-                              className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-slate-700 text-zinc-400 hover:text-olive-600 transition-colors"
-                              onClick={(e) => { e.stopPropagation(); handleOpenEpicNotesPanel(epic); }}
-                              title="Notes"
-                            >
-                              <FileText size={14} />
-                            </button>
-                            <button
-                              className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-slate-700 text-zinc-400 hover:text-indigo-600 transition-colors disabled:opacity-40"
-                              disabled={!canManageActiveProject}
-                              onClick={(e) => { e.stopPropagation(); setEditingEpic(epic); }}
-                              title="Edit"
-                            >
-                              <Edit3 size={14} />
-                            </button>
-                            <div className="flex-1" />
-                            <button
-                              className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-slate-700 text-zinc-400 hover:text-olive-950 dark:hover:text-white transition-colors disabled:opacity-40"
-                              disabled={!canManageActiveProject}
-                              onClick={(e) => { e.stopPropagation(); handleMoveEpic(epic, 'up'); }}
-                              title="Up"
-                            >
-                              <ChevronUp size={14} />
-                            </button>
-                            <button
-                              className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-slate-700 text-zinc-400 hover:text-olive-950 dark:hover:text-white transition-colors disabled:opacity-40"
-                              disabled={!canManageActiveProject}
-                              onClick={(e) => { e.stopPropagation(); handleMoveEpic(epic, 'down'); }}
-                              title="Down"
-                            >
-                              <ChevronDown size={14} />
-                            </button>
-                            <div className="w-px h-3 bg-zinc-200 dark:bg-slate-800 mx-1" />
-                            <button
-                              className="p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 text-zinc-400 hover:text-red-500 transition-colors disabled:opacity-40"
-                              disabled={actionEpicId === epic.id || !canManageActiveProject}
-                              onClick={(e) => { e.stopPropagation(); handleDeleteEpic(epic.id); }}
-                              title="Delete"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {activeProjectEpics.length === 0 && (
-                      <EmptyState description="Create an epic to group your tasks." icon={List} title="No epics found" />
-                    )}
-                  </div>
-                </div>
-
-                {/* Column 2 — Tasks */}
-                {selectedEpicId && (
-                  <div className="flex flex-col w-[480px] shrink-0 h-full rounded-2xl border border-zinc-200/60 dark:border-slate-800/60 bg-white/95 dark:bg-slate-900/90 shadow-md overflow-hidden animate-slideInRight duration-500">
-                    <div className="flex items-center justify-between px-6 py-6 bg-linear-to-b from-white to-slate-50/30 dark:from-slate-900 dark:to-slate-900/50 border-b border-zinc-100 dark:border-slate-800">
-                      <div>
-                        <span className="text-[0.6rem] uppercase tracking-[0.2em] font-black text-olive-600 dark:text-blue-400 opacity-80">Execution</span>
-                        <h3 className="text-[1.1rem] font-extrabold font-['Outfit'] text-olive-950 dark:text-slate-50 m-0 mt-1 tracking-tight">{tasksHeading}</h3>
-                        <p className="text-zinc-500 dark:text-slate-400 text-[0.78rem] m-0 mt-1 truncate max-w-[280px]">
-                          {epics.find(e => e.id === selectedEpicId)?.name}
-                        </p>
+              <div className="flex flex-1 min-h-0 overflow-hidden gap-4 p-4 bg-slate-50 dark:bg-slate-950/20">
+                {/* Column 1 — Epics (Sidebar) */}
+                <div className={`flex flex-col shrink-0 h-full rounded-2xl border border-zinc-200/60 dark:border-slate-800/60 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl shadow-sm overflow-hidden transition-all duration-500 ease-in-out ${isSidebarCollapsed ? 'w-14' : 'w-[300px]'}`}>
+                  <div className={`flex items-center justify-between px-5 py-6 border-b border-zinc-100 dark:border-slate-800 bg-linear-to-b from-white/50 to-transparent dark:from-slate-900/50 ${isSidebarCollapsed ? 'flex-col gap-4' : ''}`}>
+                    {!isSidebarCollapsed && (
+                      <div className="animate-in fade-in duration-500">
+                        <span className="text-[0.6rem] uppercase tracking-[0.2em] font-black text-blue-600 dark:text-blue-400 opacity-80">Infrastructure</span>
+                        <h3 className="text-[1rem] font-extrabold font-['Outfit'] text-slate-900 dark:text-slate-50 m-0 mt-1 tracking-tight">Epics</h3>
                       </div>
+                    )}
+                    <div className={`flex items-center gap-1.5 ${isSidebarCollapsed ? 'flex-col' : ''}`}>
+                      {!isSidebarCollapsed && (
+                        <button
+                          className="flex items-center justify-center w-9 h-9 bg-slate-900 dark:bg-blue-600 hover:bg-slate-800 dark:hover:bg-blue-500 text-white rounded-lg shadow-sm transition-all active:scale-95 disabled:opacity-40"
+                          disabled={!canManageActiveProject}
+                          onClick={() => setIsEpicCreateModalOpen(true)}
+                          title="New Epic"
+                          type="button"
+                        >
+                          <Plus size={16} />
+                        </button>
+                      )}
                       <button
-                        className="flex items-center justify-center w-10 h-10 bg-olive-900 dark:bg-olive-600 hover:bg-olive-800 dark:hover:bg-olive-500 text-white rounded-lg shadow-sm transition-all duration-300 hover:scale-[1.03] active:scale-95 disabled:opacity-40"
-                        disabled={!canManageActiveProject}
-                        onClick={() => {
-                          setTaskModalProjectId(activeProject?.id ?? null);
-                          setIsTaskCreateModalOpen(true);
-                        }}
-                        title="New Task"
-                        type="button"
+                        className="flex items-center justify-center w-9 h-9 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg transition-all"
+                        onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                        title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
                       >
-                        <Plus size={18} />
+                        {isSidebarCollapsed ? <Layout size={18} /> : <List size={18} />}
                       </button>
                     </div>
+                  </div>
 
-                    <TaskFilterBar 
-                      filters={taskFilters}
-                      onFilterChange={setTaskFilters}
-                      members={activeProjectMembers}
-                      epics={epics.filter(e => e.projectId === (activeProject?.id || ''))}
-                      onClear={handleClearFilters}
-                    />
+                  {!isSidebarCollapsed && (
+                    <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 custom-scrollbar animate-in fade-in slide-in-from-left-4 duration-500">
+                      {activeProjectEpics.map(epic => {
+                        const isActive = selectedEpicId === epic.id;
+                        return (
+                          <div
+                            key={epic.id}
+                            className={`relative flex flex-col gap-3 p-4 rounded-xl border transition-all cursor-pointer shadow-sm ${isActive
+                              ? 'bg-blue-50/80 dark:bg-blue-500/10 border-blue-400/60 dark:border-blue-500/40 ring-1 ring-blue-500/10'
+                              : 'bg-white/50 dark:bg-slate-800/30 border-zinc-200/80 dark:border-slate-700/50 hover:border-blue-300 dark:hover:border-blue-500/30 hover:-translate-y-[2px]'
+                              }`}
+                            onClick={() => handleEpicSelect(isActive ? null : epic.id)}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <h4 className={`text-[0.9rem] font-bold m-0 leading-tight transition-colors ${isActive ? 'text-blue-950 dark:text-blue-50' : 'text-slate-900 dark:text-slate-200'
+                                }`}>
+                                {epic.name}
+                              </h4>
+                              <span className={`shrink-0 text-[0.55rem] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border ${statusPillCls[epic.status] ?? 'bg-zinc-100 dark:bg-slate-800 text-zinc-600 dark:text-slate-400 border-zinc-200 dark:border-slate-700'
+                                }`}>
+                                {epic.status}
+                              </span>
+                            </div>
 
-                    <div className="flex-1 overflow-y-auto p-5 content-start bg-white dark:bg-slate-900">
-                      <TaskList
-                        epics={epics}
-                        onDelete={(taskId) => {
-                          const task = tasks.find(t => t.id === taskId);
-                          void handleDeleteTask(taskId, task?.title ?? 'this task');
-                        }}
-                        onEditTask={(task) => setEditingTask(task)}
-                        onUpdateStatus={(task, status) => void handleUpdateTaskStatus(task, status)}
-                        onUpdateEpic={(task, epicId) => void handleUpdateTaskEpic(task, epicId)}
-                        projects={projects}
-                        tasks={activeEpicTasks}
-                        onSelectTask={(task) => setSelectedTaskId(task.id)}
-                        selectedTaskId={selectedTaskId}
-                      />
-                      {activeEpicTasks.length === 0 && (
-                        <EmptyState description="No tasks scheduled for this epic today." icon={Calendar} title="Empty workspace" />
+                            {/* Action Toolbar — Contextual */}
+                            <div className="flex items-center gap-1 mt-1 opacity-60 hover:opacity-100 transition-opacity">
+                              <button
+                                className="p-1 rounded hover:bg-blue-100 dark:hover:bg-slate-700 text-slate-400 hover:text-blue-600 transition-colors"
+                                onClick={(e) => { e.stopPropagation(); handleOpenEpicNotesPanel(epic); }}
+                                title="Notes"
+                              >
+                                <FileText size={12} />
+                              </button>
+                              <button
+                                className="p-1 rounded hover:bg-blue-100 dark:hover:bg-slate-700 text-slate-400 hover:text-blue-600 transition-colors disabled:opacity-40"
+                                disabled={!canManageActiveProject}
+                                onClick={(e) => { e.stopPropagation(); setEditingEpic(epic); }}
+                                title="Edit"
+                              >
+                                <Edit3 size={12} />
+                              </button>
+                              <div className="flex-1" />
+                              <button
+                                className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500 transition-colors disabled:opacity-40"
+                                disabled={actionEpicId === epic.id || !canManageActiveProject}
+                                onClick={(e) => { e.stopPropagation(); handleDeleteEpic(epic.id); }}
+                                title="Delete"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {activeProjectEpics.length === 0 && (
+                        <div className="py-10 text-center opacity-40">
+                           <EmptyState description="Create an epic to group your tasks." icon={List} title="No epics" />
+                        </div>
                       )}
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
 
-                {/* Column 3 — Subtasks */}
+                {/* Column 2 — Main Workspace (Tasks) */}
+                <div className={`flex flex-col flex-1 min-w-0 h-full rounded-2xl border border-zinc-200/60 dark:border-slate-800/60 bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl shadow-md overflow-hidden transition-[opacity,filter,background-color] duration-500 ${!selectedEpicId ? 'opacity-40 grayscale-[0.5]' : ''}`}>
+                  {selectedEpicId ? (
+                    <>
+                      <div className="flex items-center justify-between px-6 py-6 border-b border-zinc-100 dark:border-slate-800 bg-linear-to-b from-white/50 to-transparent dark:from-slate-900/50">
+                        <div>
+                          <span className="text-[0.6rem] uppercase tracking-[0.2em] font-black text-blue-600 dark:text-blue-400 opacity-80">Execution</span>
+                          <h3 className="text-[1.1rem] font-extrabold font-['Outfit'] text-slate-900 dark:text-slate-50 m-0 mt-1 tracking-tight">{tasksHeading}</h3>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-zinc-500 dark:text-slate-400 text-[0.78rem] truncate max-w-[200px]">
+                              {epics.find(e => e.id === selectedEpicId)?.name}
+                            </span>
+                            <div className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+                            <span className="text-[0.7rem] font-bold text-blue-600 dark:text-blue-400">
+                              {activeEpicTasks.length} {activeEpicTasks.length === 1 ? 'Task' : 'Tasks'}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200/50 dark:border-slate-700/50">
+                            <button
+                              onClick={() => setViewMode('list')}
+                              className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white dark:bg-slate-700 shadow-sm text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+                              title="List View"
+                            >
+                              <List size={18} />
+                            </button>
+                            <button
+                              onClick={() => setViewMode('kanban')}
+                              className={`p-1.5 rounded-md transition-all ${viewMode === 'kanban' ? 'bg-white dark:bg-slate-700 shadow-sm text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+                              title="Kanban Board"
+                            >
+                              <Layout size={18} />
+                            </button>
+                          </div>
+                          <button
+                            className="flex items-center justify-center w-10 h-10 bg-slate-900 dark:bg-blue-600 hover:bg-slate-800 dark:hover:bg-blue-500 text-white rounded-lg shadow-sm transition-all duration-300 hover:scale-[1.03] active:scale-95 disabled:opacity-40"
+                            disabled={!canManageActiveProject}
+                            onClick={() => {
+                              const activeEpic = epics.find(e => e.id === selectedEpicId);
+                              setTaskModalProjectId(activeEpic?.projectId ?? activeProject?.id ?? null);
+                              setIsTaskCreateModalOpen(true);
+                            }}
+                            title="New Task"
+                            type="button"
+                          >
+                            <Plus size={20} />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="px-6 py-2 border-b border-zinc-50 dark:border-slate-800/50">
+                        <TaskFilterBar 
+                          filters={taskFilters}
+                          onFilterChange={setTaskFilters}
+                          members={activeProjectMembers}
+                          epics={epics.filter(e => e.projectId === (activeProject?.id || ''))}
+                          onClear={handleClearFilters}
+                        />
+                      </div>
+
+                      {selectedTaskIds.length > 0 && (
+                        <div className="mx-6 my-2 p-3 bg-blue-50/50 dark:bg-blue-500/5 border border-blue-100 dark:border-blue-900/30 rounded-xl flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-blue-900 dark:text-blue-100">
+                              {selectedTaskIds.length} tasks selected
+                            </span>
+                            <button 
+                              onClick={() => setSelectedTaskIds([])}
+                              className="text-xs text-blue-600 hover:text-red-500 font-medium transition-colors underline decoration-dotted"
+                            >
+                              Deselect all
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Assign to:</span>
+                            <AssigneeSelector 
+                              projectId={activeProject?.id ?? null}
+                              selectedUserId=""
+                              onSelect={handleBulkAssign}
+                              className="w-48"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex-1 overflow-auto custom-scrollbar">
+                        {viewMode === 'list' ? (
+                          <div className="p-6">
+                            <TaskList
+                              epics={epics}
+                              onDelete={(taskId) => {
+                                const task = tasks.find(t => t.id === taskId);
+                                void handleDeleteTask(taskId, task?.title ?? 'this task');
+                              }}
+                              onEditTask={(task) => setEditingTask(task)}
+                              onUpdateStatus={(task, status) => void handleUpdateTaskStatus(task, status)}
+                              onUpdateEpic={(task, epicId) => void handleUpdateTaskEpic(task, epicId)}
+                              projects={projects}
+                              tasks={activeEpicTasks}
+                              onSelectTask={(task) => setSelectedTaskId(task.id)}
+                              selectedTaskId={selectedTaskId}
+                              selectedTaskIds={selectedTaskIds}
+                              onToggleSelection={handleToggleTaskSelection}
+                            />
+                            {activeEpicTasks.length === 0 && (
+                              <div className="py-20 flex flex-col items-center opacity-30">
+                                <EmptyState description="No tasks scheduled for this epic." icon={Calendar} title="Empty Workspace" />
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="h-full">
+                            <KanbanBoard
+                              tasks={activeEpicTasks}
+                              onUpdateStatus={async (taskId, status) => {
+                                const task = tasks.find(t => t.id === taskId);
+                                if (task) await handleUpdateTaskStatus(task, status);
+                              }}
+                              onSelectTask={(task) => setSelectedTaskId(task.id)}
+                              onDeleteTask={(taskId) => {
+                                const task = tasks.find(t => t.id === taskId);
+                                void handleDeleteTask(taskId, task?.title ?? 'this task');
+                              }}
+                              onEditTask={(task) => setEditingTask(task)}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center p-10 text-center opacity-40">
+                      <div className="p-6 rounded-full bg-slate-100 dark:bg-slate-800 mb-4">
+                        <Folder size={48} className="text-slate-400" />
+                      </div>
+                      <h4 className="text-lg font-bold text-slate-900 dark:text-slate-100">Select an Epic</h4>
+                      <p className="text-sm text-slate-500 max-w-xs mt-2">Choose an epic from the sidebar to view its execution plan and tasks.</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Column 3 — Task Inspector (Details) */}
                 {selectedTaskId && activeTask && (
-                  <div className="flex flex-col flex-1 min-w-0 h-full rounded-2xl border border-zinc-200/60 dark:border-slate-800/60 bg-white/95 dark:bg-slate-900/90 shadow-lg overflow-hidden animate-slideInRight duration-700">
-                    <div className="flex items-center justify-between px-6 py-6 bg-linear-to-b from-white to-slate-50/30 dark:from-slate-900 dark:to-slate-900/50 border-b border-zinc-100 dark:border-slate-800">
+                  <div className="flex flex-col w-[420px] shrink-0 h-full rounded-2xl border border-zinc-200/60 dark:border-slate-800/60 bg-white/70 dark:bg-slate-900/70 backdrop-blur-3xl shadow-2xl overflow-hidden animate-slideInRight duration-500 z-10">
+                    <div className="flex items-center justify-between px-6 pt-6 bg-linear-to-b from-white to-slate-50/30 dark:from-slate-900 dark:to-slate-900/50 border-b border-zinc-100 dark:border-slate-800">
                       <div>
-                        <span className="text-[0.6rem] uppercase tracking-[0.2em] font-black text-olive-600 dark:text-blue-400 opacity-80">Granular Tasks</span>
-                        <h3 className="text-[1.1rem] font-extrabold font-['Outfit'] text-olive-950 dark:text-slate-50 m-0 mt-1 tracking-tight">Subtasks</h3>
-                        <p className="text-zinc-500 dark:text-slate-400 text-[0.78rem] m-0 mt-1 truncate max-w-[320px]">{activeTask.title}</p>
+                        <span className="text-[0.6rem] uppercase tracking-[0.2em] font-black text-blue-600 dark:text-blue-400 opacity-80">Task Focus</span>
+                        <h3 className="text-[1.1rem] font-extrabold font-['Outfit'] text-slate-900 dark:text-slate-50 m-0 mt-1 tracking-tight truncate max-w-[240px]">
+                          {activeTask.title}
+                        </h3>
                       </div>
                       <button
-                        className="flex items-center justify-center w-10 h-10 bg-olive-900 dark:bg-olive-600 hover:bg-olive-800 dark:hover:bg-olive-500 text-white rounded-lg shadow-sm transition-all duration-300 hover:scale-[1.03] active:scale-95 disabled:opacity-40"
-                        disabled={!activeTask.permissions.canUpdate}
-                        onClick={() => setSubtaskModalTask(activeTask)}
-                        title="New Subtask"
-                        type="button"
+                        onClick={() => setSelectedTaskId(null)}
+                        className="p-2 text-slate-400 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10"
+                        title="Close details"
                       >
-                        <Plus size={18} />
+                        <X size={20} />
                       </button>
                     </div>
-
-                    <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-5 content-start bg-white dark:bg-slate-900">
-                      {activeTask.subtasks.map(subtask => {
+                    <div className="flex gap-6 mt-6 px-6 border-b border-zinc-100 dark:border-slate-800">
+                      <button
+                        onClick={() => setSidePanelTab('subtasks')}
+                            className={`pb-3 text-xs font-bold uppercase tracking-widest transition-all relative ${sidePanelTab === 'subtasks' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+                          >
+                            Subtasks
+                            {sidePanelTab === 'subtasks' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-full" />}
+                          </button>
+                          <button
+                            onClick={() => setSidePanelTab('comments')}
+                            className={`pb-3 text-xs font-bold uppercase tracking-widest transition-all relative ${sidePanelTab === 'comments' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+                          >
+                            Comments
+                            {sidePanelTab === 'comments' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-full" />}
+                          </button>
+                        </div>
+                      
+                      <div className="flex-1 overflow-y-auto bg-white dark:bg-slate-900 p-6 flex flex-col min-h-0">
+                      {sidePanelTab === 'subtasks' ? (
+                        <div className="flex flex-col gap-5">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-bold text-slate-500 uppercase tracking-widest">Subtasks</h4>
+                            <button
+                              className="flex items-center justify-center w-8 h-8 bg-blue-600 hover:bg-blue-500 text-white rounded-lg shadow-sm transition-all transform active:scale-95 disabled:opacity-40"
+                              disabled={!activeTask.permissions.canUpdate}
+                              onClick={() => setSubtaskModalTask(activeTask)}
+                              title="New Subtask"
+                              type="button"
+                            >
+                              <Plus size={16} />
+                            </button>
+                          </div>
+                          {activeTask.subtasks.map(subtask => {
                         const isEditingThisSubtask = editingSubtask?.task.id === activeTask.id && editingSubtask?.subtask.id === subtask.id;
                         return (
                           <div key={subtask.id} className="group relative bg-white dark:bg-slate-900 border border-zinc-200/70 dark:border-slate-700/80 rounded-xl p-5 transition-all duration-300 shadow-sm hover:-translate-y-[2px] hover:border-zinc-300 dark:hover:border-slate-600">
@@ -1974,16 +2107,16 @@ function DashboardPage(): JSX.Element {
                               <div className="flex items-start gap-4.5 flex-1 min-w-0">
                                 <div className="mt-1 relative flex items-center justify-center">
                                   <input
-                                    checked={subtask.status === 'completed'}
+                                    checked={subtask.status === 'DONE'}
                                     className="peer w-6 h-6 accent-indigo-600 cursor-pointer rounded-lg border-zinc-300 dark:border-slate-700 transition-all shadow-sm"
                                     disabled={!activeTask.permissions.canUpdate}
-                                    onChange={() => void handleUpdateSubtaskStatus(activeTask, subtask, subtask.status === 'completed' ? 'pending' : 'completed')}
+                                    onChange={() => void handleUpdateSubtaskStatus(activeTask, subtask, subtask.status === 'DONE' ? 'TODO' : 'DONE')}
                                     type="checkbox"
                                   />
                                 </div>
                                 <div className="flex flex-col gap-1.5 min-w-0">
                                   <div className="flex items-center gap-3 min-w-0">
-                                    <span className={`text-[1rem] transition-all duration-300 ${subtask.status === 'completed'
+                                    <span className={`text-[1rem] transition-all duration-300 ${subtask.status === 'DONE'
                                       ? 'text-zinc-400 dark:text-slate-500 line-through'
                                       : 'text-olive-900 dark:text-slate-200 font-semibold tracking-tight'
                                       }`}>
@@ -2054,11 +2187,12 @@ function DashboardPage(): JSX.Element {
                           </div>
                         );
                       })}
-
-                      {activeTask.subtasks.length === 0 && (
-                        <EmptyState description="Break down your task into smaller steps." icon={CheckCircle} title="All clear" />
+                        </div>
+                      ) : (
+                        <div className="flex-1 min-h-0 flex flex-col">
+                          <CommentSection taskId={activeTask.id} />
+                        </div>
                       )}
-
                       {/* Task detail footer */}
                       <div className="mt-8 mb-4">
                         <div className="bg-white dark:bg-slate-900 border border-zinc-200/70 dark:border-slate-700/80 rounded-xl p-8 shadow-sm relative overflow-hidden group/detail">
@@ -2103,8 +2237,6 @@ function DashboardPage(): JSX.Element {
                   </div>
                 )}
               </div>
-
-
             </div>
           )}
         </main>
@@ -2157,7 +2289,13 @@ function DashboardPage(): JSX.Element {
       ) : null}
       {isTaskCreateModalOpen ? (
         <Modal onClose={() => setIsTaskCreateModalOpen(false)} title="Create Task">
-          <AddTaskForm epics={epics} initialProjectId={taskModalProjectId} onCreateTask={handleCreateTask} projects={projects} />
+          <AddTaskForm
+            epics={epics}
+            initialProjectId={taskModalProjectId}
+            initialEpicId={selectedEpicId}
+            onCreateTask={handleCreateTask}
+            projects={projects}
+          />
         </Modal>
       ) : null}
       {isProjectTeamModalOpen && activeProject ? (
@@ -2234,6 +2372,7 @@ function DashboardPage(): JSX.Element {
         <Modal onClose={() => setEditingTask(null)} title={`Edit Task: ${editingTask.title}`}>
           <EditTaskForm
             epics={epics}
+            allTasks={tasks}
             onSubmit={handleUpdateTask}
             projects={projects}
             task={editingTask}
