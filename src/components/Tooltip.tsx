@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 interface TooltipProps {
   content: string;
@@ -14,12 +15,55 @@ export default function Tooltip({
   className = ''
 }: TooltipProps) {
   const [isVisible, setIsVisible] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
+  const triggerRef = useRef<HTMLDivElement>(null);
+
+  const updatePosition = () => {
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      let top = 0;
+      let left = 0;
+
+      switch (position) {
+        case 'top':
+          top = rect.top - 8; // 8px gap
+          left = rect.left + rect.width / 2;
+          break;
+        case 'bottom':
+          top = rect.bottom + 8;
+          left = rect.left + rect.width / 2;
+          break;
+        case 'left':
+          top = rect.top + rect.height / 2;
+          left = rect.left - 8;
+          break;
+        case 'right':
+          top = rect.top + rect.height / 2;
+          left = rect.right + 8;
+          break;
+      }
+
+      setCoords({ top, left });
+    }
+  };
+
+  useEffect(() => {
+    if (isVisible) {
+      updatePosition();
+      window.addEventListener('scroll', updatePosition, true);
+      window.addEventListener('resize', updatePosition);
+    }
+    return () => {
+      window.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener('resize', updatePosition);
+    };
+  }, [isVisible]);
 
   const positionClasses = {
-    top: 'bottom-full left-1/2 -translate-x-1/2 mb-2',
-    bottom: 'top-full left-1/2 -translate-x-1/2 mt-2',
-    left: 'right-full top-1/2 -translate-y-1/2 mr-2',
-    right: 'left-full top-1/2 -translate-y-1/2 ml-2',
+    top: '-translate-x-1/2 -translate-y-full',
+    bottom: '-translate-x-1/2',
+    left: '-translate-x-full -translate-y-1/2',
+    right: '-translate-y-1/2',
   };
 
   const arrowClasses = {
@@ -30,18 +74,25 @@ export default function Tooltip({
   };
 
   return (
-    <div 
-      className={`relative inline-block ${className}`}
-      onMouseEnter={() => setIsVisible(true)}
-      onMouseLeave={() => setIsVisible(false)}
-    >
-      {children}
-      {isVisible && (
-        <div className={`absolute z-[100] px-2.5 py-1.5 text-xs font-semibold text-white bg-slate-900 dark:bg-slate-800 rounded-lg shadow-xl whitespace-nowrap animate-fadeIn ${positionClasses[position]}`}>
+    <>
+      <div 
+        ref={triggerRef}
+        className={`relative inline-block ${className}`}
+        onMouseEnter={() => setIsVisible(true)}
+        onMouseLeave={() => setIsVisible(false)}
+      >
+        {children}
+      </div>
+      {isVisible && createPortal(
+        <div 
+          className={`fixed z-[999999] px-2.5 py-1.5 text-xs font-semibold text-white bg-slate-900 dark:bg-slate-800 rounded-lg shadow-xl whitespace-nowrap animate-fadeIn pointer-events-none ${positionClasses[position]}`}
+          style={{ top: coords.top, left: coords.left }}
+        >
           {content}
           <div className={`absolute border-4 border-transparent ${arrowClasses[position]}`} />
-        </div>
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   );
 }

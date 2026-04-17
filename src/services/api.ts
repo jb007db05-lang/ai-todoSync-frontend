@@ -10,6 +10,8 @@ const api = axios.create({
   }
 });
 
+import { startGlobalLoading, stopGlobalLoading } from '@/context/LoadingContext';
+
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = localStorage.getItem(TOKEN_STORAGE_KEY);
 
@@ -17,12 +19,26 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
     config.headers.Authorization = `Bearer ${token}`;
   }
 
+  // Only start loading if it's not a chat endpoint
+  if (!config.url?.includes('/chat')) {
+    startGlobalLoading();
+  }
+
   return config;
 });
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (!response.config.url?.includes('/chat')) {
+      stopGlobalLoading();
+    }
+    return response;
+  },
   (error: AxiosError) => {
+    if (!error.config?.url?.includes('/chat')) {
+      stopGlobalLoading();
+    }
+
     if (error.response?.status === 401) {
       localStorage.removeItem(TOKEN_STORAGE_KEY);
 

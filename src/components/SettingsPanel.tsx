@@ -81,7 +81,7 @@ PROJECT WORKFLOW:
   → call updateProject with the project ID
   → include any new name or details provided
 
-- If the user wants to delete a project:
+- If the user wants to delete a project (Requires Admin role):
   → call deleteProject with the project ID
   → confirm the deletion
 
@@ -102,7 +102,7 @@ EPIC WORKFLOW:
   → call updateEpic with project ID and epic ID
   → update name, description, or status as requested
 
-- If the user wants to delete an epic:
+- If the user wants to delete an epic (Requires Admin role):
   → call deleteEpic with project ID and epic ID
   → confirm the deletion
 
@@ -139,6 +139,26 @@ TASK WORKFLOW:
   → use the returned epic ID when syncing the task
   → never invent epic IDs
   → never send an epic without a matching project
+  → include task comments when specifically requested or relevant to the history
+
+ACTIVITY WORKFLOW:
+- If the user asks for the history, updates, or recent changes in a project:
+  → call fetchProjectActivities with the project ID
+  → return the list of activities (action, user, and timestamp)
+
+MEMBER WORKFLOW:
+- If the user asks who is in a project or who can be assigned to a task:
+  → call fetchProjectMembers with the project ID
+  → return the list of members (name, email, and role)
+
+COMMENT WORKFLOW:
+- If the user wants to see discussions or comments for a specific task:
+  → call fetchTaskComments with the task ID
+  → return the list of comments (content, user, and timestamp)
+
+- If the user wants to add a comment or note a specific update on a task:
+  → call addTaskComment with the task ID and content
+  → confirm the comment was added
 
 SUBTASK WORKFLOW:
 - Subtasks are created as part of task creation/sync operations
@@ -629,6 +649,99 @@ paths:
         "404":
           description: Note not found
 
+  /api/projects/{projectId}/members:
+    get:
+      operationId: fetchProjectMembers
+      summary: Fetch members of a project
+      description: Retrieve the list of users who are members of the project
+      security:
+        - SyncApiKey: []
+      parameters:
+        - in: path
+          name: projectId
+          required: true
+          description: ID of the project
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Members fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FetchMembersResponse'
+
+  /api/projects/{projectId}/activities:
+    get:
+      operationId: fetchProjectActivities
+      summary: Fetch activity history
+      description: Retrieve recent changes and actions in the project
+      security:
+        - SyncApiKey: []
+      parameters:
+        - in: path
+          name: projectId
+          required: true
+          description: ID of the project
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Activities fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FetchActivitiesResponse'
+
+  /api/tasks/{taskId}/comments:
+    get:
+      operationId: fetchTaskComments
+      summary: Fetch comments for a task
+      description: Retrieve all discussion items and comments for a specific task
+      security:
+        - SyncApiKey: []
+      parameters:
+        - in: path
+          name: taskId
+          required: true
+          description: ID of the task
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Comments fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FetchCommentsResponse'
+    post:
+      operationId: addTaskComment
+      summary: Add a comment to a task
+      description: Post a new comment or update for a spezifischer task
+      security:
+        - SyncApiKey: []
+      parameters:
+        - in: path
+          name: taskId
+          required: true
+          description: ID of the task
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content:
+                  type: string
+                  description: The text of the comment
+      responses:
+        "201":
+          description: Comment added successfully
+
   /api/sync/summary:
     get:
       operationId: fetchTaskSummary
@@ -880,9 +993,29 @@ components:
         name:
           type: string
           description: Project name
+        description:
+          type: string
+          description: Project description
         userId:
           type: string
           description: ID of the user who owns the project
+        currentUserRole:
+          type: string
+          enum: [ADMIN, MEMBER]
+          description: Role of the current user in the project
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        creator:
+          type: object
+          properties:
+            id: { type: string }
+            name: { type: string }
+            email: { type: string }
+            avatar: { type: string }
 
     ProjectResponse:
       type: object
@@ -969,6 +1102,12 @@ components:
         order:
           type: integer
           description: Position in the epic list
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
 
     EpicResponse:
       type: object
@@ -1262,7 +1401,62 @@ components:
               pattern: '^\d{4}-\d{2}-\d{2}$'
               description: Summary date (YYYY-MM-DD)
             summary:
-              $ref: '#/components/schemas/TaskSummaryResponseItem'`;
+              $ref: '#/components/schemas/TaskSummaryResponseItem'
+
+    # Activity/Member/Comment Schemas
+    FetchMembersResponse:
+      type: object
+      properties:
+        message: { type: string }
+        data:
+          type: object
+          properties:
+            members:
+              type: array
+              items:
+                type: object
+                properties:
+                  id: { type: string }
+                  name: { type: string }
+                  email: { type: string }
+                  role: { type: string, enum: [ADMIN, MEMBER] }
+
+    FetchActivitiesResponse:
+      type: object
+      properties:
+        message: { type: string }
+        data:
+          type: object
+          properties:
+            activities:
+              type: array
+              items:
+                type: object
+                properties:
+                  id: { type: string }
+                  action: { type: string }
+                  entityType: { type: string }
+                  entityId: { type: string }
+                  userName: { type: string }
+                  createdAt: { type: string, format: date-time }
+
+    FetchCommentsResponse:
+      type: object
+      properties:
+        message: { type: string }
+        data:
+          type: object
+          properties:
+            comments:
+              type: array
+              items:
+                type: object
+                properties:
+                  id: { type: string }
+                  content: { type: string }
+                  userId: { type: string }
+                  userName: { type: string }
+                  createdAt: { type: string, format: date-time }`;
 
 const chatGptIntegrationSteps = [
   {

@@ -10,44 +10,50 @@ import RegisterPage from '@/pages/RegisterPage';
 import PrivateRoute from '@/routes/PrivateRoute';
 import PublicRoute from '@/routes/PublicRoute';
 
+import { LoadingProvider } from '@/context/LoadingContext';
+import GlobalLoadingSpinner from '@/components/GlobalLoadingSpinner';
+
 function App(): JSX.Element {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <ChatProvider>
-          <ConfirmationProvider>
-          <BrowserRouter>
-            <Routes>
-              <Route
-                path="/login"
-                element={
-                  <PublicRoute>
-                    <LoginPage />
-                  </PublicRoute>
-                }
-              />
-              <Route
-                path="/register"
-                element={
-                  <PublicRoute>
-                    <RegisterPage />
-                  </PublicRoute>
-                }
-              />
-              <Route
-                path="/"
-                element={
-                  <PrivateRoute>
-                    <DashboardPage />
-                  </PrivateRoute>
-                }
-              />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </BrowserRouter>
-        </ConfirmationProvider>
-        </ChatProvider>
-      </AuthProvider>
+      <LoadingProvider>
+        <AuthProvider>
+          <ChatProvider>
+            <ConfirmationProvider>
+              <BrowserRouter>
+                <Routes>
+                  <Route
+                    path="/login"
+                    element={
+                      <PublicRoute>
+                        <LoginPage />
+                      </PublicRoute>
+                    }
+                  />
+                  <Route
+                    path="/register"
+                    element={
+                      <PublicRoute>
+                        <RegisterPage />
+                      </PublicRoute>
+                    }
+                  />
+                  <Route
+                    path="/"
+                    element={
+                      <PrivateRoute>
+                        <DashboardPage />
+                      </PrivateRoute>
+                    }
+                  />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </BrowserRouter>
+              <GlobalLoadingSpinner />
+            </ConfirmationProvider>
+          </ChatProvider>
+        </AuthProvider>
+      </LoadingProvider>
     </ThemeProvider>
   );
 }
