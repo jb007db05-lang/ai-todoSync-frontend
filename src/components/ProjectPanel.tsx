@@ -1,6 +1,7 @@
 import type { Project } from '@/types/project';
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, FolderKanban, Layers3, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FolderKanban, Layers3, Pencil, Plus, Search, Trash2, Calendar } from 'lucide-react';
+import UserAvatar from './UserAvatar';
 
 interface ProjectPanelProps {
   actionProjectId: string | null;
@@ -75,8 +76,22 @@ function ProjectPanel({
   const isAllSelected = adminProjectsCount > 0 && selectedIds.size === adminProjectsCount;
   const isSomeSelected = selectedIds.size > 0 && selectedIds.size < adminProjectsCount;
 
-  const thCls = 'text-left px-4 py-3 text-[0.72rem] font-bold uppercase tracking-[0.05em] text-zinc-500 dark:text-slate-400 bg-zinc-50 dark:bg-slate-800 border-b border-zinc-200 dark:border-slate-700 sticky top-0 z-10';
+  const thCls = 'text-left px-4 py-3 text-[0.8rem] font-bold uppercase tracking-[0.05em] text-zinc-500 dark:text-slate-400 bg-zinc-50 dark:bg-slate-800 border-b border-zinc-200 dark:border-slate-700 sticky top-0 z-10';
   const rowActionCls = 'flex items-center justify-center w-7 h-7 rounded text-zinc-400 dark:text-slate-500 transition-all duration-150 hover:-translate-y-px';
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'N/A';
+    return new Intl.DateTimeFormat('en-US', {
+      dateStyle: 'medium'
+    }).format(new Date(dateString));
+  };
+
+  const formatTime = (dateString?: string) => {
+    if (!dateString) return 'N/A';
+    return new Intl.DateTimeFormat('en-US', {
+      timeStyle: 'short'
+    }).format(new Date(dateString));
+  };
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-slate-900">
@@ -125,20 +140,23 @@ function ProjectPanel({
 
       {/* Table Section */}
       <div className="flex-1 overflow-y-auto px-1 py-1">
-        <table className="w-full border-separate border-spacing-y-2 text-[0.85rem]">
+        <table className="w-full border-separate border-spacing-y-2 text-[0.95rem]">
           <thead>
             <tr>
               <th className={`${thCls} !pl-5`} style={{ width: 40 }}>
                 <input
                   checked={isAllSelected}
-                  className="w-4 h-4 cursor-pointer accent-olive-600"
+                  className="w-5 h-5 cursor-pointer accent-olive-600"
                   onChange={handleSelectAll}
                   ref={el => el && (el.indeterminate = isSomeSelected)}
                   type="checkbox"
                 />
               </th>
-              <th className={thCls} style={{ width: '70%' }}>Project</th>
-              <th className={`${thCls} text-right !pr-6`} style={{ width: '25%' }}>Actions</th>
+              <th className={thCls} style={{ width: '35%' }}>Project</th>
+              <th className={thCls} style={{ width: '20%' }}>Creator</th>
+              <th className={thCls} style={{ width: '15%' }}>Date</th>
+              <th className={thCls} style={{ width: '10%' }}>Time</th>
+              <th className={`${thCls} text-right !pr-6`} style={{ width: '20%' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -167,7 +185,7 @@ function ProjectPanel({
                   <td className="px-5 py-3 align-middle group-first/tr:rounded-tl-xl group-first/tr:rounded-bl-xl border-y border-l border-transparent first:rounded-l-xl" onClick={(e) => e.stopPropagation()}>
                     <input
                       checked={selectedIds.has(project.id)}
-                      className="w-4 h-4 cursor-pointer accent-olive-600"
+                      className="w-5 h-5 cursor-pointer accent-olive-600"
                       disabled={project.currentUserRole !== 'ADMIN'}
                       onChange={(e) => handleSelectRow(project.id, e)}
                       type="checkbox"
@@ -175,53 +193,70 @@ function ProjectPanel({
                   </td>
                   <td className="px-5 py-3 align-middle border-y border-transparent">
                     <div className="flex items-center gap-3">
-                      <FolderKanban className="text-olive-600 dark:text-olive-500 shrink-0" size={14} />
+                      <FolderKanban className="text-olive-600 dark:text-olive-500 shrink-0" size={18} />
                       <div className="grid gap-0.5">
-                        <strong className="text-olive-900 dark:text-slate-100 font-semibold text-[0.9rem]">{project.name}</strong>
+                        <strong className="text-olive-900 dark:text-slate-100 font-bold text-[1rem]">{project.name}</strong>
                         {project.description && (
-                          <span className="text-zinc-400 dark:text-slate-500 text-[0.75rem] truncate max-w-[300px]">{project.description}</span>
+                          <span className="text-zinc-400 dark:text-slate-500 text-[0.85rem] truncate max-w-[300px]">{project.description}</span>
                         )}
                       </div>
                     </div>
                   </td>
-                  {/* <td className="px-5 py-3.5 align-middle">
-                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/40 text-olive-600 dark:text-blue-400 text-[0.7rem] font-bold">
-                      {tasksByProject.get(project.id) ?? 0}
-                    </span>
+                  <td className="px-5 py-3 align-middle border-y border-transparent text-[0.95rem]">
+                    <div className="flex items-center gap-3">
+                      {project.creator ? (
+                        <UserAvatar 
+                          size="md" 
+                          name={project.creator.name} 
+                          email={project.creator.email}
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 flex items-center justify-center">
+                          <Plus size={14} className="text-zinc-400" />
+                        </div>
+                      )}
+                      <span className="text-zinc-700 dark:text-slate-300 font-semibold">
+                        {project.creator?.name || project.creator?.email || 'Unknown'}
+                      </span>
+                    </div>
                   </td>
-                  <td className="px-5 py-3.5 align-middle">
-                    <span className="inline-block border rounded text-[0.72rem] font-semibold px-2 py-0.5 bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800">
-                      {tasksByProject.get(project.id) ?? 0}
-                    </span>
-                  </td> */}
+                  <td className="px-5 py-3 align-middle border-y border-transparent text-[0.95rem]">
+                    <div className="flex items-center gap-2 text-zinc-600 dark:text-slate-300">
+                      <Calendar size={14} className="opacity-60" />
+                      <span>{formatDate(project.createdAt)}</span>
+                    </div>
+                  </td>
+                  <td className="px-5 py-3 align-middle border-y border-transparent text-[0.95rem] font-medium text-zinc-500 dark:text-slate-400">
+                    {formatTime(project.createdAt)}
+                  </td>
                   <td className="px-5 py-3 align-middle border-y border-r border-transparent last:rounded-r-xl">
                     <div className="flex items-center justify-end gap-1.5">
                       <button
-                        className={`${rowActionCls} hover:bg-indigo-100 dark:hover:bg-indigo-900/30 hover:text-olive-600 dark:hover:text-blue-400 disabled:opacity-40`}
+                        className={`${rowActionCls} !w-10 !h-10 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 hover:text-olive-600 dark:hover:text-blue-400 disabled:opacity-40`}
                         disabled={project.currentUserRole !== 'ADMIN'}
                         onClick={(e) => { e.stopPropagation(); onOpenEpicManager(project); }}
                         title="Epics"
                         type="button"
                       >
-                        <Layers3 size={14} />
+                        <Layers3 size={20} />
                       </button>
                       <button
-                        className={`${rowActionCls} hover:bg-zinc-100 dark:hover:bg-slate-700 hover:text-olive-900 dark:hover:text-slate-100 disabled:opacity-40`}
+                        className={`${rowActionCls} !w-10 !h-10 hover:bg-zinc-100 dark:hover:bg-slate-700 hover:text-olive-900 dark:hover:text-slate-100 disabled:opacity-40`}
                         disabled={project.currentUserRole !== 'ADMIN'}
                         onClick={(e) => { e.stopPropagation(); onOpenUpdateProject(project); }}
                         title="Edit project"
                         type="button"
                       >
-                        <Pencil size={14} />
+                        <Pencil size={20} />
                       </button>
                       <button
-                        className={`${rowActionCls} hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 dark:hover:text-red-400 disabled:opacity-50`}
+                        className={`${rowActionCls} !w-10 !h-10 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 dark:hover:text-red-400 disabled:opacity-50`}
                         disabled={actionProjectId === project.id || project.currentUserRole !== 'ADMIN'}
                         onClick={(e) => { e.stopPropagation(); void onDeleteProject(project.id); }}
                         title="Delete project"
                         type="button"
                       >
-                        <Trash2 size={14} />
+                        <Trash2 size={20} />
                       </button>
                     </div>
                   </td>
