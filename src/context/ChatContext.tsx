@@ -6,7 +6,6 @@ import {
   getUnreadCount as apiGetUnreadCount, 
   markMessagesAsRead as apiMarkMessagesAsRead,
   editMessage as apiEditMessage,
-  searchMessages as apiSearchMessages 
 } from '@/services/chat';
 import type { ChatMessage } from '@/types/chat';
 import type { Project } from '@/types/project';
