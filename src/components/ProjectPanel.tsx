@@ -161,9 +161,16 @@ function ProjectPanel({
           </thead>
           <tbody>
             {loading ? (
-              <tr>
-                <td className="text-zinc-400 dark:text-slate-500 text-center py-8" colSpan={4}>Refreshing projects...</td>
-              </tr>
+              Array.from({ length: 5 }).map((_, i) => (
+                <tr key={`skeleton-${i}`} className="bg-white dark:bg-slate-800/80 shadow-sm border border-zinc-50 dark:border-slate-700/30">
+                  <td className="px-5 py-5 rounded-l-xl"><div className="w-5 h-5 bg-zinc-100 dark:bg-slate-700 rounded relative overflow-hidden"><div className="absolute inset-0 animate-shimmer" /></div></td>
+                  <td className="px-5 py-5"><div className="flex items-center gap-3"><div className="w-5 h-5 bg-zinc-100 dark:bg-slate-700 rounded-full relative overflow-hidden"><div className="absolute inset-0 animate-shimmer" /></div><div className="space-y-2"><div className="h-4 w-32 bg-zinc-100 dark:bg-slate-700 rounded relative overflow-hidden"><div className="absolute inset-0 animate-shimmer" /></div><div className="h-3 w-48 bg-zinc-50 dark:bg-slate-800 rounded relative overflow-hidden"><div className="absolute inset-0 animate-shimmer" /></div></div></div></td>
+                  <td className="px-5 py-5"><div className="flex items-center gap-3"><div className="w-8 h-8 bg-zinc-100 dark:bg-slate-700 rounded-full relative overflow-hidden"><div className="absolute inset-0 animate-shimmer" /></div><div className="h-4 w-20 bg-zinc-100 dark:bg-slate-700 rounded relative overflow-hidden"><div className="absolute inset-0 animate-shimmer" /></div></div></td>
+                  <td className="px-5 py-5"><div className="h-4 w-24 bg-zinc-100 dark:bg-slate-700 rounded relative overflow-hidden"><div className="absolute inset-0 animate-shimmer" /></div></td>
+                  <td className="px-5 py-5"><div className="h-4 w-12 bg-zinc-100 dark:bg-slate-700 rounded relative overflow-hidden"><div className="absolute inset-0 animate-shimmer" /></div></td>
+                  <td className="px-5 py-5 rounded-r-xl text-right"><div className="inline-flex gap-2"><div className="w-8 h-8 bg-zinc-100 dark:bg-slate-700 rounded relative overflow-hidden"><div className="absolute inset-0 animate-shimmer" /></div><div className="w-8 h-8 bg-zinc-100 dark:bg-slate-700 rounded relative overflow-hidden"><div className="absolute inset-0 animate-shimmer" /></div><div className="w-8 h-8 bg-zinc-100 dark:bg-slate-700 rounded relative overflow-hidden"><div className="absolute inset-0 animate-shimmer" /></div></div></td>
+                </tr>
+              ))
             ) : projects.length === 0 ? (
               <tr>
                 <td className="text-zinc-400 dark:text-slate-500 text-center py-8" colSpan={4}>
