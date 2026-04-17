@@ -1,7 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import { socketService, SocketEvents, type MessageReceivePayload, type MessageEditPayload, type MessageDeletePayload, type TypingUpdatePayload, type ReactionUpdatePayload } from '@/services/socket';
-import { getMessages, getUnreadCount, markMessagesAsRead as apiMarkMessagesAsRead } from '@/services/chat';
+import { 
+  getMessages, 
+  getUnreadCount as apiGetUnreadCount, 
+  markMessagesAsRead as apiMarkMessagesAsRead,
+  editMessage as apiEditMessage,
+  searchMessages as apiSearchMessages 
+} from '@/services/chat';
 import type { ChatMessage } from '@/types/chat';
 import type { Project } from '@/types/project';
 
@@ -70,7 +76,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchUnreadCount = useCallback(async (projectId: string) => {
     try {
-      const count = await getUnreadCount(projectId);
+      const count = await apiGetUnreadCount(projectId);
       setUnreadCount(count);
     } catch (error) {
       console.error('Failed to fetch unread count:', error);
@@ -216,9 +222,14 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     socketService.sendMessage({ projectId: activeProject.id, content, replyToId });
   }, [activeProject]);
 
-  const editMessage = useCallback((messageId: string, content: string) => {
+  const editMessage = useCallback(async (messageId: string, content: string) => {
     if (!activeProject) return;
-    socketService.editMessage({ projectId: activeProject.id, messageId, content });
+    try {
+      const updatedMessage = await apiEditMessage(activeProject.id, messageId, { content });
+      setMessages((prev) => prev.map((m) => (m.id === messageId ? updatedMessage : m)));
+    } catch (err) {
+      console.error('Failed to edit message:', err);
+    }
   }, [activeProject]);
 
   const deleteMessage = useCallback((messageId: string) => {
