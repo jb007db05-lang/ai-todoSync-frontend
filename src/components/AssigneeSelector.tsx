@@ -51,7 +51,7 @@ export default function AssigneeSelector({
     }
   }, [isOpen]);
 
-  const selectedMember = members.find(m => m.userId === selectedUserId);
+  const selectedMember = members.find(m => String(m.userId) === String(selectedUserId));
 
   return (
     <div className={`relative z-30 ${className}`}>
@@ -116,8 +116,8 @@ export default function AssigneeSelector({
                     setIsOpen(false);
                   }}
                   className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg transition-colors ${
-                    selectedUserId === member.userId 
-                      ? 'bg-olive-50 dark:bg-olive-900/30 text-olive-700 dark:text-olive-300' 
+                    String(selectedUserId) === String(member.userId)
+                      ? 'bg-olive-50 dark:bg-olive-900/40 text-olive-700 dark:text-olive-300 ring-1 ring-olive-500/20' 
                       : 'hover:bg-slate-50 dark:hover:bg-slate-700/50 text-slate-700 dark:text-slate-300'
                   }`}
                 >

@@ -42,18 +42,27 @@ function NoteModal({
   const isInternalUpdateRef = useRef(false);
 
   useEffect(() => {
-    setTitle(note?.title ?? '');
-    setContent(note?.content ?? '');
+    // When the note prop changes (e.g. modal opens or switches notes)
+    const newTitle = note?.title ?? '';
+    const newContent = note?.content ?? '';
+    
+    setTitle(newTitle);
+    setContent(newContent);
     setFontSize('3');
     setTextColor('#1f2937');
     setErrorMessage(null);
     setSubmitting(false);
 
     if (editorRef.current) {
-      editorRef.current.innerHTML = note?.content ?? '';
+      // Only update DOM if it is different from the prop content
+      // to avoid cursor jumps or unnecessary resets
+      if (editorRef.current.innerHTML !== newContent) {
+        editorRef.current.innerHTML = newContent;
+      }
     }
   }, [note]);
 
+  // Handle external content updates if they happen while modal is open
   useEffect(() => {
     if (editorRef.current && !isInternalUpdateRef.current && editorRef.current.innerHTML !== content) {
       editorRef.current.innerHTML = content;

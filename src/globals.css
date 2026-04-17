@@ -138,13 +138,24 @@
   }
 }
 
-/* ---- Custom scrollbar ---- */
+/* ---- Custom scrollbar (Hiding scrollbar while keeping functionality) ---- */
 @layer base {
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #e4e4e7; border-radius: 10px; }
-  ::-webkit-scrollbar-thumb:hover { background: #a1a1aa; }
-  .dark ::-webkit-scrollbar-thumb { background: #334155; }
+  /* Webkit (Chrome, Safari, newer Edge) */
+  ::-webkit-scrollbar {
+    width: 0px;
+    height: 0px;
+    background: transparent;
+  }
+  
+  /* Firefox */
+  * {
+    scrollbar-width: none;
+  }
+  
+  /* IE/Legacy Edge */
+  * {
+    -ms-overflow-style: none;
+  }
 }
 
 /* ---- Keyframe animations ---- */
@@ -244,5 +255,10 @@ input[type="checkbox"].custom-check:checked::after {
       rgba(255, 255, 255, 0)
     );
     background-size: 200% 100%;
+  }
+
+  /* Centering utility for loading/status messages */
+  .flex-center {
+    @apply flex items-center justify-center;
   }
 }

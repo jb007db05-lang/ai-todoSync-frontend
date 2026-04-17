@@ -61,6 +61,7 @@ import {
 } from '@/services/projects';
 import { bulkAssignTasks, createTask, deleteTask, getTasks, updateTask } from '@/services/tasks';
 import { searchUsersByEmail } from '@/services/users';
+import { useDebounce } from '@/hooks/useDebounce';
 import { useAuth } from '@/context/AuthContext';
 import socketService, { SocketEvents } from '@/services/socket';
 import type { Epic, EpicStatus } from '@/types/epic';
@@ -192,18 +193,14 @@ function DashboardPage(): JSX.Element {
   const [taskFilters, setTaskFilters] = useState<TaskFilters>({
     search: '',
     status: 'all',
-    assigneeId: 'all',
-    epicId: 'all',
-    source: 'all'
+    assigneeId: 'all'
   });
 
   const handleClearFilters = () => {
     setTaskFilters({
       search: '',
       status: 'all',
-      assigneeId: 'all',
-      epicId: 'all',
-      source: 'all'
+      assigneeId: 'all'
     });
   };
   const [isProjectNotesModalOpen, setIsProjectNotesModalOpen] = useState(false);
@@ -225,7 +222,11 @@ function DashboardPage(): JSX.Element {
   const [projectPage, setProjectPage] = useState(1);
   const [projectTotalPages, setProjectTotalPages] = useState<number>(1);
   const [projectSearchTerm, setProjectSearchTerm] = useState<string>('');
+  const debouncedProjectSearchTerm = useDebounce(projectSearchTerm, 500);
+
   const [memberSearchTerm, setMemberSearchTerm] = useState<string>('');
+  const debouncedMemberSearchTerm = useDebounce(memberSearchTerm, 500);
+
   const [memberSearchResults, setMemberSearchResults] = useState<UserSearchResult[]>([]);
   const [teamMutationLoading, setTeamMutationLoading] = useState<boolean>(false);
   const [activeView, setActiveView] = useState<'dashboard' | 'settings'>('dashboard');
@@ -244,7 +245,7 @@ function DashboardPage(): JSX.Element {
     try {
       const [taskList, projectData] = await Promise.all([
         getTasks(selectedDate, taskFilters.assigneeId === 'all' ? undefined : taskFilters.assigneeId),
-        getProjects({ page: projectPage, limit: 10, search: projectSearchTerm })
+        getProjects({ page: projectPage, limit: 10, search: debouncedProjectSearchTerm.trim() })
       ]);
       const projectList = projectData.projects;
       const epicGroups = await Promise.all(projectList.map((project: Project) => getEpics(project.id)));
@@ -260,11 +261,30 @@ function DashboardPage(): JSX.Element {
     } finally {
       setLoading(false);
     }
-  }, [selectedDate, projectPage, projectSearchTerm, taskFilters.assigneeId]);
+  }, [selectedDate, projectPage, debouncedProjectSearchTerm, taskFilters.assigneeId]);
 
   useEffect(() => {
     void loadDashboard();
   }, [loadDashboard]);
+
+  useEffect(() => {
+    const searchMembers = async () => {
+      const term = debouncedMemberSearchTerm.trim();
+      if (term.length < 2) {
+        setMemberSearchResults([]);
+        return;
+      }
+
+      try {
+        const results = await searchUsersByEmail(term);
+        setMemberSearchResults(results);
+      } catch {
+        setMemberSearchResults([]);
+      }
+    };
+
+    void searchMembers();
+  }, [debouncedMemberSearchTerm]);
 
   useEffect(() => {
     const handleTaskAssigned = () => {
@@ -305,9 +325,9 @@ function DashboardPage(): JSX.Element {
   }): Promise<void> => {
     console.log('[DEBUG] DashboardPage handleCreateTask payload:', payload);
     await createTask({
-      title: payload.title,
-      description: payload.description,
-      note: payload.note,
+      title: payload.title.trim(),
+      description: payload.description?.trim(),
+      note: payload.note?.trim(),
       date: selectedDate,
       status: payload.status,
       priority: payload.priority,
@@ -356,7 +376,11 @@ function DashboardPage(): JSX.Element {
     setEpicMutationSuccess(null);
 
     try {
-      await createEpic(activeProject.id, payload);
+      await createEpic(activeProject.id, {
+        ...payload,
+        name: payload.name.trim(),
+        description: payload.description?.trim()
+      });
       await loadDashboard();
       setEpicMutationSuccess('Epic created.');
       setIsEpicCreateModalOpen(false);
@@ -382,7 +406,11 @@ function DashboardPage(): JSX.Element {
     setEpicMutationSuccess(null);
 
     try {
-      await updateEpic(activeProject.id, editingEpic.id, payload);
+      await updateEpic(activeProject.id, editingEpic.id, {
+        ...payload,
+        name: payload.name.trim(),
+        description: payload.description?.trim()
+      });
       await loadDashboard();
       setEpicMutationSuccess('Epic updated.');
       setEditingEpic(null);
@@ -411,9 +439,9 @@ function DashboardPage(): JSX.Element {
 
     try {
       await updateTask(editingTask.id, {
-        title: payload.title,
-        description: payload.description,
-        note: payload.note,
+        title: payload.title.trim(),
+        description: payload.description?.trim(),
+        note: payload.note?.trim(),
         date: payload.date,
         status: payload.status,
         projectId: payload.projectId,
@@ -445,8 +473,8 @@ function DashboardPage(): JSX.Element {
           ? { 
               ...subtask,
               title: patch.title.trim(), 
-              description: patch.description,
-              note: patch.note,
+              description: patch.description?.trim(),
+              note: patch.note?.trim(),
               assignedToUserId: patch.assignedToUserId
             }
           : subtask
@@ -511,7 +539,8 @@ function DashboardPage(): JSX.Element {
     setProjectMutationSuccess(null);
 
     try {
-      const existingProject = findProjectByName(projects, payload.name);
+      const trimmedName = payload.name.trim();
+      const existingProject = findProjectByName(projects, trimmedName);
 
       if (existingProject) {
         setProjectMutationSuccess('Project already exists.');
@@ -519,7 +548,11 @@ function DashboardPage(): JSX.Element {
         return;
       }
 
-      await createProject(payload);
+      await createProject({
+        ...payload,
+        name: trimmedName,
+        description: payload.description?.trim()
+      });
       await loadDashboard();
       setProjectMutationSuccess('Project created.');
       setIsProjectCreateModalOpen(false);
@@ -540,7 +573,11 @@ function DashboardPage(): JSX.Element {
     setProjectMutationSuccess(null);
 
     try {
-      await updateProject(editingProject.id, payload);
+      await updateProject(editingProject.id, {
+        ...payload,
+        name: payload.name.trim(),
+        description: payload.description?.trim()
+      });
       await loadDashboard();
       setProjectMutationSuccess('Project updated.');
       setEditingProject(null);
@@ -551,20 +588,8 @@ function DashboardPage(): JSX.Element {
     }
   };
 
-  const handleProjectMemberSearch = async (term: string): Promise<void> => {
+  const handleProjectMemberSearch = (term: string): void => {
     setMemberSearchTerm(term);
-
-    if (term.trim().length < 2) {
-      setMemberSearchResults([]);
-      return;
-    }
-
-    try {
-      const results = await searchUsersByEmail(term.trim());
-      setMemberSearchResults(results);
-    } catch {
-      setMemberSearchResults([]);
-    }
   };
 
   const handleAddProjectMember = async (userId: string): Promise<void> => {
@@ -587,6 +612,11 @@ function DashboardPage(): JSX.Element {
     } finally {
       setTeamMutationLoading(false);
     }
+  };
+
+  const handleOpenTaskComments = (task: Task) => {
+    setSelectedTaskId(task.id);
+    setSidePanelTab('comments');
   };
 
   const handleRemoveProjectMember = async (userId: string): Promise<void> => {
@@ -842,6 +872,7 @@ function DashboardPage(): JSX.Element {
         return {
           ...subtask,
           status,
+          completed: status === 'DONE',
           completedAt: status === 'DONE' ? new Date().toISOString() : null
         };
       });
@@ -874,9 +905,9 @@ function DashboardPage(): JSX.Element {
       const subtasks = [
         ...subtaskModalTask.subtasks,
         ...payload.map((subtask) => ({
-          title: subtask.title,
-          description: subtask.description,
-          note: subtask.note,
+          title: subtask.title.trim(),
+          description: subtask.description?.trim(),
+          note: subtask.note?.trim(),
           status: subtask.status,
           completedAt: subtask.status === 'DONE' ? new Date().toISOString() : null
         }))
@@ -1369,23 +1400,15 @@ function DashboardPage(): JSX.Element {
     // Assignee filter
     if (taskFilters.assigneeId !== 'all') {
       filtered = filtered.filter((task) => 
+        task.assignedTo?.id === taskFilters.assigneeId ||
         task.subtasks.some((st) => st.assignedToUserId === taskFilters.assigneeId)
       );
     }
 
-    // Epic filter
-    if (taskFilters.epicId !== 'all') {
-      filtered = filtered.filter((task) => task.epicId === taskFilters.epicId);
-    }
-
-    // Source filter
-    if (taskFilters.source !== 'all') {
-      filtered = filtered.filter((task) => task.source === taskFilters.source);
-    }
 
     // Search filter
     if (taskFilters.search.trim()) {
-      const term = taskFilters.search.toLowerCase();
+      const term = taskFilters.search.trim().toLowerCase();
       filtered = filtered.filter((task) => 
         task.title.toLowerCase().includes(term) || 
         task.description?.toLowerCase().includes(term)
@@ -1966,7 +1989,6 @@ function DashboardPage(): JSX.Element {
                           filters={taskFilters}
                           onFilterChange={setTaskFilters}
                           members={activeProjectMembers}
-                          epics={epics.filter(e => e.projectId === (activeProject?.id || ''))}
                           onClear={handleClearFilters}
                         />
                       </div>
@@ -2000,6 +2022,7 @@ function DashboardPage(): JSX.Element {
                         {viewMode === 'list' ? (
                           <div className="p-6">
                             <TaskList
+                              actionTaskId={actionTaskId}
                               epics={epics}
                               onDelete={(taskId) => {
                                 const task = tasks.find(t => t.id === taskId);
@@ -2011,6 +2034,7 @@ function DashboardPage(): JSX.Element {
                               projects={projects}
                               tasks={activeEpicTasks}
                               onSelectTask={(task) => setSelectedTaskId(task.id)}
+                              onCommentTask={handleOpenTaskComments}
                               selectedTaskId={selectedTaskId}
                               selectedTaskIds={selectedTaskIds}
                               onToggleSelection={handleToggleTaskSelection}
@@ -2030,6 +2054,7 @@ function DashboardPage(): JSX.Element {
                                 if (task) await handleUpdateTaskStatus(task, status, true);
                               }}
                               onSelectTask={(task) => setSelectedTaskId(task.id)}
+                              onCommentTask={handleOpenTaskComments}
                               onDeleteTask={(taskId) => {
                                 const task = tasks.find(t => t.id === taskId);
                                 void handleDeleteTask(taskId, task?.title ?? 'this task');

@@ -48,7 +48,7 @@ const createEpicNote = async (projectId: string, epicId: string, payload: Create
 };
 
 const updateNote = async (noteId: string, payload: UpdateNoteInput): Promise<Note> => {
-  const response = await api.put<NoteResponse>(`/notes/${noteId}`, payload);
+  const response = await api.patch<NoteResponse>(`/notes/${noteId}`, payload);
   return response.data.data.note;
 };
 
