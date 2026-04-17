@@ -1889,7 +1889,7 @@ function DashboardPage(): JSX.Element {
                               <div className="flex-1" />
                               <button
                                 className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500 transition-colors disabled:opacity-40"
-                                disabled={actionEpicId === epic.id || !canManageActiveProject}
+                                disabled={actionEpicId === epic.id || activeProject?.currentUserRole !== 'ADMIN'}
                                 onClick={(e) => { e.stopPropagation(); handleDeleteEpic(epic.id); }}
                                 title="Delete"
                               >

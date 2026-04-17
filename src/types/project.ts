@@ -6,6 +6,11 @@ export interface Project {
   currentUserRole: 'ADMIN' | 'MEMBER';
   createdAt?: string;
   updatedAt?: string;
+  creator?: {
+    id: string;
+    email: string;
+    name: string | null;
+  };
 }
 
 export interface ProjectMemberUser {
