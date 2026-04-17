@@ -24,7 +24,7 @@ const createDraft = (): SubtaskDraft => ({
   title: '',
   description: '',
   note: '',
-  status: 'pending',
+  status: 'TODO',
   assignedToUserId: null
 });
 

@@ -22,10 +22,10 @@ function DaySummary({ controls = null, date, error = null, loading = false, summ
   const metrics = summary
     ? [
         { label: 'Total',       value: summary.total },
-        { label: 'Pending',     value: summary.pending },
+        { label: 'Pending',     value: summary.todo },
         { label: 'In progress', value: summary.inProgress },
         { label: 'In review',   value: summary.inReview },
-        { label: 'Completed',   value: summary.completed },
+        { label: 'Completed',   value: summary.done },
         { label: 'Rolled over', value: summary.rolledOver },
       ]
     : [];
