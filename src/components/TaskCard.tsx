@@ -30,6 +30,7 @@ interface TaskCardProps {
   task: Task;
   onSelect?: (task: Task) => void;
   onComment?: (task: Task) => void;
+  onToggleBlocked?: (task: Task) => void;
   isSelected?: boolean;
   isMultiSelected?: boolean;
   onToggleSelection?: (taskId: string) => void;
@@ -60,6 +61,7 @@ function TaskCard({
   task,
   onSelect,
   onComment,
+  onToggleBlocked,
   isSelected,
   isMultiSelected,
   onToggleSelection
@@ -175,6 +177,21 @@ function TaskCard({
                 title="Edit Task"
               >
                 <FilePenLine size={13} />
+              </button>
+            )}
+            {onToggleBlocked && (
+              <button
+                className={[
+                  'p-2 rounded-lg border transition-all shadow-sm',
+                  task.isBlocked 
+                    ? 'bg-red-500 border-red-600 text-white hover:bg-red-600' 
+                    : 'bg-white/90 dark:bg-slate-800/90 border-zinc-200/80 dark:border-slate-700 text-zinc-400 hover:text-red-500'
+                ].join(' ')}
+                disabled={!task.permissions.canEdit}
+                onClick={(e) => { e.stopPropagation(); onToggleBlocked(task); }}
+                title={task.isBlocked ? 'Unblock Task' : 'Block Task'}
+              >
+                <AlertCircle size={13} />
               </button>
             )}
             <button

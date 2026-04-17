@@ -90,7 +90,7 @@ export const editMessage = async (
   messageId: string,
   payload: EditMessageInput
 ): Promise<ChatMessage> => {
-  const response = await api.patch<MessageResponse>(
+  const response = await api.put<MessageResponse>(
     `/projects/${projectId}/chat/messages/${messageId}`,
     payload
   );
