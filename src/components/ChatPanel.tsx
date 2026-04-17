@@ -208,16 +208,13 @@ function ChatPanel({ project, members, isOpen }: ChatPanelProps) {
             )}
           </div>
           <div className="flex flex-col">
-            <h3 className="text-olive-950 dark:text-white font-bold text-[1.1rem] tracking-tight leading-tight">{project.name} Chat</h3>
+            <h3 className="text-olive-950 dark:text-white font-bold text-[1.1rem] tracking-tight leading-tight">{project.name}</h3>
             <div className="flex items-center gap-2 text-zinc-500 dark:text-slate-400 text-[0.7rem] font-semibold mt-0.5">
               <span className="flex items-center gap-1.5">
                 <Users className="w-3 h-3" />
                 {members.length} Members
               </span>
               <span className="w-1 h-1 rounded-full bg-zinc-300 dark:bg-slate-600" />
-              <span className={isConnected ? 'text-olive-600 dark:text-olive-400' : 'text-amber-500'}>
-                {isConnected ? 'LIVE SYNC' : 'RECONNECTING'}
-              </span>
             </div>
           </div>
         </div>

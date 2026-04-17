@@ -731,15 +731,17 @@ function DashboardPage(): JSX.Element {
     }
   };
 
-  const handleUpdateTaskStatus = async (task: Task, status: TaskWorkflowStatus) => {
-    const isConfirmed = await confirm({
-      title: 'Update Task Status',
-      message: `Update the status for "${task.title}" to "${status.replace('_', ' ')}"?`,
-      confirmText: 'Update Status',
-      type: 'info'
-    });
+  const handleUpdateTaskStatus = async (task: Task, status: TaskWorkflowStatus, skipConfirm = false) => {
+    if (!skipConfirm) {
+      const isConfirmed = await confirm({
+        title: 'Update Task Status',
+        message: `Update the status for "${task.title}" to "${status.replace('_', ' ')}"?`,
+        confirmText: 'Update Status',
+        type: 'info'
+      });
 
-    if (!isConfirmed) return;
+      if (!isConfirmed) return;
+    }
 
     setActionTaskId(task.id);
     setTaskMutationError(null);
@@ -2025,7 +2027,7 @@ function DashboardPage(): JSX.Element {
                               tasks={activeEpicTasks}
                               onUpdateStatus={async (taskId, status) => {
                                 const task = tasks.find(t => t.id === taskId);
-                                if (task) await handleUpdateTaskStatus(task, status);
+                                if (task) await handleUpdateTaskStatus(task, status, true);
                               }}
                               onSelectTask={(task) => setSelectedTaskId(task.id)}
                               onDeleteTask={(taskId) => {
@@ -2256,14 +2258,14 @@ function DashboardPage(): JSX.Element {
             onClick={() => setIsChatPanelOpen(false)}
           />
           {/* Chat Drawer Container */}
-          <div className="fixed top-0 right-0 h-full w-full md:w-[600px] lg:max-w-[700px] bg-white dark:bg-slate-900 z-[5001] shadow-2xl animate-in slide-in-from-right duration-500 overflow-hidden border-l border-zinc-200 dark:border-slate-800 flex flex-col">
+          <div className="fixed top-0 right-0 h-full w-full md:w-1/2 lg:max-w-1/2 bg-white dark:bg-slate-900 z-[5001] shadow-2xl animate-in slide-in-from-right duration-500 overflow-hidden border-l border-zinc-200 dark:border-slate-800 flex flex-col">
             <ChatPanel
               project={activeProject}
               members={activeProjectMembers}
               isOpen={isChatPanelOpen}
               onClose={() => setIsChatPanelOpen(false)}
             />
-          </div>
+          </div> 
         </>
       ) : null}
       {editingProject ? (
