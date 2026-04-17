@@ -1562,7 +1562,10 @@ function SettingsPanel(): JSX.Element {
     setIsUpdatingProfile(true);
     setProfileSuccess(false);
     try {
-      await updateProfile({ firstName, lastName });
+      await updateProfile({ 
+        firstName: firstName.trim(), 
+        lastName: lastName.trim() 
+      });
       setProfileSuccess(true);
       setTimeout(() => setProfileSuccess(false), 3000);
     } catch {

@@ -25,18 +25,21 @@ interface TaskListProps {
   projects: Project[];
   tasks: Task[];
   onSelectTask?: (task: Task) => void;
+  onCommentTask?: (task: Task) => void;
   selectedTaskId?: string | null;
   selectedTaskIds?: string[];
   onToggleSelection?: (taskId: string) => void;
 }
 
 function TaskList({
+  actionTaskId,
   epics,
   onDelete,
   onEditTask,
   projects,
   tasks,
   onSelectTask,
+  onCommentTask,
   selectedTaskId,
   selectedTaskIds = [],
   onToggleSelection
@@ -174,6 +177,7 @@ function TaskList({
                         <div className="grid gap-4">
                           {group.tasks.map((task) => (
                             <TaskCard
+                              actionTaskId={actionTaskId}
                               epicName={task.epicId ? epicById.get(task.epicId)?.name : undefined}
                               key={task.id}
                               onDelete={onDelete}
@@ -181,6 +185,7 @@ function TaskList({
                               projectName={task.projectId ? projectNames.get(task.projectId) : undefined}
                               task={task}
                               onSelect={onSelectTask}
+                              onComment={onCommentTask}
                               isSelected={selectedTaskId === task.id}
                               isMultiSelected={selectedTaskIds.includes(task.id)}
                               onToggleSelection={onToggleSelection}
@@ -202,6 +207,7 @@ function TaskList({
                   onEditTask={onEditTask}
                   task={task}
                   onSelect={onSelectTask}
+                  onComment={onCommentTask}
                   isSelected={selectedTaskId === task.id}
                   isMultiSelected={selectedTaskIds.includes(task.id)}
                   onToggleSelection={onToggleSelection}

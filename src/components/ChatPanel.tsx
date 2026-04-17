@@ -20,6 +20,7 @@ import { useChat } from '@/context/ChatContext';
 import {
   searchMessages,
 } from '@/services/chat';
+import { useDebounce } from '@/hooks/useDebounce';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 
@@ -54,6 +55,7 @@ function ChatPanel({ project, members, isOpen }: ChatPanelProps) {
 
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 500);
   const [searchResults, setSearchResults] = useState<ChatMessageType[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
@@ -154,12 +156,8 @@ function ChatPanel({ project, members, isOpen }: ChatPanelProps) {
 
   // Debounced search
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      handleSearch(searchQuery);
-    }, 300);
-
-    return () => clearTimeout(timeout);
-  }, [searchQuery, handleSearch]);
+    handleSearch(debouncedSearchQuery);
+  }, [debouncedSearchQuery, handleSearch]);
 
   const [replyingTo, setReplyingTo] = useState<ChatMessageType | null>(null);
 

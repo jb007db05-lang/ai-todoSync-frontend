@@ -169,28 +169,32 @@ function EditTaskForm({ epics, allTasks, onSubmit, projects, task }: EditTaskFor
         </label>
       </div>
 
-      <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+      <div className={`p-4 rounded-xl border transition-all duration-300 ${isBlocked 
+        ? 'bg-red-50/50 dark:bg-red-900/10 border-red-200 dark:border-red-900/30' 
+        : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700'
+      }`}>
         <div className="flex items-center justify-between mb-3">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input 
-              type="checkbox" 
-              checked={isBlocked} 
-              onChange={(e) => setIsBlocked(e.target.checked)}
-              className="w-4 h-4 rounded border-slate-300 text-red-600 focus:ring-red-500"
-            />
-            <span className="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-              <AlertCircle size={14} className="text-red-500" />
+          <button 
+            type="button"
+            onClick={() => setIsBlocked(!isBlocked)}
+            className="flex items-center gap-3 cursor-pointer group"
+          >
+            <div className={`w-10 h-6 flex items-center rounded-full p-1 transition-colors duration-300 ${isBlocked ? 'bg-red-500' : 'bg-slate-300 dark:bg-slate-600'}`}>
+              <div className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-transform duration-300 ${isBlocked ? 'translate-x-4' : 'translate-x-0'}`} />
+            </div>
+            <span className={`text-sm font-bold flex items-center gap-1.5 transition-colors ${isBlocked ? 'text-red-700 dark:text-red-400' : 'text-slate-700 dark:text-slate-200'}`}>
+              <AlertCircle size={15} className={isBlocked ? 'text-red-500' : 'text-slate-400'} />
               Mark as Blocked
             </span>
-          </label>
+          </button>
         </div>
         
         {isBlocked && (
-          <div className="animate-in fade-in slide-in-from-top-2">
+          <div className="animate-in fade-in slide-in-from-top-2 pt-2 border-t border-red-200/50 dark:border-red-900/20 mt-3">
             <label className={labelCls}>
-              <span className="text-xs uppercase tracking-wider text-slate-400">Blocked by Task</span>
+              <span className="text-[0.7rem] uppercase tracking-wider text-red-600/70 dark:text-red-400/70 font-black">Reason / Blocking Task</span>
               <select
-                className={inputCls}
+                className={`${inputCls} !border-red-200 dark:!border-red-900/30 focus:!border-red-500`}
                 onChange={(event) => setBlockedByTaskId(event.target.value)}
                 value={blockedByTaskId}
               >

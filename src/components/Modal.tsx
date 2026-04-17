@@ -48,9 +48,10 @@ function Modal({ backdropClassName, bodyClassName, children, onClose, panelClass
           'bg-white dark:bg-slate-900 border border-zinc-200 dark:border-slate-700',
           'rounded-lg shadow-sm',
           'animate-modalIn',
-          panelClassName ?? ''
-        ].join(' ')}
-        onClick={(event) => event.stopPropagation()}
+        panelClassName ?? '',
+        'shadow-[0_24px_48px_-12px_rgba(30,41,59,0.25)] dark:shadow-[0_24px_48px_-12px_rgba(0,0,0,0.45)]'
+      ].join(' ')}
+      onClick={(event) => event.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-zinc-200 dark:border-slate-700 bg-zinc-50 dark:bg-slate-800 rounded-t-lg">
