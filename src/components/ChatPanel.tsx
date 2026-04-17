@@ -298,7 +298,6 @@ function ChatPanel({ project, members, isOpen }: ChatPanelProps) {
 
             {/* Messages List */}
             {(() => {
-              const displayMessages = showSearch && searchQuery ? searchResults : messages;
               let lastDateLabel = '';
 
               const getDateLabel = (dateString: string): string => {
@@ -314,7 +313,11 @@ function ChatPanel({ project, members, isOpen }: ChatPanelProps) {
                 return date.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
               };
 
-              return displayMessages.map((message) => {
+              const filteredMessages = (showSearch && searchQuery) 
+                ? searchResults 
+                : messages.filter(m => !m.replyToId);
+
+              return filteredMessages.map((message) => {
                 const dateLabel = getDateLabel(message.createdAt);
                 const showSeparator = dateLabel !== lastDateLabel;
                 lastDateLabel = dateLabel;
@@ -341,6 +344,7 @@ function ChatPanel({ project, members, isOpen }: ChatPanelProps) {
                       onRemoveReaction={removeReaction}
                       onReply={(m) => setReplyingTo(m)}
                       onLoadThread={handleScrollToMessage}
+                      allMessages={messages}
                     />
                   </div>
                 );

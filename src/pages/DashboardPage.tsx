@@ -21,6 +21,7 @@ import NotificationBox, { Notification } from '@/components/NotificationBox';
 import TaskList from '@/components/TaskList';
 import KanbanBoard from '@/components/KanbanBoard';
 import CommentSection from '@/components/CommentSection';
+import GlobalLoader from '@/components/GlobalLoader';
 import TaskFilterBar, { TaskFilters } from '@/components/TaskFilterBar';
 import SourceBadge from '@/components/SourceBadge';
 import UserAvatar from '@/components/UserAvatar';
@@ -39,6 +40,7 @@ import {
   MessageCircle,
   MessageSquare,
   NotebookPen,
+  AlertCircle,
   Plus,
   Settings,
   Users,
@@ -222,10 +224,12 @@ function DashboardPage(): JSX.Element {
   const [projectPage, setProjectPage] = useState(1);
   const [projectTotalPages, setProjectTotalPages] = useState<number>(1);
   const [projectSearchTerm, setProjectSearchTerm] = useState<string>('');
-  const debouncedProjectSearchTerm = useDebounce(projectSearchTerm, 500);
+  const debouncedProjectSearchTerm = useDebounce(projectSearchTerm, 300);
 
   const [memberSearchTerm, setMemberSearchTerm] = useState<string>('');
-  const debouncedMemberSearchTerm = useDebounce(memberSearchTerm, 500);
+  const debouncedMemberSearchTerm = useDebounce(memberSearchTerm, 300);
+
+  const debouncedTaskSearchTerm = useDebounce(taskFilters.search, 300);
 
   const [memberSearchResults, setMemberSearchResults] = useState<UserSearchResult[]>([]);
   const [teamMutationLoading, setTeamMutationLoading] = useState<boolean>(false);
@@ -244,7 +248,11 @@ function DashboardPage(): JSX.Element {
 
     try {
       const [taskList, projectData] = await Promise.all([
-        getTasks(selectedDate, taskFilters.assigneeId === 'all' ? undefined : taskFilters.assigneeId),
+        getTasks(
+          selectedDate, 
+          taskFilters.assigneeId === 'all' ? undefined : taskFilters.assigneeId,
+          debouncedTaskSearchTerm.trim() || undefined
+        ),
         getProjects({ page: projectPage, limit: 10, search: debouncedProjectSearchTerm.trim() })
       ]);
       const projectList = projectData.projects;
@@ -261,7 +269,7 @@ function DashboardPage(): JSX.Element {
     } finally {
       setLoading(false);
     }
-  }, [selectedDate, projectPage, debouncedProjectSearchTerm, taskFilters.assigneeId]);
+  }, [selectedDate, projectPage, debouncedProjectSearchTerm, taskFilters.assigneeId, debouncedTaskSearchTerm]);
 
   useEffect(() => {
     void loadDashboard();
@@ -850,43 +858,68 @@ function DashboardPage(): JSX.Element {
     targetSubtask: Task['subtasks'][number],
     status: TaskWorkflowStatus
   ): Promise<void> => {
-    const isConfirmed = await confirm({
-      title: 'Update Subtask Status',
-      message: `Update the status for sub-task "${targetSubtask.title}" in "${task.title}" to "${status.replace('_', ' ')}"?`,
-      confirmText: 'Update Status',
-      type: 'info'
+    const previousTasks = [...tasks];
+    
+    // Optimistic Update
+    const updatedSubtasks = task.subtasks.map((subtask) => {
+      if (subtask.id !== targetSubtask.id) {
+        return subtask;
+      }
+
+      return {
+        ...subtask,
+        status,
+        completed: status === 'DONE',
+        completedAt: status === 'DONE' ? new Date().toISOString() : null
+      };
     });
 
-    if (!isConfirmed) return;
+    const updatedTask = {
+      ...task,
+      status: deriveTaskStatusFromSubtasks(task.status, updatedSubtasks),
+      subtasks: updatedSubtasks
+    };
 
-    setActionTaskId(task.id);
+    setTasks((prev) => prev.map((t) => t.id === task.id ? updatedTask : t));
+    
     setTaskMutationError(null);
     setTaskMutationSuccess(null);
 
     try {
-      const subtasks = task.subtasks.map((subtask) => {
-        if (subtask.id !== targetSubtask.id) {
-          return subtask;
-        }
-
-        return {
-          ...subtask,
-          status,
-          completed: status === 'DONE',
-          completedAt: status === 'DONE' ? new Date().toISOString() : null
-        };
-      });
-
       await updateTask(task.id, {
-        status: deriveTaskStatusFromSubtasks(task.status, subtasks),
-        subtasks
+        status: updatedTask.status,
+        subtasks: updatedSubtasks
       });
+      // We don't strictly need to reload everything if optimistic update is correct, 
+      // but loadDashboard ensures project/epic sync if they depend on task status.
       await loadDashboard();
       setTaskMutationSuccess('Subtask updated.');
-    } catch {
+    } catch (err) {
+      setTasks(previousTasks); // Rollback
       setTaskMutationError('Unable to update the subtask.');
-    } finally {
-      setActionTaskId(null);
+      console.error('Subtask update failed:', err);
+    }
+  };
+
+  const handleToggleBlocked = async (task: Task): Promise<void> => {
+    const previousTasks = [...tasks];
+    const isBlocked = !task.isBlocked;
+
+    // Optimistic Update
+    const updatedTask = {
+      ...task,
+      isBlocked
+    };
+
+    setTasks((prev) => prev.map((t) => t.id === task.id ? updatedTask : t));
+
+    try {
+      await updateTask(task.id, { isBlocked });
+      setTaskMutationSuccess(isBlocked ? 'Task marked as blocked.' : 'Task unblocked.');
+    } catch (err) {
+      setTasks(previousTasks); // Rollback
+      setTaskMutationError('Unable to update blocked status.');
+      console.error('Blocked toggle failed:', err);
     }
   };
 
@@ -2035,6 +2068,7 @@ function DashboardPage(): JSX.Element {
                               tasks={activeEpicTasks}
                               onSelectTask={(task) => setSelectedTaskId(task.id)}
                               onCommentTask={handleOpenTaskComments}
+                              onToggleBlocked={handleToggleBlocked}
                               selectedTaskId={selectedTaskId}
                               selectedTaskIds={selectedTaskIds}
                               onToggleSelection={handleToggleTaskSelection}
@@ -2055,6 +2089,7 @@ function DashboardPage(): JSX.Element {
                               }}
                               onSelectTask={(task) => setSelectedTaskId(task.id)}
                               onCommentTask={handleOpenTaskComments}
+                              onToggleBlocked={handleToggleBlocked}
                               onDeleteTask={(taskId) => {
                                 const task = tasks.find(t => t.id === taskId);
                                 void handleDeleteTask(taskId, task?.title ?? 'this task');
@@ -2239,13 +2274,27 @@ function DashboardPage(): JSX.Element {
                             </div>
                           )}
 
-                          <div className="flex flex-wrap items-center gap-4 mb-10">
-                            <div className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-[0.72rem] font-black uppercase tracking-wider transition-all duration-500 shadow-sm ${statusPillCls[activeTask.status] ?? 'bg-zinc-100 text-zinc-600 border-zinc-200'}`}>
-                              <CheckCircle size={12} />
-                              {activeTask.status.replace('_', ' ')}
+                            <div className="flex flex-wrap items-center gap-4 mb-10">
+                              <div className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-[0.72rem] font-black uppercase tracking-wider transition-all duration-500 shadow-sm ${statusPillCls[activeTask.status] ?? 'bg-zinc-100 text-zinc-600 border-zinc-200'}`}>
+                                <CheckCircle size={12} />
+                                {activeTask.status.replace('_', ' ')}
+                              </div>
+                              <SourceBadge source={activeTask.source} />
+                              
+                              <button
+                                type="button"
+                                onClick={() => handleToggleBlocked(activeTask)}
+                                className={[
+                                  'flex items-center gap-2 px-4 py-2 rounded-lg border text-[0.72rem] font-black uppercase tracking-wider transition-all shadow-sm',
+                                  activeTask.isBlocked
+                                    ? 'bg-red-500 border-red-600 text-white'
+                                    : 'bg-white dark:bg-slate-800 border-zinc-200 dark:border-slate-700 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10'
+                                ].join(' ')}
+                              >
+                                <AlertCircle size={12} />
+                                {activeTask.isBlocked ? 'Unblock Task' : 'Block Task'}
+                              </button>
                             </div>
-                            <SourceBadge source={activeTask.source} />
-                          </div>
 
                           <button
                             className="w-full group/btn relative flex items-center justify-center gap-3 px-6 py-4 bg-olive-900 dark:bg-white text-white dark:text-olive-950 rounded-xl font-bold text-[0.95rem] shadow-sm shadow-olive-900/20 dark:shadow-white/5 hover:scale-[1.01] active:scale-[0.98] transition-all duration-300 overflow-hidden"
@@ -2483,6 +2532,7 @@ function DashboardPage(): JSX.Element {
           titlePlaceholder="Sprint recap"
         />
       ) : null}
+      {loading && <GlobalLoader message="Updating Dashboard..." />}
     </div>
   );
 }

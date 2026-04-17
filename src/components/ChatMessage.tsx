@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import type { ChatMessage, MessageSender, MessageReaction } from '@/types/chat';
 import { MessageType } from '@/types/chat';
+import { formatDate } from '@/utils/date';
 
 interface ChatMessageProps {
   message: ChatMessage;
@@ -22,28 +23,15 @@ interface ChatMessageProps {
   onRemoveReaction: (messageId: string, emoji: string) => void;
   onReply: (message: ChatMessage) => void;
   onLoadThread?: (messageId: string) => void;
+  allMessages?: ChatMessage[];
+  depth?: number;
 }
 
 // Common emoji reactions
 const QUICK_REACTIONS = ['👍', '👎', '❤️', '😄', '😮', '🎉', '👀', '🚀'];
 
 // Format date for display
-const formatTime = (dateString: string): string => {
-  const date = new Date(dateString);
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-};
-
-// Format date for tooltip
-// const formatFullDate = (dateString: string): string => {
-//   const date = new Date(dateString);
-//   return date.toLocaleString([], {
-//     year: 'numeric',
-//     month: 'short',
-//     day: 'numeric',
-//     hour: '2-digit',
-//     minute: '2-digit',
-//   });
-// };
+const formatTime = (dateString: string): string => formatDate(dateString, 'time');
 
 // Get user initials for avatar
 const getInitials = (user: MessageSender | null): string => {
@@ -101,6 +89,8 @@ function ChatMessageComponent({
   onRemoveReaction,
   onReply,
   onLoadThread,
+  allMessages = [],
+  depth = 0,
 }: ChatMessageProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
@@ -108,6 +98,14 @@ function ChatMessageComponent({
   const [showActions, setShowActions] = useState(false);
   const emojiButtonRef = useRef<HTMLButtonElement>(null);
   const [emojiPickerPos, setEmojiPickerPos] = useState<{ top: number; left: number } | null>(null);
+
+  const replies = useMemo(() => {
+    return allMessages.filter((m) => m.replyToId === message.id);
+  }, [allMessages, message.id]);
+
+  const sortedReplies = useMemo(() => {
+    return [...replies].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  }, [replies]);
   const isOwnMessage = 
     message.senderId === currentUserId || 
     (currentUserEmail && message.sender?.email?.toLowerCase() === currentUserEmail.toLowerCase());
@@ -452,6 +450,29 @@ function ChatMessageComponent({
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Render replies recursively */}
+      {sortedReplies.length > 0 && depth < 5 && (
+        <div className="mt-2 ml-4 flex flex-col gap-2 border-l-2 border-slate-100 dark:border-slate-800/50 pl-4">
+          {sortedReplies.map((reply) => (
+            <ChatMessageComponent
+              key={reply.id}
+              message={reply}
+              currentUserId={currentUserId}
+              currentUserEmail={currentUserEmail}
+              isAdmin={isAdmin}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              onAddReaction={onAddReaction}
+              onRemoveReaction={onRemoveReaction}
+              onReply={onReply}
+              onLoadThread={onLoadThread}
+              allMessages={allMessages}
+              depth={depth + 1}
+            />
+          ))}
         </div>
       )}
     </div>

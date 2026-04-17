@@ -1,6 +1,7 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { Send, MessageSquare } from 'lucide-react';
 import { getComments, addComment, type Comment } from '@/services/comments';
+import { formatDate } from '@/utils/date';
 import UserAvatar from './UserAvatar';
 
 interface CommentSectionProps {
@@ -47,15 +48,7 @@ function CommentSection({ taskId }: CommentSectionProps): JSX.Element {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString(undefined, { 
-      month: 'short', 
-      day: 'numeric', 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
-  };
+  const displayDate = (dateString: string) => formatDate(dateString, 'short');
 
   return (
     <div className="flex flex-col h-full bg-slate-50/30 dark:bg-slate-900/30 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800">
@@ -91,7 +84,7 @@ function CommentSection({ taskId }: CommentSectionProps): JSX.Element {
                     {comment.user.name || comment.user.email}
                   </span>
                   <span className="text-[0.65rem] text-slate-400 font-medium">
-                    {formatDate(comment.createdAt)}
+                    {displayDate(comment.createdAt)}
                   </span>
                 </div>
                 <div className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed break-words bg-white dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700/50 shadow-sm">

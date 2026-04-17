@@ -29,10 +29,11 @@ interface TaskSummaryResponse {
   };
 }
 
-const getTasks = async (date?: string, assigneeId?: string): Promise<Task[]> => {
+const getTasks = async (date?: string, assigneeId?: string, search?: string): Promise<Task[]> => {
   const params: Record<string, string> = {};
   if (date) params.date = date;
   if (assigneeId) params.assigneeId = assigneeId;
+  if (search) params.search = search;
 
   const response = await api.get<TaskListResponse>('/tasks', { params });
   return response.data.data.tasks;
