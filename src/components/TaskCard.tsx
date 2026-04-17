@@ -1,12 +1,14 @@
-import { FilePenLine, Rows3, Trash2 } from 'lucide-react';
+import { AlertCircle, FilePenLine, Rows3, Trash2, ArrowUpCircle, ArrowDownCircle, MinusCircle } from 'lucide-react';
 
 import type { Epic } from '@/types/epic';
 import type { Project } from '@/types/project';
 import {
   type Subtask,
   type Task,
-  type TaskWorkflowStatus
+  type TaskWorkflowStatus,
+  type TaskPriority
 } from '@/types/task';
+import UserAvatar from './UserAvatar';
 
 interface TaskCardProps {
   actionTaskId?: string | null;
@@ -28,15 +30,24 @@ interface TaskCardProps {
   task: Task;
   onSelect?: (task: Task) => void;
   isSelected?: boolean;
+  isMultiSelected?: boolean;
+  onToggleSelection?: (taskId: string) => void;
 }
 
 const statusPillClasses: Record<string, string> = {
-  pending: 'bg-amber-50 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-100 dark:border-amber-500/30',
-  in_progress: 'bg-blue-50 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-100 dark:border-olive-500/30',
-  in_review: 'bg-purple-50 dark:bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-100 dark:border-purple-500/30',
-  completed: 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-500/30',
-  done: 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-500/30',
+  BACKLOG: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700',
+  TODO: 'bg-blue-50 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-100 dark:border-blue-500/30',
+  IN_PROGRESS: 'bg-amber-50 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-100 dark:border-amber-500/30',
+  IN_REVIEW: 'bg-purple-50 dark:bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-100 dark:border-purple-500/30',
+  BLOCKED: 'bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-300 border-red-100 dark:border-red-500/30',
+  DONE: 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-500/30',
   rolled_over: 'bg-zinc-50 dark:bg-slate-800 text-zinc-500 dark:text-slate-500 border-zinc-100 dark:border-slate-800',
+};
+
+const priorityIcons: Record<TaskPriority, JSX.Element> = {
+  HIGH: <ArrowUpCircle size={12} className="text-red-500" />,
+  MEDIUM: <MinusCircle size={12} className="text-amber-500" />,
+  LOW: <ArrowDownCircle size={12} className="text-slate-400" />,
 };
 
 function TaskCard({
@@ -46,16 +57,18 @@ function TaskCard({
   projectName,
   task,
   onSelect,
-  isSelected
+  isSelected,
+  isMultiSelected,
+  onToggleSelection
 }: TaskCardProps): JSX.Element {
-  const completedSubtasksCount = task.subtasks.filter((subtask) => subtask.status === 'completed').length;
-  const statusCls = statusPillClasses[task.status] ?? statusPillClasses.pending;
+  const completedSubtasksCount = task.subtasks.filter((subtask) => subtask.status === 'DONE').length;
+  const statusCls = statusPillClasses[task.status] || statusPillClasses.TODO;
 
   return (
     <article
       className={[
-        'group relative flex flex-col gap-5 p-5 cursor-pointer transition-all duration-300',
-        'bg-white dark:bg-slate-900 dark:bg-white dark:bg-slate-900',
+        'group relative flex flex-col gap-4 p-4 cursor-pointer transition-all duration-300',
+        'bg-white dark:bg-slate-900',
         'border rounded-xl font-["Inter"] shadow-sm',
         isSelected
           ? 'border-blue-400/70 dark:border-blue-400/60 shadow-sm bg-blue-50/60 dark:bg-blue-500/8'
@@ -65,67 +78,100 @@ function TaskCard({
     >
       <div className="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-blue-300/50 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
-      <div className="flex justify-between items-start gap-4">
+      <div className="flex justify-between items-start gap-3">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-2">
-            <div className={`px-2.5 py-1 rounded-full text-[0.62rem] font-black uppercase tracking-[0.14em] border shadow-sm ${statusCls}`}>
-              {task.status.replace('_', ' ')}
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              {onToggleSelection && (
+                <input
+                  type="checkbox"
+                  checked={isMultiSelected}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    onToggleSelection(task.id);
+                  }}
+                  className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                />
+              )}
+              <div className={`px-2 py-0.5 rounded-full text-[0.6rem] font-black uppercase tracking-wider border shadow-sm ${statusCls}`}>
+                {task.status.replace('_', ' ')}
+              </div>
+              {task.priority && (
+                <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                  {priorityIcons[task.priority]}
+                  <span className="text-[0.6rem] font-bold text-slate-500 dark:text-slate-400">{task.priority}</span>
+                </div>
+              )}
             </div>
+
+            {task.isBlocked && (
+              <div className="flex items-center gap-1 text-red-500" title={task.blockedByTaskId ? `Blocked by task ${task.blockedByTaskId}` : 'Blocked'}>
+                <AlertCircle size={14} />
+              </div>
+            )}
           </div>
 
-          <h3 className="text-[1.05rem] font-bold tracking-tight text-olive-950 dark:text-slate-100 m-0 leading-snug line-clamp-2">
+          <h3 className="text-[0.95rem] font-bold tracking-tight text-slate-900 dark:text-slate-100 m-0 leading-snug line-clamp-2">
             {task.title}
           </h3>
 
-          <p className="mt-2 text-zinc-500 dark:text-slate-400 text-[0.85rem] leading-relaxed line-clamp-2 font-medium">
+          <p className="mt-1.5 text-slate-500 dark:text-slate-400 text-[0.75rem] leading-relaxed line-clamp-2 font-medium">
             {task.description || 'No description provided.'}
           </p>
 
           {(projectName || epicName || task.subtasks.length > 0) && (
-            <div className="flex flex-wrap items-center gap-3 mt-5 pt-4 border-t border-zinc-100/90 dark:border-slate-700/50 text-zinc-400 dark:text-slate-400">
+            <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-zinc-100/90 dark:border-slate-700/50 text-slate-400 dark:text-slate-400">
               {task.subtasks.length > 0 && (
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-100/80 dark:bg-slate-800/90">
-                  <Rows3 size={12} />
-                  <span className="text-[0.7rem] font-bold tracking-tighter">
+                <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100/80 dark:bg-slate-800/90">
+                  <Rows3 size={10} />
+                  <span className="text-[0.65rem] font-bold">
                     {completedSubtasksCount}<span className="opacity-40">/</span>{task.subtasks.length}
                   </span>
                 </div>
               )}
               {projectName && (
-                <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-zinc-100/80 dark:bg-slate-800/90">
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-100/80 dark:bg-slate-800/90">
                   <div className="w-1 h-1 rounded-full bg-blue-500/50" />
-                  <span className="text-[0.65rem] font-bold uppercase tracking-widest truncate max-w-[120px]">{projectName}</span>
+                  <span className="text-[0.6rem] font-bold uppercase tracking-wider truncate max-w-[100px]">{projectName}</span>
                 </div>
               )}
               {epicName && (
-                <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-zinc-100/80 dark:bg-slate-800/90">
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-100/80 dark:bg-slate-800/90">
                   <div className="w-1 h-1 rounded-full bg-indigo-500/50" />
-                  <span className="text-[0.65rem] font-bold uppercase tracking-widest truncate max-w-[120px]">{epicName}</span>
+                  <span className="text-[0.6rem] font-bold uppercase tracking-wider truncate max-w-[100px]">{epicName}</span>
                 </div>
               )}
             </div>
           )}
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          {onEditTask && (
+        <div className="flex flex-col items-center gap-3">
+          <UserAvatar 
+            name={task.assignedTo?.name} 
+            email={task.assignedTo?.email} 
+            size="sm" 
+            className="ring-2 ring-white dark:ring-slate-900 shadow-md"
+          />
+          <div className="flex flex-col gap-1">
+            {onEditTask && (
+              <button
+                className="p-2 rounded-lg bg-white/90 dark:bg-slate-800/90 border border-zinc-200/80 dark:border-slate-700 text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors disabled:opacity-40 shadow-sm"
+                disabled={!task.permissions.canEdit}
+                onClick={(e) => { e.stopPropagation(); onEditTask(task); }}
+                title="Edit Task"
+              >
+                <FilePenLine size={13} />
+              </button>
+            )}
             <button
-              className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-800/90 border border-zinc-200/80 dark:border-slate-700 text-zinc-400 hover:text-olive-600 dark:hover:text-blue-400 transition-colors disabled:opacity-40 shadow-sm"
-              disabled={!task.permissions.canEdit}
-              onClick={(e) => { e.stopPropagation(); onEditTask(task); }}
-              title="Edit Task"
+              className="p-2 rounded-lg bg-white/90 dark:bg-slate-800/90 border border-zinc-200/80 dark:border-slate-700 text-zinc-400 hover:text-red-500 transition-colors disabled:opacity-40 shadow-sm"
+              disabled={!task.permissions.canDelete}
+              onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}
+              title="Delete Task"
             >
-              <FilePenLine size={14} />
+              <Trash2 size={13} />
             </button>
-          )}
-          <button
-            className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-800/90 border border-zinc-200/80 dark:border-slate-700 text-zinc-400 hover:text-red-500 transition-colors disabled:opacity-40 shadow-sm"
-            disabled={!task.permissions.canDelete}
-            onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}
-            title="Delete Task"
-          >
-            <Trash2 size={14} />
-          </button>
+          </div>
         </div>
       </div>
     </article>
