@@ -1,4 +1,4 @@
-import { AlertCircle, FilePenLine, Rows3, Trash2, ArrowUpCircle, ArrowDownCircle, MinusCircle } from 'lucide-react';
+import { AlertCircle, FilePenLine, Rows3, Trash2, ArrowUpCircle, ArrowDownCircle, MinusCircle, MessageSquare } from 'lucide-react';
 
 import type { Epic } from '@/types/epic';
 import type { Project } from '@/types/project';
@@ -29,6 +29,7 @@ interface TaskCardProps {
   projectName?: string;
   task: Task;
   onSelect?: (task: Task) => void;
+  onComment?: (task: Task) => void;
   isSelected?: boolean;
   isMultiSelected?: boolean;
   onToggleSelection?: (taskId: string) => void;
@@ -51,31 +52,44 @@ const priorityIcons: Record<TaskPriority, JSX.Element> = {
 };
 
 function TaskCard({
+  actionTaskId,
   onDelete,
   onEditTask,
   epicName,
   projectName,
   task,
   onSelect,
+  onComment,
   isSelected,
   isMultiSelected,
   onToggleSelection
 }: TaskCardProps): JSX.Element {
   const completedSubtasksCount = task.subtasks.filter((subtask) => subtask.status === 'DONE').length;
   const statusCls = statusPillClasses[task.status] || statusPillClasses.TODO;
+  const isUpdating = actionTaskId === task.id;
 
   return (
     <article
       className={[
-        'group relative flex flex-col gap-4 p-4 cursor-pointer transition-all duration-300',
+        'group relative flex flex-col gap-4 p-4 transition-all duration-300',
         'bg-white dark:bg-slate-900',
         'border rounded-xl font-["Inter"] shadow-sm',
         isSelected
           ? 'border-blue-400/70 dark:border-blue-400/60 shadow-sm bg-blue-50/60 dark:bg-blue-500/8'
-          : 'border-zinc-200/80 dark:border-slate-700/80 hover:border-zinc-300 dark:hover:border-slate-600 hover:-translate-y-[2px]'
+          : 'border-zinc-200/80 dark:border-slate-700/80 hover:border-zinc-300 dark:hover:border-slate-600 hover:-translate-y-[2px]',
+        isUpdating ? 'opacity-60 grayscale-[0.5] cursor-wait' : 'cursor-pointer'
       ].join(' ')}
-      onClick={() => onSelect?.(task)}
+      onClick={() => !isUpdating && onSelect?.(task)}
     >
+      {isUpdating && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/10 dark:bg-slate-900/10 backdrop-blur-[1px] rounded-xl overflow-hidden">
+          <div className="flex gap-1.5">
+             <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce [animation-delay:-0.3s]" />
+             <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce [animation-delay:-0.15s]" />
+             <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-bounce" />
+          </div>
+        </div>
+      )}
       <div className="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-blue-300/50 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
       <div className="flex justify-between items-start gap-3">
@@ -163,6 +177,13 @@ function TaskCard({
                 <FilePenLine size={13} />
               </button>
             )}
+            <button
+              className="p-2 rounded-lg bg-white/90 dark:bg-slate-800/90 border border-zinc-200/80 dark:border-slate-700 text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors shadow-sm"
+              onClick={(e) => { e.stopPropagation(); onComment?.(task); }}
+              title="Add Comment"
+            >
+              <MessageSquare size={13} />
+            </button>
             <button
               className="p-2 rounded-lg bg-white/90 dark:bg-slate-800/90 border border-zinc-200/80 dark:border-slate-700 text-zinc-400 hover:text-red-500 transition-colors disabled:opacity-40 shadow-sm"
               disabled={!task.permissions.canDelete}

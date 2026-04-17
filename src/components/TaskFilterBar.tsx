@@ -4,14 +4,11 @@ import {
   Filter, 
   X, 
   User, 
-  Layers, 
-  Activity, 
-  Sparkles,
+  Activity,
   ChevronDown,
   UserCheck
 } from 'lucide-react';
-import { TaskStatus, TaskSource, TASK_WORKFLOW_STATUS_OPTIONS } from '../types/task';
-import { Epic } from '../types/epic';
+import { TaskStatus, TASK_WORKFLOW_STATUS_OPTIONS } from '../types/task';
 import { ProjectMember } from '../types/project';
 import { useAuth } from '../context/AuthContext';
 
@@ -19,15 +16,12 @@ export interface TaskFilters {
   search: string;
   status: TaskStatus | 'all';
   assigneeId: string | 'all';
-  epicId: string | 'all';
-  source: TaskSource | 'all';
 }
 
 interface TaskFilterBarProps {
   filters: TaskFilters;
   onFilterChange: (filters: TaskFilters) => void;
   members: ProjectMember[];
-  epics: Epic[];
   onClear: () => void;
 }
 
@@ -35,7 +29,6 @@ const TaskFilterBar: React.FC<TaskFilterBarProps> = ({
   filters,
   onFilterChange,
   members,
-  epics,
   onClear
 }) => {
   const { user } = useAuth();
@@ -52,9 +45,7 @@ const TaskFilterBar: React.FC<TaskFilterBarProps> = ({
 
   const activeFilterCount = [
     filters.status !== 'all',
-    filters.assigneeId !== 'all',
-    filters.epicId !== 'all',
-    filters.source !== 'all'
+    filters.assigneeId !== 'all'
   ].filter(Boolean).length;
 
   return (
@@ -128,7 +119,7 @@ const TaskFilterBar: React.FC<TaskFilterBarProps> = ({
 
       {/* Expanded Filters */}
       {isExpanded && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-slate-200/50 dark:border-slate-700/50 animate-in fade-in slide-in-from-top-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-200/50 dark:border-slate-700/50 animate-in fade-in slide-in-from-top-2">
           {/* Status */}
           <div className="space-y-1.5">
             <label className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
@@ -160,41 +151,6 @@ const TaskFilterBar: React.FC<TaskFilterBarProps> = ({
               {members.map(member => (
                 <option key={member.id} value={member.userId}>{member.user.name || member.user.email}</option>
               ))}
-            </select>
-          </div>
-
-          {/* Epic */}
-          <div className="space-y-1.5">
-            <label className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-              <Layers className="w-3 h-3" /> Epic
-            </label>
-            <select
-              value={filters.epicId}
-              onChange={(e) => updateFilter('epicId', e.target.value)}
-              className="w-full p-2.5 bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-olive-500/20"
-            >
-              <option value="all">All Epics</option>
-              {epics.map(epic => (
-                <option key={epic.id} value={epic.id}>{epic.name}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Source */}
-          <div className="space-y-1.5">
-            <label className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-              <Sparkles className="w-3 h-3" /> AI Source
-            </label>
-            <select
-              value={filters.source}
-              onChange={(e) => updateFilter('source', e.target.value)}
-              className="w-full p-2.5 bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-olive-500/20"
-            >
-              <option value="all">All Sources</option>
-              <option value="manual">Manual</option>
-              <option value="claude">Claude</option>
-              <option value="chatgpt">ChatGPT</option>
-              <option value="gemini">Gemini</option>
             </select>
           </div>
         </div>

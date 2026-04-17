@@ -9,6 +9,7 @@ interface KanbanBoardProps {
   onSelectTask: (task: Task) => void;
   onDeleteTask: (taskId: string) => void;
   onEditTask: (task: Task) => void;
+  onCommentTask?: (task: Task) => void;
 }
 
 const COLUMNS: TaskWorkflowStatus[] = ['BACKLOG', 'TODO', 'IN_PROGRESS', 'IN_REVIEW', 'BLOCKED', 'DONE'];
@@ -18,7 +19,8 @@ function KanbanBoard({
   onUpdateStatus,
   onSelectTask,
   onDeleteTask,
-  onEditTask
+  onEditTask,
+  onCommentTask
 }: KanbanBoardProps): JSX.Element {
   
   const getTasksByStatus = (status: TaskWorkflowStatus) => {
@@ -93,6 +95,7 @@ function KanbanBoard({
                                   onDelete={onDeleteTask}
                                   onEditTask={onEditTask}
                                   onSelect={onSelectTask}
+                                  onComment={onCommentTask}
                                 />
                               </div>
                             );
