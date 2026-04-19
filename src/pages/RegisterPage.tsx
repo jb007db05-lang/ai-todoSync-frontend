@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState, useEffect } from 'react';
+import { FormEvent, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/context/AuthContext';
@@ -17,8 +17,6 @@ function RegisterPage(): JSX.Element {
     () => (import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api').replace(/\/$/, ''),
     []
   );
-
-  useEffect(()=>{console.log(import.meta.env.VITE_API_URL)},[])
   
   const handleSubmit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
