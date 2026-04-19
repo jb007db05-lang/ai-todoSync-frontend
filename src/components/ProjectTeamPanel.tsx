@@ -59,7 +59,6 @@ function ProjectTeamPanel({
             members.map((member) => (
               (() => {
                 const isAdmin = member.role === 'ADMIN';
-                const canRemoveMember = canManageTeam && !isAdmin;
 
                 return (
                   <div
