@@ -1,4 +1,4 @@
-import { Search, Shield, Trash2, UserPlus, Users } from 'lucide-react';
+import { LogOut, Search, Shield, Trash2, UserPlus, Users } from 'lucide-react';
 
 import type { ProjectMember, UserSearchResult } from '@/types/project';
 
@@ -9,6 +9,7 @@ interface ProjectTeamPanelProps {
   members: ProjectMember[];
   onAddMember: (userId: string) => Promise<void>;
   onRemoveMember: (userId: string) => Promise<void>;
+  onLeaveProject: () => Promise<void>;
   onSearchChange: (value: string) => void;
   searchResults: UserSearchResult[];
   searchTerm: string;
@@ -21,6 +22,7 @@ function ProjectTeamPanel({
   members,
   onAddMember,
   onRemoveMember,
+  onLeaveProject,
   onSearchChange,
   searchResults,
   searchTerm
@@ -87,16 +89,28 @@ function ProjectTeamPanel({
                       {member.role}
                     </span>
 
-                    {canManageTeam ? (
+                    {member.userId === currentUserId && (
                       <button
                         className="p-2.5 rounded-xl text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50 disabled:hover:text-zinc-400 disabled:hover:bg-transparent"
-                        disabled={isMutating || !canRemoveMember}
+                        disabled={isMutating || isAdmin}
+                        onClick={() => void onLeaveProject()}
+                        title={isAdmin
+                          ? 'Project admins cannot leave. They must delete the project.'
+                          : 'Leave project'}
+                        type="button"
+                      >
+                        <LogOut size={15} />
+                      </button>
+                    )}
+
+                    {canManageTeam && member.userId !== currentUserId ? (
+                      <button
+                        className="p-2.5 rounded-xl text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50 disabled:hover:text-zinc-400 disabled:hover:bg-transparent"
+                        disabled={isMutating || isAdmin}
                         onClick={() => void onRemoveMember(member.userId)}
                         title={isAdmin
                           ? 'Project admins cannot be removed'
-                          : member.userId === currentUserId
-                            ? 'Remove yourself from project'
-                            : 'Remove member'}
+                          : 'Remove member'}
                         type="button"
                       >
                         <Trash2 size={15} />
