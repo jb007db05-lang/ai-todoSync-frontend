@@ -17,7 +17,7 @@ function RegisterPage(): JSX.Element {
     () => (import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api').replace(/\/$/, ''),
     []
   );
-
+  
   const handleSubmit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     await register({ email, password, firstName, lastName });
