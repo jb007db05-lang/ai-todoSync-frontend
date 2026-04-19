@@ -18,6 +18,8 @@ function RegisterPage(): JSX.Element {
     []
   );
 
+  useEffect(()=>{console.log(import.meta.env.VITE_API_URL)},[])
+  
   const handleSubmit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     await register({ email, password, firstName, lastName });
