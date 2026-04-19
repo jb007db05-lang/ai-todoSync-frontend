@@ -77,6 +77,10 @@ const removeProjectMember = async (projectId: string, userId: string): Promise<v
   await api.delete(`/projects/${projectId}/members/${userId}`);
 };
 
+const leaveProject = async (projectId: string): Promise<void> => {
+  await api.post(`/projects/${projectId}/leave`);
+};
+
 export {
   addProjectMember,
   createProject,
@@ -84,6 +88,7 @@ export {
   deleteProjects,
   getProjectMembers,
   getProjects,
+  leaveProject,
   removeProjectMember,
   updateProject
 };

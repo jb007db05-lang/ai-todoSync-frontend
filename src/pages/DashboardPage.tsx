@@ -58,6 +58,7 @@ import {
   deleteProjects,
   getProjectMembers,
   getProjects,
+  leaveProject,
   removeProjectMember,
   updateProject
 } from '@/services/projects';
@@ -666,6 +667,39 @@ function DashboardPage(): JSX.Element {
       }
     } catch {
       setProjectMutationError('Unable to remove the project member.');
+    } finally {
+      setTeamMutationLoading(false);
+    }
+  };
+
+  const handleLeaveProject = async (): Promise<void> => {
+    if (activeProject == null) {
+      return;
+    }
+
+    const isConfirmed = await confirm({
+      title: 'Leave Project',
+      message: `Are you sure you want to leave ${activeProject.name}? You will no longer access this project and tasks assigned to you will be unassigned.`,
+      confirmText: 'Leave Project',
+      type: 'danger'
+    });
+
+    if (!isConfirmed) {
+      return;
+    }
+
+    setTeamMutationLoading(true);
+    setProjectMutationError(null);
+    setProjectMutationSuccess(null);
+
+    try {
+      await leaveProject(activeProject.id);
+      setIsProjectTeamModalOpen(false);
+      handleProjectSelect(ALL_PROJECTS_VALUE);
+      await loadDashboard();
+      setProjectMutationSuccess('You have left the project.');
+    } catch {
+      setProjectMutationError('Unable to leave the project.');
     } finally {
       setTeamMutationLoading(false);
     }
@@ -2388,6 +2422,7 @@ function DashboardPage(): JSX.Element {
             members={activeProjectMembers}
             onAddMember={handleAddProjectMember}
             onRemoveMember={handleRemoveProjectMember}
+            onLeaveProject={handleLeaveProject}
             onSearchChange={(value) => { void handleProjectMemberSearch(value); }}
             searchResults={memberSearchResults}
             searchTerm={memberSearchTerm}
