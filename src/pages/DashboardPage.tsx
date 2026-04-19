@@ -16,6 +16,7 @@ import SettingsPanel from '@/components/SettingsPanel';
 import SubtaskForm from '@/components/SubtaskForm';
 import ChatPanel from '@/components/ChatPanel';
 import ActivityHistoryPanel from '@/components/ActivityHistoryPanel';
+import AnalyticsDashboardPanel from '@/components/AnalyticsDashboardPanel';
 import { useChat } from '@/context/ChatContext';
 import NotificationBox, { Notification } from '@/components/NotificationBox';
 import TaskList from '@/components/TaskList';
@@ -47,6 +48,7 @@ import {
   Trash2,
   History,
   RefreshCw,
+  BarChart3,
   X
 } from 'lucide-react';
 import { createEpic, deleteEpic, getEpics, updateEpic } from '@/services/epics';
@@ -234,7 +236,7 @@ function DashboardPage(): JSX.Element {
 
   const [memberSearchResults, setMemberSearchResults] = useState<UserSearchResult[]>([]);
   const [teamMutationLoading, setTeamMutationLoading] = useState<boolean>(false);
-  const [activeView, setActiveView] = useState<'dashboard' | 'settings'>('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'settings' | 'analytics'>('dashboard');
   const [activeProjectForNotes, setActiveProjectForNotes] = useState<Project | null>(null);
   const [activeEpicForNotes, setActiveEpicForNotes] = useState<Epic | null>(null);
   const [activeNoteEditor, setActiveNoteEditor] = useState<ActiveNoteEditor | null>(null);
@@ -1680,6 +1682,20 @@ function DashboardPage(): JSX.Element {
             <Settings size={18} strokeWidth={2} />
             <span>Settings</span>
           </button>
+          <button
+            className={[
+              'flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-[0.95rem] font-medium transition-all duration-200 justify-start',
+              activeView === 'analytics' 
+                ? 'bg-olive-700 text-white shadow-md shadow-olive-700/20' 
+                : 'text-zinc-600 hover:text-olive-950 hover:bg-zinc-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800'
+            ].join(' ')}
+            onClick={() => setActiveView('analytics')}
+            title="Analytics"
+            type="button"
+          >
+            <BarChart3 size={18} strokeWidth={2} />
+            <span>Analytics</span>
+          </button>
           <button 
              className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-[0.95rem] font-medium text-zinc-500 hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:text-red-400 dark:hover:bg-red-900/20 transition-all duration-200 justify-start mt-1"
              onClick={handleLogout} 
@@ -1725,6 +1741,8 @@ function DashboardPage(): JSX.Element {
                   <span className="text-zinc-300 dark:text-slate-600">/</span>
                   <span className="text-zinc-600 dark:text-slate-300">{activeProject.name}</span>
                 </>
+              ) : activeView === 'analytics' ? (
+                <span className="text-zinc-600 dark:text-slate-300">Analytics</span>
               ) : (
                 <span className="text-zinc-600 dark:text-slate-300">All Projects</span>
               )}
@@ -1796,6 +1814,16 @@ function DashboardPage(): JSX.Element {
               </div>
               <div className="p-8">
                 <SettingsPanel />
+              </div>
+            </div>
+          ) : activeView === 'analytics' ? (
+            <div className="h-full overflow-y-auto">
+              <div className="px-8 py-6 border-b border-zinc-200 dark:border-slate-700 bg-white/60 dark:bg-slate-900/60">
+                <h3 className="text-xl font-semibold text-olive-950 dark:text-slate-100 m-0">Analytics</h3>
+                <p className="text-zinc-500 dark:text-slate-400 m-0 text-sm mt-0.5">Observability & Tracking</p>
+              </div>
+              <div className="p-8">
+                <AnalyticsDashboardPanel />
               </div>
             </div>
           ) : !activeProject ? (
