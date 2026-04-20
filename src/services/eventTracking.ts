@@ -21,7 +21,7 @@ export interface EventLog {
   eventId: string;
   apiKeyId: string;
   userIdentifier?: string;
-  payload: any;
+  payload: Record<string, unknown>;
   createdAt: string;
 }
 
@@ -29,7 +29,7 @@ export interface IdentifiedUser {
   _id: string;
   apiKeyId: string;
   userIdentifier: string;
-  metadata: any;
+  metadata: Record<string, unknown>;
   createdAt: string;
 }
 
@@ -47,7 +47,7 @@ export const deleteApiKey = async (id: string): Promise<void> => {
   await api.delete(`/keys/${id}`);
 };
 
-export const getTrackedEvents = async (apiKeyId: string, filters: any = {}): Promise<TrackedEvent[]> => {
+export const getTrackedEvents = async (apiKeyId: string, filters: Record<string, unknown> = {}): Promise<TrackedEvent[]> => {
   const response = await api.get('/analytics/events', {
     params: { apiKeyId, ...filters },
   });

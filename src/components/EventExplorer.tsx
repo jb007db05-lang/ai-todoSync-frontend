@@ -9,8 +9,6 @@ import {
   ChevronDown, 
   ChevronUp, 
   Code,
-  Calendar,
-  Filter,
   Terminal
 } from 'lucide-react';
 import { getAnalyticsEvents, RawEvent } from '../services/analytics';

@@ -1,63 +1,48 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Plus, 
-  Key, 
-  Activity, 
   User, 
   Search, 
-  Clock, 
-  ExternalLink,
   ChevronRight,
-  Filter,
   Trash2,
   Copy,
   Check,
-  Code
+  RefreshCw,
+  ChevronDown,
+  ChevronUp,
+  ChevronLeft
 } from 'lucide-react';
 import { 
   listApiKeys, 
   createApiKey, 
   deleteApiKey, 
-  getTrackedEvents, 
-  getEventLogs, 
-  getIdentifiedUsers,
-  getUserEvents,
-  AnalyticsKey,
-  TrackedEvent,
-  EventLog,
-  IdentifiedUser
+  AnalyticsKey
 } from '@/services/eventTracking';
+import { getAnalyticsEvents, RawEvent } from '@/services/analytics';
 import Modal from '@/components/Modal';
 import GlobalLoader from '@/components/GlobalLoader';
 
 const EventTrackingPage: React.FC = () => {
   const [keys, setKeys] = useState<AnalyticsKey[]>([]);
   const [selectedKeyId, setSelectedKeyId] = useState<string>('');
-  const [events, setEvents] = useState<TrackedEvent[]>([]);
-  const [users, setUsers] = useState<IdentifiedUser[]>([]);
+  const [rawLogs, setRawLogs] = useState<RawEvent[]>([]);
+  const [totalLogs, setTotalLogs] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(30);
+  
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   
-  // Modal states
+  // UI states
+  const [isNodeSwitcherOpen, setIsNodeSwitcherOpen] = useState(false);
+  const [isManageKeysModalOpen, setIsManageKeysModalOpen] = useState(false);
   const [isCreateKeyModalOpen, setIsCreateKeyModalOpen] = useState(false);
   const [newKeyName, setNewKeyName] = useState('');
   const [newlyCreatedKey, setNewlyCreatedKey] = useState<AnalyticsKey | null>(null);
-  const [selectedEvent, setSelectedEvent] = useState<TrackedEvent | null>(null);
-  const [selectedEventLogs, setSelectedEventLogs] = useState<EventLog[]>([]);
-  const [selectedUser, setSelectedUser] = useState<IdentifiedUser | null>(null);
-  const [selectedUserEvents, setSelectedUserEvents] = useState<EventLog[]>([]);
+  const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
   
   const [copiedKey, setCopiedKey] = useState(false);
-
-  useEffect(() => {
-    loadInitialData();
-  }, []);
-
-  useEffect(() => {
-    if (selectedKeyId) {
-      loadKeyData(selectedKeyId);
-    }
-  }, [selectedKeyId]);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const loadInitialData = async () => {
     setLoading(true);
@@ -74,23 +59,44 @@ const EventTrackingPage: React.FC = () => {
     }
   };
 
-  const loadKeyData = async (keyId: string) => {
+  const loadLogs = async (keyId: string, page: number) => {
     setRefreshing(true);
     try {
-      const [eventsList, usersList] = await Promise.all([
-        getTrackedEvents(keyId),
-        getIdentifiedUsers(keyId)
-      ]);
-      setEvents(eventsList);
-      setUsers(usersList);
+      const offset = (page - 1) * pageSize;
+      const data = await getAnalyticsEvents({ 
+        keyId, 
+        limit: pageSize, 
+        offset,
+        eventName: searchTerm || undefined 
+      });
+      setRawLogs(data.events);
+      setTotalLogs(data.total);
     } catch (err) {
-      console.error('Failed to load key data', err);
+      console.error('Failed to load logs', err);
     } finally {
       setRefreshing(false);
     }
   };
 
-  const handleCreateKey = async () => {
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+
+  useEffect(() => {
+    if (selectedKeyId) {
+      setCurrentPage(1);
+      loadLogs(selectedKeyId, 1);
+    }
+  }, [selectedKeyId, searchTerm]);
+
+  useEffect(() => {
+    if (selectedKeyId) {
+      loadLogs(selectedKeyId, currentPage);
+    }
+  }, [currentPage]);
+
+  const handleCreateKey = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!newKeyName.trim()) return;
     try {
       const newKey = await createApiKey(newKeyName);
@@ -105,8 +111,8 @@ const EventTrackingPage: React.FC = () => {
     }
   };
 
-  const handleDeleteKey = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this API key? This action is irreversible.')) return;
+  const handleDeleteKey = async (id: string, name: string) => {
+    if (!window.confirm(`Are you sure you want to delete the API key "${name}"? This action is irreversible.`)) return;
     try {
       await deleteApiKey(id);
       const updatedKeys = await listApiKeys();
@@ -119,350 +125,360 @@ const EventTrackingPage: React.FC = () => {
     }
   };
 
-  const handleShowEventLogs = async (event: TrackedEvent) => {
-    setSelectedEvent(event);
-    try {
-      const logs = await getEventLogs(event.id, selectedKeyId);
-      setSelectedEventLogs(logs);
-    } catch (err) {
-      console.error('Failed to load event logs', err);
-    }
-  };
-
-  const handleShowUserEvents = async (user: IdentifiedUser) => {
-    setSelectedUser(user);
-    try {
-      const logs = await getUserEvents(user.userIdentifier, selectedKeyId);
-      setSelectedUserEvents(logs);
-    } catch (err) {
-      console.error('Failed to load user events', err);
-    }
-  };
-
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopiedKey(true);
     setTimeout(() => setCopiedKey(false), 2000);
   };
 
-  if (loading) return <GlobalLoader message="Loading Event Tracking..." />;
+  const activeKey = useMemo(() => {
+    return keys.find(k => k.id === selectedKeyId);
+  }, [keys, selectedKeyId]);
+
+  const getEventColor = (name: string) => {
+    const lowerName = name.toLowerCase();
+    if (lowerName.includes('identify')) return 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20';
+    if (lowerName.includes('page') || lowerName.includes('view')) return 'text-blue-600 bg-blue-50 dark:bg-blue-900/20';
+    if (lowerName.includes('click') || lowerName.includes('select')) return 'text-amber-600 bg-amber-50 dark:bg-amber-900/20';
+    if (lowerName.includes('error') || lowerName.includes('fail')) return 'text-red-600 bg-red-50 dark:bg-red-900/20';
+    return 'text-zinc-600 bg-zinc-50 dark:bg-zinc-800/50';
+  };
+
+
+  if (loading) return <GlobalLoader message="Synchronizing telemetry engine..." />;
+
+  const totalPages = Math.ceil(totalLogs / pageSize);
+  const thCls = 'text-left px-5 py-3 text-[0.8rem] font-bold uppercase tracking-[0.05em] text-zinc-500 dark:text-slate-400 bg-zinc-50 dark:bg-slate-800 border-b border-zinc-200 dark:border-slate-700 sticky top-0 z-10';
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
-      {/* Header & Key Selector */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <h2 className="text-3xl font-extrabold text-olive-950 dark:text-white font-['Outfit']">Event Tracking</h2>
-          <p className="text-zinc-500 dark:text-slate-400 mt-1">Monitor and manage your application telemetry.</p>
+    <div className="flex flex-col h-full bg-white dark:bg-slate-900">
+      {/* Clean Toolbar (Matches ProjectPanel) */}
+      <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-zinc-200 dark:border-slate-700 bg-zinc-50 dark:bg-slate-800 sticky top-0 z-30">
+        <div className="grid gap-0.5">
+          <h4 className="m-0 font-bold text-olive-950 dark:text-slate-100 text-[0.95rem]">Event Tracking</h4>
+          <span className="text-zinc-400 dark:text-slate-500 text-[0.75rem]">Telemetry Stream Monitoring</span>
         </div>
-        
-        <div className="flex items-center gap-4">
-          <div className="relative min-w-[240px]">
-            <Key className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
-            <select
-              className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-zinc-200 dark:border-slate-700 rounded-xl font-bold text-olive-950 dark:text-white shadow-sm focus:ring-2 focus:ring-olive-500 outline-none appearance-none"
-              value={selectedKeyId}
-              onChange={(e) => setSelectedKeyId(e.target.value)}
-            >
-              {keys.map(k => (
-                <option key={k.id} value={k.id}>{k.name}</option>
-              ))}
-              {keys.length === 0 && <option value="">No API Keys found</option>}
-            </select>
-          </div>
+
+        {/* Divider */}
+        <div className="h-6 w-px bg-zinc-200 dark:bg-slate-700 opacity-60 mx-2" />
+
+        {/* Optimized Node Switcher */}
+        <div className="relative">
           <button
-            onClick={() => setIsCreateKeyModalOpen(true)}
-            className="px-5 py-2.5 bg-olive-900 dark:bg-blue-600 text-white rounded-xl font-bold shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+            onClick={() => setIsNodeSwitcherOpen(!isNodeSwitcherOpen)}
+            className="flex items-center gap-3 h-9 px-3 bg-white dark:bg-slate-700 border border-zinc-200 dark:border-slate-600 rounded text-[0.85rem] font-medium text-olive-950 dark:text-slate-100 shadow-sm hover:bg-zinc-50 dark:hover:bg-slate-600 transition-colors min-w-[180px] justify-between"
           >
-            <Plus size={18} />
-            Create Key
+            <div className="flex items-center gap-2 truncate">
+              <div className={`w-2 h-2 rounded-full ${activeKey ? 'bg-emerald-500' : 'bg-zinc-300'}`} />
+              <span className="truncate">{activeKey ? activeKey.name : 'Select Node'}</span>
+            </div>
+            <ChevronDown size={14} className="text-zinc-400" />
+          </button>
+
+          {isNodeSwitcherOpen && (
+            <div className="absolute top-full left-0 mt-1 w-[240px] bg-white dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 rounded shadow-xl z-50">
+              <div className="py-1">
+                {keys.map(key => (
+                  <button
+                    key={key.id}
+                    onClick={() => { setSelectedKeyId(key.id); setIsNodeSwitcherOpen(false); }}
+                    className={`w-full px-4 py-2 text-left text-[0.85rem] transition-colors ${selectedKeyId === key.id ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600' : 'text-zinc-600 dark:text-slate-300 hover:bg-zinc-50 dark:hover:bg-slate-700'}`}
+                  >
+                    {key.name}
+                  </button>
+                ))}
+                <div className="border-t border-zinc-100 dark:border-slate-700 my-1" />
+                <button 
+                  onClick={() => { setIsManageKeysModalOpen(true); setIsNodeSwitcherOpen(false); }}
+                  className="w-full px-4 py-2 text-left text-[0.75rem] font-bold text-zinc-500 hover:text-blue-600 transition-colors uppercase tracking-wider"
+                >
+                  Manage Nodes
+                </button>
+              </div>
+            </div>
+          )}
+          {isNodeSwitcherOpen && <div className="fixed inset-0 z-40" onClick={() => setIsNodeSwitcherOpen(false)} />}
+        </div>
+
+        {/* Search */}
+        <div className="relative flex-1 flex items-center">
+          <Search className="absolute left-3.5 text-zinc-400 dark:text-slate-500" size={14} />
+          <input
+            className="w-full h-9 pl-10 pr-3 text-[0.85rem] bg-white dark:bg-slate-700 border border-zinc-200 dark:border-slate-600 rounded-md shadow-inner transition-all duration-200 focus:outline-none focus:border-blue-500 text-olive-950 dark:text-slate-100 placeholder:text-zinc-400"
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Filter interaction signals..."
+            type="text"
+            value={searchTerm}
+          />
+        </div>
+
+        <button
+          onClick={() => { if (selectedKeyId) loadLogs(selectedKeyId, currentPage); }}
+          disabled={refreshing || !selectedKeyId}
+          className="inline-flex items-center justify-center w-9 h-9 bg-white dark:bg-slate-700 border border-zinc-200 dark:border-slate-600 rounded text-zinc-400 hover:text-blue-600 transition-colors disabled:opacity-30"
+        >
+          <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
+        </button>
+      </div>
+
+      {/* Simplified Table (Card-Row Architecture) */}
+      <div className="flex-1 overflow-y-auto px-1 py-1 custom-scrollbar">
+        {!selectedKeyId ? (
+          <div className="flex items-center justify-center py-20 text-zinc-400 dark:text-slate-500 italic text-[0.9rem]">
+            Select a telemetry node to begin monitoring.
+          </div>
+        ) : (
+          <table className="w-full border-separate border-spacing-y-2 text-[0.95rem]">
+            <thead>
+              <tr>
+                <th className={`${thCls} !pl-5`} style={{ width: 80 }}>Status</th>
+                <th className={thCls} style={{ width: '35%' }}>Identity</th>
+                <th className={thCls} style={{ width: '25%' }}>Signal</th>
+                <th className={thCls} style={{ width: '15%' }}>Date</th>
+                <th className={thCls} style={{ width: '10%' }}>Time</th>
+                <th className={`${thCls} text-right !pr-6`} style={{ width: 60 }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {rawLogs.length === 0 && !refreshing ? (
+                <tr>
+                  <td className="text-zinc-400 dark:text-slate-500 text-center py-10" colSpan={6}>
+                    No signals ingested in this window.
+                  </td>
+                </tr>
+              ) : (
+                rawLogs.map((log) => (
+                  <React.Fragment key={log._id}>
+                    <tr
+                      className={[
+                        'cursor-pointer transition-all duration-200 relative bg-white dark:bg-slate-800/80 shadow-sm hover:shadow-md border border-zinc-100 dark:border-slate-700/50 group',
+                        expandedLogId === log._id ? 'ring-2 ring-blue-500/30' : ''
+                      ].join(' ')}
+                      onClick={() => setExpandedLogId(expandedLogId === log._id ? null : log._id)}
+                    >
+                      <td className="px-5 py-3 align-middle first:rounded-l-xl border-y border-transparent">
+                         <div className="flex items-center justify-center">
+                            <div className="w-2 h-2 rounded-full bg-emerald-500" title="Ingested" />
+                         </div>
+                      </td>
+                      <td className="px-5 py-3 align-middle border-y border-transparent">
+                        <div className="flex items-center gap-3">
+                           <User size={16} className="text-zinc-400" />
+                           <strong className="text-olive-900 dark:text-slate-100 font-bold text-[0.95rem]">
+                             {log.userId || 'Anonymous'}
+                           </strong>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3 align-middle border-y border-transparent">
+                        <span className={`px-2 py-0.5 rounded text-[0.75rem] font-bold uppercase tracking-tight ${getEventColor(log.eventName)}`}>
+                          {log.eventName.replace(/_/g, ' ')}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3 align-middle border-y border-transparent text-zinc-600 dark:text-slate-300 text-[0.9rem]">
+                        {new Date(log.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                      </td>
+                      <td className="px-5 py-3 align-middle border-y border-transparent text-zinc-500 dark:text-slate-400 text-[0.9rem] font-medium">
+                        {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </td>
+                      <td className="px-5 py-3 align-middle border-y border-r border-transparent last:rounded-r-xl text-right">
+                         <div className="text-zinc-300 dark:text-slate-600 group-hover:text-blue-500 transition-colors">
+                            {expandedLogId === log._id ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                         </div>
+                      </td>
+                    </tr>
+
+                    {/* Minimalist Expanded Panel */}
+                    {expandedLogId === log._id && (
+                      <tr className="bg-zinc-50/50 dark:bg-slate-900/50">
+                        <td colSpan={6} className="px-5 py-6">
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in slide-in-from-top-1">
+                              <div className="space-y-3">
+                                 <div className="flex items-center justify-between">
+                                    <span className="text-[0.65rem] font-bold uppercase tracking-widest text-zinc-400">Signal Payload</span>
+                                    <button 
+                                      onClick={(e) => { e.stopPropagation(); copyToClipboard(JSON.stringify(log.properties, null, 2)); }}
+                                      className="text-[0.65rem] font-bold text-blue-600 hover:underline"
+                                    >
+                                      {copiedKey ? 'Copied' : 'Copy JSON'}
+                                    </button>
+                                 </div>
+                                 <div className="bg-slate-900 border border-slate-800 rounded p-4 max-h-[300px] overflow-y-auto custom-scrollbar">
+                                    <pre className="text-[0.8rem] text-blue-200 font-mono">
+                                       <code>{JSON.stringify(log.properties, null, 2)}</code>
+                                    </pre>
+                                 </div>
+                              </div>
+                              <div className="space-y-4">
+                                 <span className="text-[0.65rem] font-bold uppercase tracking-widest text-zinc-400 block">Execution Context</span>
+                                 <div className="grid grid-cols-2 gap-3">
+                                    {[
+                                      { label: 'Session ID', value: log.sessionId.slice(0, 16) + '...' },
+                                      { label: 'Platform', value: log.context?.device?.os || 'N/A' },
+                                      { label: 'Browser', value: log.context?.device?.browser || 'N/A' },
+                                      { label: 'Screen', value: log.context?.device?.screen || 'N/A' },
+                                    ].map((item, idx) => (
+                                      <div key={idx} className="p-3 bg-white dark:bg-slate-800 border border-zinc-100 dark:border-slate-700 rounded">
+                                         <span className="text-[0.6rem] text-zinc-400 uppercase block mb-1">{item.label}</span>
+                                         <span className="text-[0.8rem] font-medium text-olive-950 dark:text-slate-100 truncate block">{item.value}</span>
+                                      </div>
+                                    ))}
+                                 </div>
+                                 <div className="p-3 bg-white dark:bg-slate-800 border border-zinc-100 dark:border-slate-700 rounded">
+                                    <span className="text-[0.6rem] text-zinc-400 uppercase block mb-1">Origin URL</span>
+                                    <span className="text-[0.8rem] font-medium text-blue-600 break-all">{log.context?.page?.url || 'N/A'}</span>
+                                 </div>
+                              </div>
+                           </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))
+              )}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Simple Pagination Bar */}
+      <div className="flex items-center justify-between gap-3 px-4 py-3 border-t border-zinc-200 dark:border-slate-700 bg-zinc-50 dark:bg-slate-800">
+        <div className="text-[0.75rem] text-zinc-400 dark:text-slate-500">
+          Page <strong className="text-zinc-700 dark:text-slate-300">{currentPage}</strong> of{' '}
+          <strong className="text-zinc-700 dark:text-slate-300">{totalPages || 1}</strong>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <button
+            className="w-7 h-7 p-0 flex items-center justify-center bg-white dark:bg-slate-700 border border-zinc-200 dark:border-slate-600 rounded text-zinc-500 dark:text-slate-400 hover:bg-zinc-50 dark:hover:bg-slate-600 disabled:opacity-50 transition-colors"
+            disabled={currentPage <= 1}
+            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+            type="button"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <button
+            className="w-7 h-7 p-0 flex items-center justify-center bg-white dark:bg-slate-700 border border-zinc-200 dark:border-slate-600 rounded text-zinc-500 dark:text-slate-400 hover:bg-zinc-50 dark:hover:bg-slate-600 disabled:opacity-50 transition-colors"
+            disabled={currentPage >= totalPages || totalPages === 0}
+            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+            type="button"
+          >
+            <ChevronRight size={16} />
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Events Table Section */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white dark:bg-slate-900 border border-zinc-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-zinc-100 dark:border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg">
-                  <Activity size={20} />
-                </div>
-                <h3 className="text-lg font-bold text-olive-950 dark:text-white">Tracked Events</h3>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="relative">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-                  <input 
-                    type="text" 
-                    placeholder="Filter events..."
-                    className="pl-9 pr-3 py-1.5 bg-zinc-50 dark:bg-slate-800 border-none rounded-lg text-sm outline-none"
-                  />
-                </div>
-              </div>
-            </div>
-            
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead className="bg-zinc-50/50 dark:bg-slate-800/50 text-[0.7rem] uppercase tracking-widest text-zinc-500 font-black">
-                  <tr>
-                    <th className="px-6 py-4">Event Name</th>
-                    <th className="px-6 py-4">Total Count</th>
-                    <th className="px-6 py-4">Registered At</th>
-                    <th className="px-6 py-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-100 dark:divide-slate-800">
-                  {events.map(event => (
-                    <tr key={event.id} className="group hover:bg-zinc-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                      <td className="px-6 py-4">
-                        <span className="text-[0.95rem] font-bold text-olive-950 dark:text-slate-200 font-mono">
-                          {event.eventName}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <span className="px-2.5 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg font-black text-sm">
-                            {event.count.toLocaleString()}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-zinc-500 dark:text-slate-400">
-                          {new Date(event.createdAt).toLocaleDateString()}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <button 
-                          onClick={() => handleShowEventLogs(event)}
-                          className="p-2 text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
-                          title="View Logs"
-                        >
-                          <ChevronRight size={18} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {events.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="px-6 py-12 text-center text-zinc-400 italic">
-                        No events tracked for this key yet.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        {/* Users Section */}
-        <div className="space-y-6">
-          <div className="bg-white dark:bg-slate-900 border border-zinc-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-zinc-100 dark:border-slate-800">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg">
-                  <User size={20} />
-                </div>
-                <h3 className="text-lg font-bold text-olive-950 dark:text-white">Identified Users</h3>
-              </div>
-            </div>
-            
-            <div className="divide-y divide-zinc-100 dark:divide-slate-800 max-h-[600px] overflow-y-auto custom-scrollbar">
-              {users.map(user => (
-                <button
-                  key={user._id}
-                  onClick={() => handleShowUserEvents(user)}
-                  className="w-full p-6 flex items-center justify-between hover:bg-zinc-50 dark:hover:bg-slate-800/50 transition-all text-left group"
-                >
-                  <div className="min-w-0">
-                    <p className="text-[0.95rem] font-bold text-olive-950 dark:text-slate-200 truncate pr-4">
-                      {user.userIdentifier}
-                    </p>
-                    <p className="text-[0.75rem] text-zinc-500 dark:text-slate-500 mt-0.5">
-                      First seen {new Date(user.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <ChevronRight size={16} className="text-zinc-300 group-hover:text-emerald-500 transition-colors" />
-                </button>
-              ))}
-              {users.length === 0 && (
-                <div className="p-12 text-center text-zinc-400 italic">
-                  No users identified yet.
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Key Management Summary */}
-          <div className="bg-zinc-900 dark:bg-slate-950 rounded-2xl p-6 text-white space-y-4">
-            <h4 className="text-sm font-black uppercase tracking-widest text-zinc-500">Node Management</h4>
-            <div className="space-y-3">
-              {keys.map(k => (
-                <div key={k.id} className="flex items-center justify-between group">
-                   <div className="min-w-0">
-                      <p className="text-sm font-bold truncate pr-3">{k.name}</p>
-                      <p className="text-[0.65rem] font-mono text-zinc-500 mt-0.5">{k.maskedKey}</p>
-                   </div>
-                   <button 
-                     onClick={() => handleDeleteKey(k.id)}
-                     className="p-1.5 text-zinc-600 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                   >
-                     <Trash2 size={14} />
-                   </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* --- MODALS --- */}
+      {isManageKeysModalOpen && (
+        <Modal 
+          title="Node Management" 
+          onClose={() => setIsManageKeysModalOpen(false)}
+          maxWidth="max-w-[480px]"
+        >
+          <div className="space-y-6 py-2">
+            <div className="p-4 bg-zinc-50 dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 rounded flex items-center justify-between">
+               <div>
+                  <h4 className="text-[0.95rem] font-bold text-olive-950 dark:text-white">Provision New Node</h4>
+                  <p className="text-[0.75rem] text-zinc-500">Add identifiers for fresh telemetry streams.</p>
+               </div>
+               <button 
+                  onClick={() => setIsCreateKeyModalOpen(true)}
+                  className="px-4 py-2 bg-olive-900 dark:bg-olive-600 text-white rounded text-sm font-medium hover:bg-olive-800 transition-colors flex items-center gap-2"
+               >
+                  <Plus size={16} /> New Node
+               </button>
+            </div>
 
-      {/* Create Key Modal */}
+            <div className="space-y-2 max-h-[300px] overflow-y-auto px-1">
+               {keys.map(key => (
+                  <div 
+                    key={key.id}
+                    className="p-3 rounded border border-zinc-100 dark:border-slate-700 bg-white dark:bg-slate-800 flex items-center justify-between group"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <strong className="text-[0.9rem] text-olive-950 dark:text-slate-100 truncate">{key.name}</strong>
+                        <span className="text-[0.6rem] px-1 bg-emerald-50 text-emerald-600 rounded font-bold uppercase tracking-wide">Active</span>
+                      </div>
+                      <code className="text-[0.7rem] text-zinc-400 font-mono block mt-0.5">{key.maskedKey}</code>
+                    </div>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleDeleteKey(key.id, key.name); }}
+                      className="p-2 text-zinc-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+               ))}
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {isCreateKeyModalOpen && (
         <Modal 
-          title="Provision New Node" 
+          title="Create API Key" 
           onClose={() => setIsCreateKeyModalOpen(false)}
-          maxWidth="max-w-md"
+          maxWidth="max-w-[400px]"
         >
-          <div className="space-y-6">
+          <form onSubmit={handleCreateKey} className="space-y-6 pt-2">
             <div>
-              <label className="block text-xs font-black uppercase tracking-widest text-zinc-400 mb-2">Node Intent Name</label>
+              <label className="block text-[0.75rem] font-bold text-zinc-500 uppercase tracking-wider mb-2">Node Name</label>
               <input
                 autoFocus
                 type="text"
                 value={newKeyName}
                 onChange={(e) => setNewKeyName(e.target.value)}
-                placeholder="e.g. Production Mobile App"
-                className="w-full h-12 px-4 bg-zinc-50 dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 rounded-xl font-bold outline-none focus:ring-2 focus:ring-olive-500"
+                placeholder="e.g. Production Client"
+                className="w-full h-10 px-3 bg-white dark:bg-slate-700 border border-zinc-200 dark:border-slate-600 rounded text-[0.9rem] focus:outline-none focus:border-blue-500 transition-all font-medium"
               />
             </div>
-            <button
-              onClick={handleCreateKey}
-              disabled={!newKeyName.trim()}
-              className="w-full h-14 bg-olive-900 dark:bg-blue-600 text-white rounded-xl font-bold shadow-lg disabled:opacity-50"
-            >
-              Generate Credentials
-            </button>
-          </div>
+            <div className="flex gap-3">
+               <button
+                 type="button"
+                 onClick={() => setIsCreateKeyModalOpen(false)}
+                 className="flex-1 h-10 bg-zinc-100 dark:bg-slate-700 text-[0.85rem] font-bold text-zinc-500 rounded"
+               >
+                 Cancel
+               </button>
+               <button
+                 type="submit"
+                 disabled={!newKeyName.trim()}
+                 className="flex-1 h-10 bg-olive-900 dark:bg-olive-600 text-white rounded font-bold text-[0.85rem] shadow-lg shadow-olive-900/20 disabled:opacity-50"
+               >
+                 Create
+               </button>
+            </div>
+          </form>
         </Modal>
       )}
 
-      {/* Show Newly Created Key Modal */}
       {newlyCreatedKey && (
         <Modal 
-          title="Node Provisioned" 
+          title="Node Key Created" 
           onClose={() => setNewlyCreatedKey(null)}
-          maxWidth="max-w-md"
+          maxWidth="max-w-[400px]"
         >
-          <div className="space-y-6">
-            <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center gap-3">
-              <Check className="text-emerald-500" size={24} strokeWidth={3} />
-              <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400">Node identity successfully created.</p>
-            </div>
-            <div className="p-6 bg-zinc-900 rounded-xl space-y-3 relative group">
-              <p className="text-[0.65rem] font-black uppercase tracking-widest text-zinc-500">Secret API Key</p>
-              <div className="flex items-center gap-3">
-                <code className="text-blue-400 font-mono font-bold break-all flex-1">{newlyCreatedKey.key}</code>
+          <div className="space-y-6 pt-2">
+            <div className="p-5 bg-slate-900 rounded border border-slate-800 space-y-3">
+              <span className="text-[0.65rem] font-bold text-blue-400 uppercase tracking-widest block text-center">Secret API Key</span>
+              <div className="flex items-center gap-3 p-3 bg-white/5 rounded border border-white/5">
+                <code className="text-[0.95rem] font-bold font-mono text-blue-100 break-all flex-1 text-center">{newlyCreatedKey.key}</code>
                 <button 
                   onClick={() => copyToClipboard(newlyCreatedKey.key || '')}
-                  className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-white transition-all"
+                  className="p-2 text-white/50 hover:text-white transition-colors"
                 >
-                  {copiedKey ? <Check size={18} className="text-emerald-500" /> : <Copy size={18} />}
+                  {copiedKey ? <Check size={16} className="text-emerald-500" /> : <Copy size={16} />}
                 </button>
               </div>
             </div>
-            <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-               <p className="text-xs font-bold text-amber-700 dark:text-amber-400 leading-relaxed">
-                 <span className="uppercase block mb-1">Warning:</span>
-                 This key will NEVER be shown again. Secure it immediately.
-               </p>
-            </div>
+            <p className="text-[0.7rem] text-amber-600 font-bold uppercase tracking-widest text-center px-2 italic">
+              Warning: This is the only time this key will be displayed.
+            </p>
             <button
               onClick={() => setNewlyCreatedKey(null)}
-              className="w-full h-14 bg-zinc-100 dark:bg-slate-800 text-olive-950 dark:text-white rounded-xl font-bold"
+              className="w-full h-11 bg-zinc-100 dark:bg-slate-700 text-olive-950 dark:text-white rounded font-bold transition-all border border-zinc-200 dark:border-slate-700"
             >
-              I have stored the key securely
+              Done
             </button>
-          </div>
-        </Modal>
-      )}
-
-      {/* Event Logs Modal */}
-      {selectedEvent && (
-        <Modal 
-          title={`Signals: ${selectedEvent.eventName}`} 
-          onClose={() => setSelectedEvent(null)}
-          maxWidth="max-w-4xl"
-        >
-          <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
-            {selectedEventLogs.map(log => (
-              <div key={log._id} className="bg-zinc-50 dark:bg-slate-800 rounded-xl border border-zinc-100 dark:border-slate-700 overflow-hidden">
-                <div className="px-4 py-3 bg-zinc-100/50 dark:bg-slate-800/50 flex items-center justify-between border-b border-zinc-100 dark:border-slate-700">
-                   <div className="flex items-center gap-3">
-                      <Clock size={14} className="text-zinc-400" />
-                      <span className="text-[0.8rem] font-bold text-zinc-500">{new Date(log.createdAt).toLocaleString()}</span>
-                   </div>
-                   {log.userIdentifier && (
-                     <div className="flex items-center gap-2 px-2 py-0.5 bg-emerald-500/10 text-emerald-600 rounded-md text-[0.7rem] font-black uppercase tracking-widest">
-                       <User size={10} />
-                       {log.userIdentifier}
-                     </div>
-                   )}
-                </div>
-                <div className="p-4">
-                  <pre className="text-[0.85rem] font-mono text-blue-600 dark:text-blue-400 overflow-x-auto">
-                    <code>{JSON.stringify(log.payload, null, 2)}</code>
-                  </pre>
-                </div>
-              </div>
-            ))}
-            {selectedEventLogs.length === 0 && (
-              <div className="py-20 text-center text-zinc-400 italic">No signals recorded yet.</div>
-            )}
-          </div>
-        </Modal>
-      )}
-
-      {/* User History Modal */}
-      {selectedUser && (
-        <Modal 
-          title={`Identity Timeline: ${selectedUser.userIdentifier}`} 
-          onClose={() => setSelectedUser(null)}
-          maxWidth="max-w-4xl"
-        >
-          <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar text-olive-950 dark:text-slate-100">
-            <div className="p-6 bg-zinc-50 dark:bg-slate-800 rounded-2xl flex items-start gap-4">
-               <div className="p-3 bg-emerald-500 text-white rounded-xl">
-                 <User size={24} />
-               </div>
-               <div>
-                 <h4 className="text-lg font-bold">User Metadata</h4>
-                 <pre className="mt-3 text-xs font-mono text-zinc-500 bg-white dark:bg-slate-900 p-3 rounded-lg border border-zinc-100 dark:border-slate-800">
-                   {JSON.stringify(selectedUser.metadata, null, 2)}
-                 </pre>
-               </div>
-            </div>
-
-            <div className="space-y-4">
-              <h4 className="text-sm font-black uppercase tracking-widest text-zinc-500 pt-4">User Event History</h4>
-              {selectedUserEvents.map(log => (
-                <div key={log._id} className="relative pl-8 before:absolute before:left-3 before:top-0 before:bottom-0 before:w-0.5 before:bg-zinc-100 dark:before:bg-slate-800">
-                  <div className="absolute left-1.5 top-2 w-3.5 h-3.5 rounded-full bg-blue-500 ring-4 ring-white dark:ring-slate-900" />
-                  <div className="bg-white dark:bg-slate-900 border border-zinc-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
-                    <div className="flex items-center justify-between mb-2">
-                       <span className="text-sm font-black text-olive-950 dark:text-slate-100 uppercase tracking-wider">{(log as any).eventName}</span>
-                       <span className="text-[0.7rem] text-zinc-400 font-bold">{new Date(log.createdAt).toLocaleString()}</span>
-                    </div>
-                    <pre className="text-[0.75rem] font-mono text-zinc-500 bg-zinc-50 dark:bg-slate-800/50 p-2 rounded">
-                      {JSON.stringify(log.payload, null, 2)}
-                    </pre>
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
         </Modal>
       )}

@@ -22,7 +22,7 @@ export interface RawEvent {
   userId: string;
   sessionId: string;
   timestamp: string;
-  properties: Record<string, any>;
+  properties: Record<string, unknown>;
   context: {
     library?: { name: string; version: string };
     page?: { url: string; referrer: string; title: string };

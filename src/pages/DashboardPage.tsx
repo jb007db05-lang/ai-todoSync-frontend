@@ -18,6 +18,7 @@ import ChatPanel from '@/components/ChatPanel';
 import ActivityHistoryPanel from '@/components/ActivityHistoryPanel';
 import AnalyticsDashboardPanel from '@/components/AnalyticsDashboardPanel';
 import EventTrackingPage from '@/pages/EventTrackingPage';
+import Sidebar, { SidebarView } from '@/components/Sidebar';
 import { useChat } from '@/context/ChatContext';
 import NotificationBox, { Notification } from '@/components/NotificationBox';
 import TaskList from '@/components/TaskList';
@@ -37,20 +38,16 @@ import {
   Folder,
   Layout,
   List,
-  LogOut,
   Bell,
   MessageCircle,
   MessageSquare,
   NotebookPen,
   AlertCircle,
   Plus,
-  Settings,
   Users,
   Trash2,
   History,
   RefreshCw,
-  BarChart3,
-  Activity,
   X
 } from 'lucide-react';
 import { createEpic, deleteEpic, getEpics, updateEpic } from '@/services/epics';
@@ -1634,95 +1631,15 @@ function DashboardPage(): JSX.Element {
         </div>
       )}
       {/* Sidebar */}
-      <aside className="flex flex-col w-[260px] shrink-0 bg-slate-50 dark:bg-slate-900 border-r border-zinc-200 dark:border-slate-800 h-full shadow-[4px_0_24px_rgba(0,0,0,0.02)] dark:shadow-none z-10">
-        {/* Logo */}
-        <div className="flex items-center gap-3 px-6 h-[72px] border-b border-zinc-200 dark:border-slate-800 shrink-0">
-          <Layout className="text-olive-600 dark:text-olive-500" size={24} strokeWidth={2.5} />
-          <span className="font-['Outfit'] font-extrabold text-olive-950 dark:text-white text-[1.25rem] tracking-tight">Task Manager</span>
-        </div>
-
-        {/* Project nav */}
-        <div className="flex flex-col gap-1.5 p-4 flex-1 overflow-y-auto">
-          <p className="text-[0.7rem] uppercase tracking-widest text-zinc-400 dark:text-slate-500 font-bold px-3 pt-2 pb-2">Workspace</p>
-          <button
-            className={[
-              'flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-[0.95rem] font-medium transition-all duration-200 justify-start',
-              selectedProjectView === ALL_PROJECTS_VALUE && activeView !== 'settings'
-                ? 'bg-olive-700 text-white shadow-md shadow-olive-700/20' 
-                : 'text-zinc-600 hover:text-olive-950 hover:bg-zinc-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800'
-            ].join(' ')}
-            onClick={() => handleProjectSelect(ALL_PROJECTS_VALUE)}
-            type="button"
-          >
-            <Folder size={18} strokeWidth={2} />
-            <span>All Projects</span>
-          </button>
-
-          <button
-            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-[0.95rem] font-medium text-olive-600 hover:text-olive-700 hover:bg-olive-50 dark:text-olive-500 dark:hover:bg-olive-900/40 transition-all duration-200 justify-start mt-1 border border-dashed border-olive-200 dark:border-olive-800"
-            onClick={() => setIsProjectCreateModalOpen(true)}
-            type="button"
-          >
-            <Plus size={18} strokeWidth={2.5} />
-            <span>New Project</span>
-          </button>
-        </div>
-
-        {/* Footer */}
-        <div className="flex flex-col gap-1 p-4 border-t border-zinc-200 dark:border-slate-800 shrink-0">
-          <button
-            className={[
-              'flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-[0.95rem] font-medium transition-all duration-200 justify-start',
-              activeView === 'settings' 
-                ? 'bg-olive-700 text-white shadow-md shadow-olive-700/20' 
-                : 'text-zinc-600 hover:text-olive-950 hover:bg-zinc-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800'
-            ].join(' ')}
-            onClick={() => setActiveView('settings')}
-            title="Settings"
-            type="button"
-          >
-            <Settings size={18} strokeWidth={2} />
-            <span>Settings</span>
-          </button>
-          <button
-            className={[
-              'flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-[0.95rem] font-medium transition-all duration-200 justify-start',
-              activeView === 'analytics' 
-                ? 'bg-olive-700 text-white shadow-md shadow-olive-700/20' 
-                : 'text-zinc-600 hover:text-olive-950 hover:bg-zinc-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800'
-            ].join(' ')}
-            onClick={() => setActiveView('analytics')}
-            title="Analytics"
-            type="button"
-          >
-            <BarChart3 size={18} strokeWidth={2} />
-            <span>Analytics</span>
-          </button>
-          <button
-            className={[
-              'flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-[0.95rem] font-medium transition-all duration-200 justify-start',
-              activeView === 'event-tracking' 
-                ? 'bg-olive-700 text-white shadow-md shadow-olive-700/20' 
-                : 'text-zinc-600 hover:text-olive-950 hover:bg-zinc-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800'
-            ].join(' ')}
-            onClick={() => setActiveView('event-tracking')}
-            title="Event Tracking"
-            type="button"
-          >
-            <Activity size={18} strokeWidth={2} />
-            <span>Event Tracking</span>
-          </button>
-          <button 
-             className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-[0.95rem] font-medium text-zinc-500 hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:text-red-400 dark:hover:bg-red-900/20 transition-all duration-200 justify-start mt-1"
-             onClick={handleLogout} 
-             title="Sign out" 
-             type="button"
-          >
-            <LogOut size={18} strokeWidth={2} />
-            <span>Sign out</span>
-          </button>
-        </div>
-      </aside>
+      <Sidebar
+        activeView={activeView}
+        selectedProjectView={selectedProjectView}
+        allProjectsValue={ALL_PROJECTS_VALUE}
+        onProjectSelect={handleProjectSelect}
+        onViewChange={(view: SidebarView) => setActiveView(view)}
+        onNewProject={() => setIsProjectCreateModalOpen(true)}
+        onLogout={handleLogout}
+      />
 
       {/* Right side wrapper */}
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
