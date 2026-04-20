@@ -1,0 +1,489 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { 
+  Plus, 
+  User, 
+  Search, 
+  ChevronRight,
+  Trash2,
+  Copy,
+  Check,
+  RefreshCw,
+  ChevronDown,
+  ChevronUp,
+  ChevronLeft
+} from 'lucide-react';
+import { 
+  listApiKeys, 
+  createApiKey, 
+  deleteApiKey, 
+  AnalyticsKey
+} from '@/services/eventTracking';
+import { getAnalyticsEvents, RawEvent } from '@/services/analytics';
+import Modal from '@/components/Modal';
+import GlobalLoader from '@/components/GlobalLoader';
+
+const EventTrackingPage: React.FC = () => {
+  const [keys, setKeys] = useState<AnalyticsKey[]>([]);
+  const [selectedKeyId, setSelectedKeyId] = useState<string>('');
+  const [rawLogs, setRawLogs] = useState<RawEvent[]>([]);
+  const [totalLogs, setTotalLogs] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(30);
+  
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  
+  // UI states
+  const [isNodeSwitcherOpen, setIsNodeSwitcherOpen] = useState(false);
+  const [isManageKeysModalOpen, setIsManageKeysModalOpen] = useState(false);
+  const [isCreateKeyModalOpen, setIsCreateKeyModalOpen] = useState(false);
+  const [newKeyName, setNewKeyName] = useState('');
+  const [newlyCreatedKey, setNewlyCreatedKey] = useState<AnalyticsKey | null>(null);
+  const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
+  
+  const [copiedKey, setCopiedKey] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const loadInitialData = async () => {
+    setLoading(true);
+    try {
+      const apiKeys = await listApiKeys();
+      setKeys(apiKeys);
+      if (apiKeys.length > 0) {
+        setSelectedKeyId(apiKeys[0].id);
+      }
+    } catch (err) {
+      console.error('Failed to load API keys', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadLogs = async (keyId: string, page: number) => {
+    setRefreshing(true);
+    try {
+      const offset = (page - 1) * pageSize;
+      const data = await getAnalyticsEvents({ 
+        keyId, 
+        limit: pageSize, 
+        offset,
+        eventName: searchTerm || undefined 
+      });
+      setRawLogs(data.events);
+      setTotalLogs(data.total);
+    } catch (err) {
+      console.error('Failed to load logs', err);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+
+  useEffect(() => {
+    if (selectedKeyId) {
+      setCurrentPage(1);
+      loadLogs(selectedKeyId, 1);
+    }
+  }, [selectedKeyId, searchTerm]);
+
+  useEffect(() => {
+    if (selectedKeyId) {
+      loadLogs(selectedKeyId, currentPage);
+    }
+  }, [currentPage]);
+
+  const handleCreateKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newKeyName.trim()) return;
+    try {
+      const newKey = await createApiKey(newKeyName);
+      setNewlyCreatedKey(newKey);
+      setIsCreateKeyModalOpen(false);
+      setNewKeyName('');
+      const updatedKeys = await listApiKeys();
+      setKeys(updatedKeys);
+      if (!selectedKeyId) setSelectedKeyId(newKey.id);
+    } catch (err) {
+      console.error('Failed to create API key', err);
+    }
+  };
+
+  const handleDeleteKey = async (id: string, name: string) => {
+    if (!window.confirm(`Are you sure you want to delete the API key "${name}"? This action is irreversible.`)) return;
+    try {
+      await deleteApiKey(id);
+      const updatedKeys = await listApiKeys();
+      setKeys(updatedKeys);
+      if (selectedKeyId === id) {
+        setSelectedKeyId(updatedKeys[0]?.id || '');
+      }
+    } catch (err) {
+      console.error('Failed to delete API key', err);
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedKey(true);
+    setTimeout(() => setCopiedKey(false), 2000);
+  };
+
+  const activeKey = useMemo(() => {
+    return keys.find(k => k.id === selectedKeyId);
+  }, [keys, selectedKeyId]);
+
+  const getEventColor = (name: string) => {
+    const lowerName = name.toLowerCase();
+    if (lowerName.includes('identify')) return 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20';
+    if (lowerName.includes('page') || lowerName.includes('view')) return 'text-blue-600 bg-blue-50 dark:bg-blue-900/20';
+    if (lowerName.includes('click') || lowerName.includes('select')) return 'text-amber-600 bg-amber-50 dark:bg-amber-900/20';
+    if (lowerName.includes('error') || lowerName.includes('fail')) return 'text-red-600 bg-red-50 dark:bg-red-900/20';
+    return 'text-zinc-600 bg-zinc-50 dark:bg-zinc-800/50';
+  };
+
+
+  if (loading) return <GlobalLoader message="Synchronizing telemetry engine..." />;
+
+  const totalPages = Math.ceil(totalLogs / pageSize);
+  const thCls = 'text-left px-5 py-3 text-[0.8rem] font-bold uppercase tracking-[0.05em] text-zinc-500 dark:text-slate-400 bg-zinc-50 dark:bg-slate-800 border-b border-zinc-200 dark:border-slate-700 sticky top-0 z-10';
+
+  return (
+    <div className="flex flex-col h-full bg-white dark:bg-slate-900">
+      {/* Clean Toolbar (Matches ProjectPanel) */}
+      <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-zinc-200 dark:border-slate-700 bg-zinc-50 dark:bg-slate-800 sticky top-0 z-30">
+        <div className="grid gap-0.5">
+          <h4 className="m-0 font-bold text-olive-950 dark:text-slate-100 text-[0.95rem]">Event Tracking</h4>
+          <span className="text-zinc-400 dark:text-slate-500 text-[0.75rem]">Telemetry Stream Monitoring</span>
+        </div>
+
+        {/* Divider */}
+        <div className="h-6 w-px bg-zinc-200 dark:bg-slate-700 opacity-60 mx-2" />
+
+        {/* Optimized Node Switcher */}
+        <div className="relative">
+          <button
+            onClick={() => setIsNodeSwitcherOpen(!isNodeSwitcherOpen)}
+            className="flex items-center gap-3 h-9 px-3 bg-white dark:bg-slate-700 border border-zinc-200 dark:border-slate-600 rounded text-[0.85rem] font-medium text-olive-950 dark:text-slate-100 shadow-sm hover:bg-zinc-50 dark:hover:bg-slate-600 transition-colors min-w-[180px] justify-between"
+          >
+            <div className="flex items-center gap-2 truncate">
+              <div className={`w-2 h-2 rounded-full ${activeKey ? 'bg-emerald-500' : 'bg-zinc-300'}`} />
+              <span className="truncate">{activeKey ? activeKey.name : 'Select Node'}</span>
+            </div>
+            <ChevronDown size={14} className="text-zinc-400" />
+          </button>
+
+          {isNodeSwitcherOpen && (
+            <div className="absolute top-full left-0 mt-1 w-[240px] bg-white dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 rounded shadow-xl z-50">
+              <div className="py-1">
+                {keys.map(key => (
+                  <button
+                    key={key.id}
+                    onClick={() => { setSelectedKeyId(key.id); setIsNodeSwitcherOpen(false); }}
+                    className={`w-full px-4 py-2 text-left text-[0.85rem] transition-colors ${selectedKeyId === key.id ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600' : 'text-zinc-600 dark:text-slate-300 hover:bg-zinc-50 dark:hover:bg-slate-700'}`}
+                  >
+                    {key.name}
+                  </button>
+                ))}
+                <div className="border-t border-zinc-100 dark:border-slate-700 my-1" />
+                <button 
+                  onClick={() => { setIsManageKeysModalOpen(true); setIsNodeSwitcherOpen(false); }}
+                  className="w-full px-4 py-2 text-left text-[0.75rem] font-bold text-zinc-500 hover:text-blue-600 transition-colors uppercase tracking-wider"
+                >
+                  Manage Nodes
+                </button>
+              </div>
+            </div>
+          )}
+          {isNodeSwitcherOpen && <div className="fixed inset-0 z-40" onClick={() => setIsNodeSwitcherOpen(false)} />}
+        </div>
+
+        {/* Search */}
+        <div className="relative flex-1 flex items-center">
+          <Search className="absolute left-3.5 text-zinc-400 dark:text-slate-500" size={14} />
+          <input
+            className="w-full h-9 pl-10 pr-3 text-[0.85rem] bg-white dark:bg-slate-700 border border-zinc-200 dark:border-slate-600 rounded-md shadow-inner transition-all duration-200 focus:outline-none focus:border-blue-500 text-olive-950 dark:text-slate-100 placeholder:text-zinc-400"
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Filter interaction signals..."
+            type="text"
+            value={searchTerm}
+          />
+        </div>
+
+        <button
+          onClick={() => { if (selectedKeyId) loadLogs(selectedKeyId, currentPage); }}
+          disabled={refreshing || !selectedKeyId}
+          className="inline-flex items-center justify-center w-9 h-9 bg-white dark:bg-slate-700 border border-zinc-200 dark:border-slate-600 rounded text-zinc-400 hover:text-blue-600 transition-colors disabled:opacity-30"
+        >
+          <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
+        </button>
+      </div>
+
+      {/* Simplified Table (Card-Row Architecture) */}
+      <div className="flex-1 overflow-y-auto px-1 py-1 custom-scrollbar">
+        {!selectedKeyId ? (
+          <div className="flex items-center justify-center py-20 text-zinc-400 dark:text-slate-500 italic text-[0.9rem]">
+            Select a telemetry node to begin monitoring.
+          </div>
+        ) : (
+          <table className="w-full border-separate border-spacing-y-2 text-[0.95rem]">
+            <thead>
+              <tr>
+                <th className={`${thCls} !pl-5`} style={{ width: 80 }}>Status</th>
+                <th className={thCls} style={{ width: '35%' }}>Identity</th>
+                <th className={thCls} style={{ width: '25%' }}>Signal</th>
+                <th className={thCls} style={{ width: '15%' }}>Date</th>
+                <th className={thCls} style={{ width: '10%' }}>Time</th>
+                <th className={`${thCls} text-right !pr-6`} style={{ width: 60 }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {rawLogs.length === 0 && !refreshing ? (
+                <tr>
+                  <td className="text-zinc-400 dark:text-slate-500 text-center py-10" colSpan={6}>
+                    No signals ingested in this window.
+                  </td>
+                </tr>
+              ) : (
+                rawLogs.map((log) => (
+                  <React.Fragment key={log._id}>
+                    <tr
+                      className={[
+                        'cursor-pointer transition-all duration-200 relative bg-white dark:bg-slate-800/80 shadow-sm hover:shadow-md border border-zinc-100 dark:border-slate-700/50 group',
+                        expandedLogId === log._id ? 'ring-2 ring-blue-500/30' : ''
+                      ].join(' ')}
+                      onClick={() => setExpandedLogId(expandedLogId === log._id ? null : log._id)}
+                    >
+                      <td className="px-5 py-3 align-middle first:rounded-l-xl border-y border-transparent">
+                         <div className="flex items-center justify-center">
+                            <div className="w-2 h-2 rounded-full bg-emerald-500" title="Ingested" />
+                         </div>
+                      </td>
+                      <td className="px-5 py-3 align-middle border-y border-transparent">
+                        <div className="flex items-center gap-3">
+                           <User size={16} className="text-zinc-400" />
+                           <strong className="text-olive-900 dark:text-slate-100 font-bold text-[0.95rem]">
+                             {log.userId || 'Anonymous'}
+                           </strong>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3 align-middle border-y border-transparent">
+                        <span className={`px-2 py-0.5 rounded text-[0.75rem] font-bold uppercase tracking-tight ${getEventColor(log.eventName)}`}>
+                          {log.eventName.replace(/_/g, ' ')}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3 align-middle border-y border-transparent text-zinc-600 dark:text-slate-300 text-[0.9rem]">
+                        {new Date(log.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                      </td>
+                      <td className="px-5 py-3 align-middle border-y border-transparent text-zinc-500 dark:text-slate-400 text-[0.9rem] font-medium">
+                        {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </td>
+                      <td className="px-5 py-3 align-middle border-y border-r border-transparent last:rounded-r-xl text-right">
+                         <div className="text-zinc-300 dark:text-slate-600 group-hover:text-blue-500 transition-colors">
+                            {expandedLogId === log._id ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                         </div>
+                      </td>
+                    </tr>
+
+                    {/* Minimalist Expanded Panel */}
+                    {expandedLogId === log._id && (
+                      <tr className="bg-zinc-50/50 dark:bg-slate-900/50">
+                        <td colSpan={6} className="px-5 py-6">
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in slide-in-from-top-1">
+                              <div className="space-y-3">
+                                 <div className="flex items-center justify-between">
+                                    <span className="text-[0.65rem] font-bold uppercase tracking-widest text-zinc-400">Signal Payload</span>
+                                    <button 
+                                      onClick={(e) => { e.stopPropagation(); copyToClipboard(JSON.stringify(log.properties, null, 2)); }}
+                                      className="text-[0.65rem] font-bold text-blue-600 hover:underline"
+                                    >
+                                      {copiedKey ? 'Copied' : 'Copy JSON'}
+                                    </button>
+                                 </div>
+                                 <div className="bg-slate-900 border border-slate-800 rounded p-4 max-h-[300px] overflow-y-auto custom-scrollbar">
+                                    <pre className="text-[0.8rem] text-blue-200 font-mono">
+                                       <code>{JSON.stringify(log.properties, null, 2)}</code>
+                                    </pre>
+                                 </div>
+                              </div>
+                              <div className="space-y-4">
+                                 <span className="text-[0.65rem] font-bold uppercase tracking-widest text-zinc-400 block">Execution Context</span>
+                                 <div className="grid grid-cols-2 gap-3">
+                                    {[
+                                      { label: 'Session ID', value: log.sessionId.slice(0, 16) + '...' },
+                                      { label: 'Platform', value: log.context?.device?.os || 'N/A' },
+                                      { label: 'Browser', value: log.context?.device?.browser || 'N/A' },
+                                      { label: 'Screen', value: log.context?.device?.screen || 'N/A' },
+                                    ].map((item, idx) => (
+                                      <div key={idx} className="p-3 bg-white dark:bg-slate-800 border border-zinc-100 dark:border-slate-700 rounded">
+                                         <span className="text-[0.6rem] text-zinc-400 uppercase block mb-1">{item.label}</span>
+                                         <span className="text-[0.8rem] font-medium text-olive-950 dark:text-slate-100 truncate block">{item.value}</span>
+                                      </div>
+                                    ))}
+                                 </div>
+                                 <div className="p-3 bg-white dark:bg-slate-800 border border-zinc-100 dark:border-slate-700 rounded">
+                                    <span className="text-[0.6rem] text-zinc-400 uppercase block mb-1">Origin URL</span>
+                                    <span className="text-[0.8rem] font-medium text-blue-600 break-all">{log.context?.page?.url || 'N/A'}</span>
+                                 </div>
+                              </div>
+                           </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))
+              )}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Simple Pagination Bar */}
+      <div className="flex items-center justify-between gap-3 px-4 py-3 border-t border-zinc-200 dark:border-slate-700 bg-zinc-50 dark:bg-slate-800">
+        <div className="text-[0.75rem] text-zinc-400 dark:text-slate-500">
+          Page <strong className="text-zinc-700 dark:text-slate-300">{currentPage}</strong> of{' '}
+          <strong className="text-zinc-700 dark:text-slate-300">{totalPages || 1}</strong>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <button
+            className="w-7 h-7 p-0 flex items-center justify-center bg-white dark:bg-slate-700 border border-zinc-200 dark:border-slate-600 rounded text-zinc-500 dark:text-slate-400 hover:bg-zinc-50 dark:hover:bg-slate-600 disabled:opacity-50 transition-colors"
+            disabled={currentPage <= 1}
+            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+            type="button"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <button
+            className="w-7 h-7 p-0 flex items-center justify-center bg-white dark:bg-slate-700 border border-zinc-200 dark:border-slate-600 rounded text-zinc-500 dark:text-slate-400 hover:bg-zinc-50 dark:hover:bg-slate-600 disabled:opacity-50 transition-colors"
+            disabled={currentPage >= totalPages || totalPages === 0}
+            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+            type="button"
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      </div>
+
+      {/* --- MODALS --- */}
+      {isManageKeysModalOpen && (
+        <Modal 
+          title="Node Management" 
+          onClose={() => setIsManageKeysModalOpen(false)}
+          maxWidth="max-w-[480px]"
+        >
+          <div className="space-y-6 py-2">
+            <div className="p-4 bg-zinc-50 dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 rounded flex items-center justify-between">
+               <div>
+                  <h4 className="text-[0.95rem] font-bold text-olive-950 dark:text-white">Provision New Node</h4>
+                  <p className="text-[0.75rem] text-zinc-500">Add identifiers for fresh telemetry streams.</p>
+               </div>
+               <button 
+                  onClick={() => setIsCreateKeyModalOpen(true)}
+                  className="px-4 py-2 bg-olive-900 dark:bg-olive-600 text-white rounded text-sm font-medium hover:bg-olive-800 transition-colors flex items-center gap-2"
+               >
+                  <Plus size={16} /> New Node
+               </button>
+            </div>
+
+            <div className="space-y-2 max-h-[300px] overflow-y-auto px-1">
+               {keys.map(key => (
+                  <div 
+                    key={key.id}
+                    className="p-3 rounded border border-zinc-100 dark:border-slate-700 bg-white dark:bg-slate-800 flex items-center justify-between group"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <strong className="text-[0.9rem] text-olive-950 dark:text-slate-100 truncate">{key.name}</strong>
+                        <span className="text-[0.6rem] px-1 bg-emerald-50 text-emerald-600 rounded font-bold uppercase tracking-wide">Active</span>
+                      </div>
+                      <code className="text-[0.7rem] text-zinc-400 font-mono block mt-0.5">{key.maskedKey}</code>
+                    </div>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleDeleteKey(key.id, key.name); }}
+                      className="p-2 text-zinc-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+               ))}
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {isCreateKeyModalOpen && (
+        <Modal 
+          title="Create API Key" 
+          onClose={() => setIsCreateKeyModalOpen(false)}
+          maxWidth="max-w-[400px]"
+        >
+          <form onSubmit={handleCreateKey} className="space-y-6 pt-2">
+            <div>
+              <label className="block text-[0.75rem] font-bold text-zinc-500 uppercase tracking-wider mb-2">Node Name</label>
+              <input
+                autoFocus
+                type="text"
+                value={newKeyName}
+                onChange={(e) => setNewKeyName(e.target.value)}
+                placeholder="e.g. Production Client"
+                className="w-full h-10 px-3 bg-white dark:bg-slate-700 border border-zinc-200 dark:border-slate-600 rounded text-[0.9rem] focus:outline-none focus:border-blue-500 transition-all font-medium"
+              />
+            </div>
+            <div className="flex gap-3">
+               <button
+                 type="button"
+                 onClick={() => setIsCreateKeyModalOpen(false)}
+                 className="flex-1 h-10 bg-zinc-100 dark:bg-slate-700 text-[0.85rem] font-bold text-zinc-500 rounded"
+               >
+                 Cancel
+               </button>
+               <button
+                 type="submit"
+                 disabled={!newKeyName.trim()}
+                 className="flex-1 h-10 bg-olive-900 dark:bg-olive-600 text-white rounded font-bold text-[0.85rem] shadow-lg shadow-olive-900/20 disabled:opacity-50"
+               >
+                 Create
+               </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {newlyCreatedKey && (
+        <Modal 
+          title="Node Key Created" 
+          onClose={() => setNewlyCreatedKey(null)}
+          maxWidth="max-w-[400px]"
+        >
+          <div className="space-y-6 pt-2">
+            <div className="p-5 bg-slate-900 rounded border border-slate-800 space-y-3">
+              <span className="text-[0.65rem] font-bold text-blue-400 uppercase tracking-widest block text-center">Secret API Key</span>
+              <div className="flex items-center gap-3 p-3 bg-white/5 rounded border border-white/5">
+                <code className="text-[0.95rem] font-bold font-mono text-blue-100 break-all flex-1 text-center">{newlyCreatedKey.key}</code>
+                <button 
+                  onClick={() => copyToClipboard(newlyCreatedKey.key || '')}
+                  className="p-2 text-white/50 hover:text-white transition-colors"
+                >
+                  {copiedKey ? <Check size={16} className="text-emerald-500" /> : <Copy size={16} />}
+                </button>
+              </div>
+            </div>
+            <p className="text-[0.7rem] text-amber-600 font-bold uppercase tracking-widest text-center px-2 italic">
+              Warning: This is the only time this key will be displayed.
+            </p>
+            <button
+              onClick={() => setNewlyCreatedKey(null)}
+              className="w-full h-11 bg-zinc-100 dark:bg-slate-700 text-olive-950 dark:text-white rounded font-bold transition-all border border-zinc-200 dark:border-slate-700"
+            >
+              Done
+            </button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+};
+
+export default EventTrackingPage;
