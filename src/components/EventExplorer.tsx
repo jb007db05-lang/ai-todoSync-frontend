@@ -8,12 +8,9 @@ import {
   Globe,
   ChevronDown,
   ChevronUp,
-  Code,
-  Terminal,
-  Settings
+  Code
 } from 'lucide-react';
 import { getAnalyticsEvents, RawEvent } from '@/services/eventTracking';
-import Skeleton from './Skeleton';
 import {
   useReactTable,
   getCoreRowModel,

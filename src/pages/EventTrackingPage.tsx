@@ -9,7 +9,6 @@ import {
   Check,
   RefreshCw,
   ChevronDown,
-  ChevronUp,
   ChevronLeft
 } from 'lucide-react';
 import {
@@ -23,11 +22,9 @@ import {
 import Modal from '@/components/Modal';
 import noDataImage from '@/assets/no_data.png';
 import { Activity } from 'lucide-react';
-import Skeleton from '@/components/Skeleton';
 import {
   useReactTable,
   getCoreRowModel,
-  flexRender,
   createColumnHelper,
 } from '@tanstack/react-table';
 
@@ -93,7 +90,7 @@ const columns = [
     id: 'actions',
     header: '',
     size: 60,
-    cell: info => {
+    cell: () => {
       // Handled in DataTable's expanded state logic or row click
       return null;
     },
@@ -142,7 +139,7 @@ const EventTrackingPage: React.FC = () => {
     try {
       const offset = (page - 1) * pageSize;
       const data = await getAnalyticsEvents({
-        keyId,
+        apiKeyId: keyId,
         limit: pageSize,
         offset,
         eventName: searchTerm || undefined
@@ -214,12 +211,6 @@ const EventTrackingPage: React.FC = () => {
   }, [keys, selectedKeyId]);
 
 
-
-
-
-
-
-
   const table = useReactTable({
     data: rawLogs,
     columns,
@@ -227,7 +218,6 @@ const EventTrackingPage: React.FC = () => {
   });
 
   const totalPages = Math.ceil(totalLogs / pageSize);
-  const thCls = 'text-left px-5 py-3 text-[0.8rem] font-bold uppercase tracking-[0.05em] text-zinc-500 dark:text-slate-400 bg-zinc-50 dark:bg-slate-800 border-b border-zinc-200 dark:border-slate-700 sticky top-0 z-10';
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-slate-900">

@@ -13,7 +13,6 @@ import {
 } from 'lucide-react';
 import UserAvatar from './UserAvatar';
 import noDataImage from '@/assets/no_data.png';
-import Skeleton from './Skeleton';
 import {
   useReactTable,
   getCoreRowModel,
@@ -214,7 +213,6 @@ function ProjectPanel({
     onSearch(e.target.value);
   };
 
-  const thCls = 'text-left px-4 py-3 text-[0.8rem] font-bold uppercase tracking-[0.05em] text-zinc-500 dark:text-slate-400 bg-zinc-50 dark:bg-slate-800 border-b border-zinc-200 dark:border-slate-700 sticky top-0 z-10';
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'N/A';
