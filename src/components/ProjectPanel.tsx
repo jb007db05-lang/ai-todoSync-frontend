@@ -2,6 +2,8 @@ import type { Project } from '@/types/project';
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight, FolderKanban, Layers3, Pencil, Plus, Search, Trash2, Calendar } from 'lucide-react';
 import UserAvatar from './UserAvatar';
+import noDataImage from '@/assets/no_data.png';
+import Skeleton from './Skeleton';
 
 interface ProjectPanelProps {
   actionProjectId: string | null;
@@ -163,18 +165,79 @@ function ProjectPanel({
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <tr key={`skeleton-${i}`} className="bg-white dark:bg-slate-800/80 shadow-sm border border-zinc-50 dark:border-slate-700/30">
-                  <td className="px-5 py-5 rounded-l-xl"><div className="w-5 h-5 bg-zinc-100 dark:bg-slate-700 rounded relative overflow-hidden"><div className="absolute inset-0 animate-shimmer" /></div></td>
-                  <td className="px-5 py-5"><div className="flex items-center gap-3"><div className="w-5 h-5 bg-zinc-100 dark:bg-slate-700 rounded-full relative overflow-hidden"><div className="absolute inset-0 animate-shimmer" /></div><div className="space-y-2"><div className="h-4 w-32 bg-zinc-100 dark:bg-slate-700 rounded relative overflow-hidden"><div className="absolute inset-0 animate-shimmer" /></div><div className="h-3 w-48 bg-zinc-50 dark:bg-slate-800 rounded relative overflow-hidden"><div className="absolute inset-0 animate-shimmer" /></div></div></div></td>
-                  <td className="px-5 py-5"><div className="flex items-center gap-3"><div className="w-8 h-8 bg-zinc-100 dark:bg-slate-700 rounded-full relative overflow-hidden"><div className="absolute inset-0 animate-shimmer" /></div><div className="h-4 w-20 bg-zinc-100 dark:bg-slate-700 rounded relative overflow-hidden"><div className="absolute inset-0 animate-shimmer" /></div></div></td>
-                  <td className="px-5 py-5"><div className="h-4 w-24 bg-zinc-100 dark:bg-slate-700 rounded relative overflow-hidden"><div className="absolute inset-0 animate-shimmer" /></div></td>
-                  <td className="px-5 py-5"><div className="h-4 w-12 bg-zinc-100 dark:bg-slate-700 rounded relative overflow-hidden"><div className="absolute inset-0 animate-shimmer" /></div></td>
-                  <td className="px-5 py-5 rounded-r-xl text-right"><div className="inline-flex gap-2"><div className="w-8 h-8 bg-zinc-100 dark:bg-slate-700 rounded relative overflow-hidden"><div className="absolute inset-0 animate-shimmer" /></div><div className="w-8 h-8 bg-zinc-100 dark:bg-slate-700 rounded relative overflow-hidden"><div className="absolute inset-0 animate-shimmer" /></div><div className="w-8 h-8 bg-zinc-100 dark:bg-slate-700 rounded relative overflow-hidden"><div className="absolute inset-0 animate-shimmer" /></div></div></td>
+                  <td className="px-5 py-5 rounded-l-xl">
+                    <Skeleton variant="rectangle" className="w-5 h-5 mx-auto" />
+                  </td>
+                  <td className="px-5 py-5">
+                    <div className="flex items-center gap-3">
+                      <Skeleton variant="circle" className="w-5 h-5 flex-shrink-0" />
+                      <div className="space-y-2 flex-1">
+                        <Skeleton variant="text" className="w-32" />
+                        <Skeleton variant="text" className="w-48 h-3" />
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-5 py-5">
+                    <div className="flex items-center gap-3">
+                      <Skeleton variant="circle" className="w-8 h-8 flex-shrink-0" />
+                      <Skeleton variant="text" className="w-20" />
+                    </div>
+                  </td>
+                  <td className="px-5 py-5">
+                    <Skeleton variant="text" className="w-24" />
+                  </td>
+                  <td className="px-5 py-5">
+                    <Skeleton variant="text" className="w-12" />
+                  </td>
+                  <td className="px-5 py-5 rounded-r-xl text-right">
+                    <div className="inline-flex gap-2 justify-end">
+                      <Skeleton variant="rectangle" className="w-8 h-8" />
+                      <Skeleton variant="rectangle" className="w-8 h-8" />
+                      <Skeleton variant="rectangle" className="w-8 h-8" />
+                    </div>
+                  </td>
                 </tr>
               ))
             ) : projects.length === 0 ? (
               <tr>
-                <td className="text-zinc-400 dark:text-slate-500 text-center py-8" colSpan={4}>
-                  {searchTerm ? 'No projects match your search.' : 'No projects found.'}
+                <td colSpan={6} className="py-20 border-y border-transparent">
+                  <div className="flex flex-col items-center justify-center max-w-[400px] mx-auto text-center animate-in fade-in zoom-in duration-500">
+                    <div className="relative">
+                      <img 
+                        src={noDataImage} 
+                        alt="No Data" 
+                        className="relative w-100 h-100 mx-auto object-contain opacity-90" 
+                      />
+                    </div>
+                    
+                    <h3 className="text-xl font-bold text-olive-950 dark:text-white mb-2 tracking-tight">
+                      {searchTerm ? "No Matches Found" : "Your Directory is Empty"}
+                    </h3>
+                    
+                    <p className="text-zinc-500 dark:text-slate-400 text-sm mb-8 leading-relaxed px-4">
+                      {searchTerm 
+                        ? "We couldn't find any projects matching your current filter. Try adjusting your search term to see more results."
+                        : "It looks like you haven't created any projects yet. Start by provisioning a new node for your synchronization workspace."}
+                    </p>
+                    
+                    <button
+                      onClick={searchTerm ? () => onSearch('') : onOpenCreateProject}
+                      className="inline-flex items-center gap-2 px-6 py-2.5 bg-olive-900 dark:bg-olive-600 text-white rounded-lg text-sm font-bold shadow-lg shadow-olive-950/20 hover:bg-olive-800 dark:hover:bg-olive-500 transform transition-all active:scale-95 duration-200"
+                      type="button"
+                    >
+                      {searchTerm ? (
+                        <>
+                          <Search size={16} strokeWidth={2.5} />
+                          <span>Clear search filter</span>
+                        </>
+                      ) : (
+                        <>
+                          <Plus size={18} strokeWidth={2.5} />
+                          <span>Create first project</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </td>
               </tr>
             ) : (
@@ -212,9 +275,9 @@ function ProjectPanel({
                   <td className="px-5 py-3 align-middle border-y border-transparent text-[0.95rem]">
                     <div className="flex items-center gap-3">
                       {project.creator ? (
-                        <UserAvatar 
-                          size="md" 
-                          name={project.creator.name} 
+                        <UserAvatar
+                          size="md"
+                          name={project.creator.name}
                           email={project.creator.email}
                         />
                       ) : (

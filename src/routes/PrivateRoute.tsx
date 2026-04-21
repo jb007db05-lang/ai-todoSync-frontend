@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 
 import { useAuth } from '@/context/AuthContext';
+import Loader from '@/components/Loader';
 
 interface PrivateRouteProps {
   children: ReactNode;
@@ -12,7 +13,7 @@ function PrivateRoute({ children }: PrivateRouteProps): JSX.Element {
   const location = useLocation();
 
   if (loading) {
-    return <div className="route-state">Checking your session...</div>;
+    return <Loader center />;
   }
 
   if (user == null) {

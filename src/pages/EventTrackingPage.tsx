@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  Plus, 
-  User, 
-  Search, 
+import {
+  Plus,
+  User,
+  Search,
   ChevronRight,
   Trash2,
   Copy,
@@ -12,15 +12,19 @@ import {
   ChevronUp,
   ChevronLeft
 } from 'lucide-react';
-import { 
-  listApiKeys, 
-  createApiKey, 
-  deleteApiKey, 
-  AnalyticsKey
+import {
+  listApiKeys,
+  createApiKey,
+  deleteApiKey,
+  AnalyticsKey,
+  getAnalyticsEvents,
+  RawEvent
 } from '@/services/eventTracking';
-import { getAnalyticsEvents, RawEvent } from '@/services/analytics';
 import Modal from '@/components/Modal';
 import GlobalLoader from '@/components/GlobalLoader';
+import noDataImage from '@/assets/no_data.png';
+import { Activity } from 'lucide-react';
+import Skeleton from '@/components/Skeleton';
 
 const EventTrackingPage: React.FC = () => {
   const [keys, setKeys] = useState<AnalyticsKey[]>([]);
@@ -29,10 +33,10 @@ const EventTrackingPage: React.FC = () => {
   const [totalLogs, setTotalLogs] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(30);
-  
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  
+
   // UI states
   const [isNodeSwitcherOpen, setIsNodeSwitcherOpen] = useState(false);
   const [isManageKeysModalOpen, setIsManageKeysModalOpen] = useState(false);
@@ -40,7 +44,7 @@ const EventTrackingPage: React.FC = () => {
   const [newKeyName, setNewKeyName] = useState('');
   const [newlyCreatedKey, setNewlyCreatedKey] = useState<AnalyticsKey | null>(null);
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
-  
+
   const [copiedKey, setCopiedKey] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -63,11 +67,11 @@ const EventTrackingPage: React.FC = () => {
     setRefreshing(true);
     try {
       const offset = (page - 1) * pageSize;
-      const data = await getAnalyticsEvents({ 
-        keyId, 
-        limit: pageSize, 
+      const data = await getAnalyticsEvents({
+        keyId,
+        limit: pageSize,
         offset,
-        eventName: searchTerm || undefined 
+        eventName: searchTerm || undefined
       });
       setRawLogs(data.events);
       setTotalLogs(data.total);
@@ -145,6 +149,8 @@ const EventTrackingPage: React.FC = () => {
   };
 
 
+
+
   if (loading) return <GlobalLoader message="Synchronizing telemetry engine..." />;
 
   const totalPages = Math.ceil(totalLogs / pageSize);
@@ -188,7 +194,7 @@ const EventTrackingPage: React.FC = () => {
                   </button>
                 ))}
                 <div className="border-t border-zinc-100 dark:border-slate-700 my-1" />
-                <button 
+                <button
                   onClick={() => { setIsManageKeysModalOpen(true); setIsNodeSwitcherOpen(false); }}
                   className="w-full px-4 py-2 text-left text-[0.75rem] font-bold text-zinc-500 hover:text-blue-600 transition-colors uppercase tracking-wider"
                 >
@@ -224,8 +230,32 @@ const EventTrackingPage: React.FC = () => {
       {/* Simplified Table (Card-Row Architecture) */}
       <div className="flex-1 overflow-y-auto px-1 py-1 custom-scrollbar">
         {!selectedKeyId ? (
-          <div className="flex items-center justify-center py-20 text-zinc-400 dark:text-slate-500 italic text-[0.9rem]">
-            Select a telemetry node to begin monitoring.
+          <div className="flex flex-col items-center justify-center py-24 text-center animate-in fade-in zoom-in duration-500">
+            <div className="relative mb-8">
+              <div className="absolute inset-0 bg-blue-500/10 blur-3xl rounded-full translate-y-4" />
+              <img 
+                src={noDataImage} 
+                alt="No Node Selected" 
+                className="relative w-52 h-52 mx-auto object-contain opacity-90 transition-transform duration-500 hover:scale-105" 
+              />
+            </div>
+            
+            <h3 className="text-xl font-bold text-olive-950 dark:text-white mb-2 tracking-tight font-['Outfit']">
+              No Node Selected
+            </h3>
+            
+            <p className="text-zinc-500 dark:text-slate-400 text-sm max-w-[360px] mx-auto mb-8 leading-relaxed">
+              Choose a telemetry node from the switcher above to start exploring incoming interaction signals in real-time.
+            </p>
+            
+            <button
+              onClick={() => setIsNodeSwitcherOpen(true)}
+              className="inline-flex items-center gap-2.5 px-6 py-2.5 bg-blue-600 dark:bg-blue-600 text-white rounded-lg text-sm font-bold shadow-lg shadow-blue-600/20 hover:bg-blue-700 dark:hover:bg-blue-500 transform transition-all active:scale-95 duration-200"
+              type="button"
+            >
+              <Activity size={18} strokeWidth={2.5} />
+              <span>Select Telemetry Node</span>
+            </button>
           </div>
         ) : (
           <table className="w-full border-separate border-spacing-y-2 text-[0.95rem]">
@@ -240,9 +270,35 @@ const EventTrackingPage: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {rawLogs.length === 0 && !refreshing ? (
+              {refreshing || (loading && rawLogs.length === 0) ? (
+                Array.from({ length: 8 }).map((_, i) => (
+                  <tr key={`skeleton-${i}`} className="bg-white dark:bg-slate-800/80 shadow-sm border border-zinc-50 dark:border-slate-700/30">
+                    <td className="px-5 py-3 rounded-l-xl">
+                      <Skeleton variant="circle" className="w-5 h-5 mx-auto" />
+                    </td>
+                    <td className="px-5 py-3">
+                      <div className="flex items-center gap-3">
+                        <Skeleton variant="circle" className="w-6 h-6 flex-shrink-0" />
+                        <Skeleton variant="text" className="w-32" />
+                      </div>
+                    </td>
+                    <td className="px-5 py-3">
+                      <Skeleton variant="text" className="w-24" />
+                    </td>
+                    <td className="px-5 py-3">
+                      <Skeleton variant="text" className="w-20" />
+                    </td>
+                    <td className="px-5 py-3">
+                      <Skeleton variant="text" className="w-12" />
+                    </td>
+                    <td className="px-5 py-3 rounded-r-xl text-right">
+                      <Skeleton variant="rectangle" className="w-6 h-6 ml-auto" />
+                    </td>
+                  </tr>
+                ))
+              ) : rawLogs.length === 0 ? (
                 <tr>
-                  <td className="text-zinc-400 dark:text-slate-500 text-center py-10" colSpan={6}>
+                  <td className="text-zinc-400 dark:text-slate-500 text-center py-20" colSpan={6}>
                     No signals ingested in this window.
                   </td>
                 </tr>
@@ -257,16 +313,16 @@ const EventTrackingPage: React.FC = () => {
                       onClick={() => setExpandedLogId(expandedLogId === log._id ? null : log._id)}
                     >
                       <td className="px-5 py-3 align-middle first:rounded-l-xl border-y border-transparent">
-                         <div className="flex items-center justify-center">
-                            <div className="w-2 h-2 rounded-full bg-emerald-500" title="Ingested" />
-                         </div>
+                        <div className="flex items-center justify-center">
+                          <div className="w-2 h-2 rounded-full bg-emerald-500" title="Ingested" />
+                        </div>
                       </td>
                       <td className="px-5 py-3 align-middle border-y border-transparent">
                         <div className="flex items-center gap-3">
-                           <User size={16} className="text-zinc-400" />
-                           <strong className="text-olive-900 dark:text-slate-100 font-bold text-[0.95rem]">
-                             {log.userId || 'Anonymous'}
-                           </strong>
+                          <User size={16} className="text-zinc-400" />
+                          <strong className="text-olive-900 dark:text-slate-100 font-bold text-[0.95rem]">
+                            {log.userId || 'Anonymous'}
+                          </strong>
                         </div>
                       </td>
                       <td className="px-5 py-3 align-middle border-y border-transparent">
@@ -281,9 +337,9 @@ const EventTrackingPage: React.FC = () => {
                         {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </td>
                       <td className="px-5 py-3 align-middle border-y border-r border-transparent last:rounded-r-xl text-right">
-                         <div className="text-zinc-300 dark:text-slate-600 group-hover:text-blue-500 transition-colors">
-                            {expandedLogId === log._id ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                         </div>
+                        <div className="text-zinc-300 dark:text-slate-600 group-hover:text-blue-500 transition-colors">
+                          {expandedLogId === log._id ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                        </div>
                       </td>
                     </tr>
 
@@ -291,44 +347,44 @@ const EventTrackingPage: React.FC = () => {
                     {expandedLogId === log._id && (
                       <tr className="bg-zinc-50/50 dark:bg-slate-900/50">
                         <td colSpan={6} className="px-5 py-6">
-                           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in slide-in-from-top-1">
-                              <div className="space-y-3">
-                                 <div className="flex items-center justify-between">
-                                    <span className="text-[0.65rem] font-bold uppercase tracking-widest text-zinc-400">Signal Payload</span>
-                                    <button 
-                                      onClick={(e) => { e.stopPropagation(); copyToClipboard(JSON.stringify(log.properties, null, 2)); }}
-                                      className="text-[0.65rem] font-bold text-blue-600 hover:underline"
-                                    >
-                                      {copiedKey ? 'Copied' : 'Copy JSON'}
-                                    </button>
-                                 </div>
-                                 <div className="bg-slate-900 border border-slate-800 rounded p-4 max-h-[300px] overflow-y-auto custom-scrollbar">
-                                    <pre className="text-[0.8rem] text-blue-200 font-mono">
-                                       <code>{JSON.stringify(log.properties, null, 2)}</code>
-                                    </pre>
-                                 </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in slide-in-from-top-1">
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[0.65rem] font-bold uppercase tracking-widest text-zinc-400">Signal Payload</span>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); copyToClipboard(JSON.stringify(log.properties, null, 2)); }}
+                                  className="text-[0.65rem] font-bold text-blue-600 hover:underline"
+                                >
+                                  {copiedKey ? 'Copied' : 'Copy JSON'}
+                                </button>
                               </div>
-                              <div className="space-y-4">
-                                 <span className="text-[0.65rem] font-bold uppercase tracking-widest text-zinc-400 block">Execution Context</span>
-                                 <div className="grid grid-cols-2 gap-3">
-                                    {[
-                                      { label: 'Session ID', value: log.sessionId.slice(0, 16) + '...' },
-                                      { label: 'Platform', value: log.context?.device?.os || 'N/A' },
-                                      { label: 'Browser', value: log.context?.device?.browser || 'N/A' },
-                                      { label: 'Screen', value: log.context?.device?.screen || 'N/A' },
-                                    ].map((item, idx) => (
-                                      <div key={idx} className="p-3 bg-white dark:bg-slate-800 border border-zinc-100 dark:border-slate-700 rounded">
-                                         <span className="text-[0.6rem] text-zinc-400 uppercase block mb-1">{item.label}</span>
-                                         <span className="text-[0.8rem] font-medium text-olive-950 dark:text-slate-100 truncate block">{item.value}</span>
-                                      </div>
-                                    ))}
-                                 </div>
-                                 <div className="p-3 bg-white dark:bg-slate-800 border border-zinc-100 dark:border-slate-700 rounded">
-                                    <span className="text-[0.6rem] text-zinc-400 uppercase block mb-1">Origin URL</span>
-                                    <span className="text-[0.8rem] font-medium text-blue-600 break-all">{log.context?.page?.url || 'N/A'}</span>
-                                 </div>
+                              <div className="bg-slate-900 border border-slate-800 rounded p-4 max-h-[300px] overflow-y-auto custom-scrollbar">
+                                <pre className="text-[0.8rem] text-blue-200 font-mono">
+                                  <code>{JSON.stringify(log.properties, null, 2)}</code>
+                                </pre>
                               </div>
-                           </div>
+                            </div>
+                            <div className="space-y-4">
+                              <span className="text-[0.65rem] font-bold uppercase tracking-widest text-zinc-400 block">Execution Context</span>
+                              <div className="grid grid-cols-2 gap-3">
+                                {[
+                                  { label: 'Session ID', value: log.sessionId.slice(0, 16) + '...' },
+                                  { label: 'Platform', value: log.context?.device?.os || 'N/A' },
+                                  { label: 'Browser', value: log.context?.device?.browser || 'N/A' },
+                                  { label: 'Screen', value: log.context?.device?.screen || 'N/A' },
+                                ].map((item, idx) => (
+                                  <div key={idx} className="p-3 bg-white dark:bg-slate-800 border border-zinc-100 dark:border-slate-700 rounded">
+                                    <span className="text-[0.6rem] text-zinc-400 uppercase block mb-1">{item.label}</span>
+                                    <span className="text-[0.8rem] font-medium text-olive-950 dark:text-slate-100 truncate block">{item.value}</span>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="p-3 bg-white dark:bg-slate-800 border border-zinc-100 dark:border-slate-700 rounded">
+                                <span className="text-[0.6rem] text-zinc-400 uppercase block mb-1">Origin URL</span>
+                                <span className="text-[0.8rem] font-medium text-blue-600 break-all">{log.context?.page?.url || 'N/A'}</span>
+                              </div>
+                            </div>
+                          </div>
                         </td>
                       </tr>
                     )}
@@ -368,54 +424,54 @@ const EventTrackingPage: React.FC = () => {
 
       {/* --- MODALS --- */}
       {isManageKeysModalOpen && (
-        <Modal 
-          title="Node Management" 
+        <Modal
+          title="Node Management"
           onClose={() => setIsManageKeysModalOpen(false)}
           maxWidth="max-w-[480px]"
         >
           <div className="space-y-6 py-2">
             <div className="p-4 bg-zinc-50 dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 rounded flex items-center justify-between">
-               <div>
-                  <h4 className="text-[0.95rem] font-bold text-olive-950 dark:text-white">Provision New Node</h4>
-                  <p className="text-[0.75rem] text-zinc-500">Add identifiers for fresh telemetry streams.</p>
-               </div>
-               <button 
-                  onClick={() => setIsCreateKeyModalOpen(true)}
-                  className="px-4 py-2 bg-olive-900 dark:bg-olive-600 text-white rounded text-sm font-medium hover:bg-olive-800 transition-colors flex items-center gap-2"
-               >
-                  <Plus size={16} /> New Node
-               </button>
+              <div>
+                <h4 className="text-[0.95rem] font-bold text-olive-950 dark:text-white">Provision New Node</h4>
+                <p className="text-[0.75rem] text-zinc-500">Add identifiers for fresh telemetry streams.</p>
+              </div>
+              <button
+                onClick={() => setIsCreateKeyModalOpen(true)}
+                className="px-4 py-2 bg-olive-900 dark:bg-olive-600 text-white rounded text-sm font-medium hover:bg-olive-800 transition-colors flex items-center gap-2"
+              >
+                <Plus size={16} /> New Node
+              </button>
             </div>
 
             <div className="space-y-2 max-h-[300px] overflow-y-auto px-1">
-               {keys.map(key => (
-                  <div 
-                    key={key.id}
-                    className="p-3 rounded border border-zinc-100 dark:border-slate-700 bg-white dark:bg-slate-800 flex items-center justify-between group"
-                  >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <strong className="text-[0.9rem] text-olive-950 dark:text-slate-100 truncate">{key.name}</strong>
-                        <span className="text-[0.6rem] px-1 bg-emerald-50 text-emerald-600 rounded font-bold uppercase tracking-wide">Active</span>
-                      </div>
-                      <code className="text-[0.7rem] text-zinc-400 font-mono block mt-0.5">{key.maskedKey}</code>
+              {keys.map(key => (
+                <div
+                  key={key.id}
+                  className="p-3 rounded border border-zinc-100 dark:border-slate-700 bg-white dark:bg-slate-800 flex items-center justify-between group"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <strong className="text-[0.9rem] text-olive-950 dark:text-slate-100 truncate">{key.name}</strong>
+                      <span className="text-[0.6rem] px-1 bg-emerald-50 text-emerald-600 rounded font-bold uppercase tracking-wide">Active</span>
                     </div>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); handleDeleteKey(key.id, key.name); }}
-                      className="p-2 text-zinc-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                    <code className="text-[0.7rem] text-zinc-400 font-mono block mt-0.5">{key.maskedKey}</code>
                   </div>
-               ))}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDeleteKey(key.id, key.name); }}
+                    className="p-2 text-zinc-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
         </Modal>
       )}
 
       {isCreateKeyModalOpen && (
-        <Modal 
-          title="Create API Key" 
+        <Modal
+          title="Create API Key"
           onClose={() => setIsCreateKeyModalOpen(false)}
           maxWidth="max-w-[400px]"
         >
@@ -432,28 +488,28 @@ const EventTrackingPage: React.FC = () => {
               />
             </div>
             <div className="flex gap-3">
-               <button
-                 type="button"
-                 onClick={() => setIsCreateKeyModalOpen(false)}
-                 className="flex-1 h-10 bg-zinc-100 dark:bg-slate-700 text-[0.85rem] font-bold text-zinc-500 rounded"
-               >
-                 Cancel
-               </button>
-               <button
-                 type="submit"
-                 disabled={!newKeyName.trim()}
-                 className="flex-1 h-10 bg-olive-900 dark:bg-olive-600 text-white rounded font-bold text-[0.85rem] shadow-lg shadow-olive-900/20 disabled:opacity-50"
-               >
-                 Create
-               </button>
+              <button
+                type="button"
+                onClick={() => setIsCreateKeyModalOpen(false)}
+                className="flex-1 h-10 bg-zinc-100 dark:bg-slate-700 text-[0.85rem] font-bold text-zinc-500 rounded"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={!newKeyName.trim()}
+                className="flex-1 h-10 bg-olive-900 dark:bg-olive-600 text-white rounded font-bold text-[0.85rem] shadow-lg shadow-olive-900/20 disabled:opacity-50"
+              >
+                Create
+              </button>
             </div>
           </form>
         </Modal>
       )}
 
       {newlyCreatedKey && (
-        <Modal 
-          title="Node Key Created" 
+        <Modal
+          title="Node Key Created"
           onClose={() => setNewlyCreatedKey(null)}
           maxWidth="max-w-[400px]"
         >
@@ -462,7 +518,7 @@ const EventTrackingPage: React.FC = () => {
               <span className="text-[0.65rem] font-bold text-blue-400 uppercase tracking-widest block text-center">Secret API Key</span>
               <div className="flex items-center gap-3 p-3 bg-white/5 rounded border border-white/5">
                 <code className="text-[0.95rem] font-bold font-mono text-blue-100 break-all flex-1 text-center">{newlyCreatedKey.key}</code>
-                <button 
+                <button
                   onClick={() => copyToClipboard(newlyCreatedKey.key || '')}
                   className="p-2 text-white/50 hover:text-white transition-colors"
                 >

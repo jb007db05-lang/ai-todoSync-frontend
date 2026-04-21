@@ -122,8 +122,8 @@ function ManageDevicesModal({ onClose, onDevicesChanged }: ManageDevicesModalPro
           <p className="text-sm text-zinc-500 dark:text-slate-400 m-0">
             You can rename or revoke access for your secondary devices below.
           </p>
-          <button 
-            onClick={() => void loadDevices()} 
+          <button
+            onClick={() => void loadDevices()}
             disabled={loading}
             className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-slate-800 text-zinc-400 dark:text-slate-500 transition-colors"
           >
@@ -171,11 +171,10 @@ function ManageDevicesModal({ onClose, onDevicesChanged }: ManageDevicesModalPro
                         </p>
                       </div>
                     </div>
-                    <span className={`text-[0.65rem] font-bold px-2 py-0.5 rounded uppercase tracking-wide border ${
-                      device.status === 'pending'
+                    <span className={`text-[0.65rem] font-bold px-2 py-0.5 rounded uppercase tracking-wide border ${device.status === 'pending'
                         ? 'bg-amber-100/50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-500 border-amber-200/50 dark:border-amber-800/50'
                         : 'bg-green-100/50 dark:bg-green-900/20 text-green-600 dark:text-green-500 border-green-200/50 dark:border-green-800/50'
-                    }`}>
+                      }`}>
                       {device.status}
                     </span>
                   </div>
@@ -183,7 +182,7 @@ function ManageDevicesModal({ onClose, onDevicesChanged }: ManageDevicesModalPro
                   <div className="grid grid-cols-2 gap-3">
                     <div className="flex flex-col gap-1.5">
                       <label className="text-[0.65rem] font-bold text-zinc-400 dark:text-slate-500 uppercase tracking-widest pl-1">Name</label>
-                      <input 
+                      <input
                         className="bg-zinc-50 dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-olive-950 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-olive-500"
                         value={draft.deviceName}
                         onChange={e => handleDraftChange(device.id, 'deviceName', e.target.value)}
@@ -191,7 +190,7 @@ function ManageDevicesModal({ onClose, onDevicesChanged }: ManageDevicesModalPro
                     </div>
                     <div className="flex flex-col gap-1.5">
                       <label className="text-[0.65rem] font-bold text-zinc-400 dark:text-slate-500 uppercase tracking-widest pl-1">Category</label>
-                      <select 
+                      <select
                         className="bg-zinc-50 dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-olive-950 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-olive-500"
                         value={draft.deviceType}
                         onChange={e => handleDraftChange(device.id, 'deviceType', e.target.value)}
@@ -205,7 +204,7 @@ function ManageDevicesModal({ onClose, onDevicesChanged }: ManageDevicesModalPro
                   </div>
 
                   <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-100 dark:border-slate-800/50 text-[0.75rem]">
-                    <button 
+                    <button
                       className={ghostBtn}
                       disabled={isWorking || (draft.deviceName === device.deviceName && draft.deviceType === device.deviceType)}
                       onClick={() => void handleUpdate(device.id)}
@@ -213,7 +212,7 @@ function ManageDevicesModal({ onClose, onDevicesChanged }: ManageDevicesModalPro
                       <Save size={14} />
                       {isWorking ? 'Saving...' : 'Save Changes'}
                     </button>
-                    <button 
+                    <button
                       className={dangerBtn}
                       disabled={isWorking}
                       onClick={() => void handleRevoke(device.id)}
