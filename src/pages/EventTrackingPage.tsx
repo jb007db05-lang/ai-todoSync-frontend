@@ -21,6 +21,7 @@ import {
   RawEvent
 } from '@/services/eventTracking';
 import Modal from '@/components/Modal';
+import GlobalLoader from '@/components/GlobalLoader';
 import noDataImage from '@/assets/no_data.png';
 import { Activity } from 'lucide-react';
 import Skeleton from '@/components/Skeleton';
@@ -149,6 +150,8 @@ const EventTrackingPage: React.FC = () => {
 
 
 
+
+  if (loading) return <GlobalLoader message="Synchronizing telemetry engine..." />;
 
   const totalPages = Math.ceil(totalLogs / pageSize);
   const thCls = 'text-left px-5 py-3 text-[0.8rem] font-bold uppercase tracking-[0.05em] text-zinc-500 dark:text-slate-400 bg-zinc-50 dark:bg-slate-800 border-b border-zinc-200 dark:border-slate-700 sticky top-0 z-10';

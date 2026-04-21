@@ -48,6 +48,11 @@ export interface RawEvent {
       os: string;
       browser: string;
       screen: string;
+      language?: string;
+    };
+    library?: {
+      name: string;
+      version: string;
     };
   };
 }
@@ -95,7 +100,7 @@ export const getUserEvents = async (identifier: string, apiKeyId: string): Promi
 };
 
 export const getAnalyticsEvents = async (params: {
-  keyId: string;
+  keyId?: string;
   limit?: number;
   offset?: number;
   eventName?: string;

@@ -11,7 +11,7 @@ import {
   Code,
   Terminal
 } from 'lucide-react';
-import { getAnalyticsEvents, RawEvent } from '../services/analytics';
+import { getAnalyticsEvents, RawEvent } from '@/services/eventTracking';
 
 interface EventExplorerProps {
   selectedKeyId?: string;
@@ -127,8 +127,8 @@ const EventExplorer: React.FC<EventExplorerProps> = ({ selectedKeyId }) => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`text-[0.7rem] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider ${event.eventName.startsWith('page') ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400' :
-                          event.eventName.startsWith('identify') ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
-                            'bg-zinc-500/10 text-zinc-700 dark:text-slate-300'
+                        event.eventName.startsWith('identify') ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
+                          'bg-zinc-500/10 text-zinc-700 dark:text-slate-300'
                         }`}>
                         {event.eventName.replace(/_/g, ' ')}
                       </span>
