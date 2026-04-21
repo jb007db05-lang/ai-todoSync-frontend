@@ -33,6 +33,25 @@ export interface IdentifiedUser {
   createdAt: string;
 }
 
+export interface RawEvent {
+  _id: string;
+  userId: string;
+  eventName: string;
+  timestamp: string;
+  properties: Record<string, unknown>;
+  sessionId: string;
+  context: {
+    page?: {
+      url: string;
+    };
+    device?: {
+      os: string;
+      browser: string;
+      screen: string;
+    };
+  };
+}
+
 export const createApiKey = async (name: string): Promise<AnalyticsKey> => {
   const response = await api.post('/keys', { name });
   return response.data;
@@ -74,3 +93,16 @@ export const getUserEvents = async (identifier: string, apiKeyId: string): Promi
   });
   return response.data;
 };
+
+export const getAnalyticsEvents = async (params: {
+  keyId: string;
+  limit?: number;
+  offset?: number;
+  eventName?: string;
+}): Promise<{ events: RawEvent[]; total: number }> => {
+  const response = await api.get('/analytics/events', { params });
+  // The backend might return { message, data: { events, total } } or just { events, total }
+  // Based on backend/src/controllers/analytics.controller.ts, it returns { message, data: result }
+  return response.data.data || response.data;
+};
+

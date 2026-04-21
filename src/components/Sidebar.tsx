@@ -4,12 +4,11 @@ import {
   Folder,
   Plus,
   Settings,
-  BarChart3,
   Activity,
   LogOut
 } from 'lucide-react';
 
-export type SidebarView = 'dashboard' | 'settings' | 'analytics' | 'event-tracking';
+export type SidebarView = 'dashboard' | 'settings' | 'event-tracking';
 
 interface SidebarProps {
   activeView: SidebarView;
@@ -44,7 +43,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         <button
           className={[
             'flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-[0.95rem] font-medium transition-all duration-200 justify-start',
-            selectedProjectView === allProjectsValue && activeView !== 'settings' && activeView !== 'analytics' && activeView !== 'event-tracking'
+            selectedProjectView === allProjectsValue && activeView !== 'settings' && activeView !== 'event-tracking'
               ? 'bg-olive-700 text-white shadow-md shadow-olive-700/20' 
               : 'text-zinc-600 hover:text-olive-950 hover:bg-zinc-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800'
           ].join(' ')}
@@ -53,6 +52,22 @@ const Sidebar: React.FC<SidebarProps> = ({
         >
           <Folder size={18} strokeWidth={2} />
           <span>All Projects</span>
+        </button>
+
+
+        <button
+          className={[
+            'flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-[0.95rem] font-medium transition-all duration-200 justify-start',
+            activeView === 'event-tracking' 
+              ? 'bg-olive-700 text-white shadow-md shadow-olive-700/20' 
+              : 'text-zinc-600 hover:text-olive-950 hover:bg-zinc-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800'
+          ].join(' ')}
+          onClick={() => onViewChange('event-tracking')}
+          title="Event Tracking"
+          type="button"
+        >
+          <Activity size={18} strokeWidth={2} />
+          <span>Event Tracking</span>
         </button>
 
         <button
@@ -81,34 +96,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           <Settings size={18} strokeWidth={2} />
           <span>Settings</span>
         </button>
-        <button
-          className={[
-            'flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-[0.95rem] font-medium transition-all duration-200 justify-start',
-            activeView === 'analytics' 
-              ? 'bg-olive-700 text-white shadow-md shadow-olive-700/20' 
-              : 'text-zinc-600 hover:text-olive-950 hover:bg-zinc-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800'
-          ].join(' ')}
-          onClick={() => onViewChange('analytics')}
-          title="Analytics"
-          type="button"
-        >
-          <BarChart3 size={18} strokeWidth={2} />
-          <span>Analytics</span>
-        </button>
-        <button
-          className={[
-            'flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-[0.95rem] font-medium transition-all duration-200 justify-start',
-            activeView === 'event-tracking' 
-              ? 'bg-olive-700 text-white shadow-md shadow-olive-700/20' 
-              : 'text-zinc-600 hover:text-olive-950 hover:bg-zinc-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800'
-          ].join(' ')}
-          onClick={() => onViewChange('event-tracking')}
-          title="Event Tracking"
-          type="button"
-        >
-          <Activity size={18} strokeWidth={2} />
-          <span>Event Tracking</span>
-        </button>
+
         <button 
            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-[0.95rem] font-medium text-zinc-500 hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:text-red-400 dark:hover:bg-red-900/20 transition-all duration-200 justify-start mt-1"
            onClick={onLogout} 

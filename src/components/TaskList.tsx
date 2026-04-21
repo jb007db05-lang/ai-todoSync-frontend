@@ -1,4 +1,5 @@
 import { Calendar } from 'lucide-react';
+import Skeleton from '@/components/Skeleton';
 
 import EmptyState from '@/components/EmptyState';
 import TaskCard from '@/components/TaskCard';
@@ -30,6 +31,7 @@ interface TaskListProps {
   selectedTaskId?: string | null;
   selectedTaskIds?: string[];
   onToggleSelection?: (taskId: string) => void;
+  loading?: boolean;
 }
 
 function TaskList({
@@ -44,8 +46,39 @@ function TaskList({
   onToggleBlocked,
   selectedTaskId,
   selectedTaskIds = [],
-  onToggleSelection
+  onToggleSelection,
+  loading = false
 }: TaskListProps): JSX.Element {
+  if (loading) {
+    return (
+      <div className="grid gap-4">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={`skeleton-${i}`} className="bg-white dark:bg-slate-800/50 border border-zinc-100 dark:border-slate-700/50 rounded-2xl p-5 flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4 flex-1">
+                <Skeleton variant="rectangle" className="w-6 h-6 rounded-lg" />
+                <div className="space-y-2 flex-1">
+                  <Skeleton variant="text" className="w-1/3 h-5" />
+                  <Skeleton variant="text" className="w-1/2 h-3" />
+                </div>
+              </div>
+              <Skeleton variant="rectangle" className="w-24 h-8 rounded-lg" />
+            </div>
+            <div className="flex items-center gap-3 pt-3 border-t border-zinc-50 dark:border-slate-800/50">
+              <Skeleton variant="circle" className="w-6 h-6" />
+              <Skeleton variant="text" className="w-20 h-3" />
+              <div className="flex-1" />
+              <div className="flex gap-2">
+                <Skeleton variant="rectangle" className="w-8 h-8 rounded-lg" />
+                <Skeleton variant="rectangle" className="w-8 h-8 rounded-lg" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   const projectNames = new Map(flattenProjectLabels(projects).map((project) => [project.id, project.label]));
   const epicsByProject = new Map<string, Epic[]>();
   const epicById = new Map(epics.map((epic) => [epic.id, epic]));

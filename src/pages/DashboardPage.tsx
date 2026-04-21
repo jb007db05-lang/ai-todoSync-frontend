@@ -16,7 +16,6 @@ import SettingsPanel from '@/components/SettingsPanel';
 import SubtaskForm from '@/components/SubtaskForm';
 import ChatPanel from '@/components/ChatPanel';
 import ActivityHistoryPanel from '@/components/ActivityHistoryPanel';
-import AnalyticsDashboardPanel from '@/components/AnalyticsDashboardPanel';
 import EventTrackingPage from '@/pages/EventTrackingPage';
 import Sidebar, { SidebarView } from '@/components/Sidebar';
 import { useChat } from '@/context/ChatContext';
@@ -235,7 +234,7 @@ function DashboardPage(): JSX.Element {
 
   const [memberSearchResults, setMemberSearchResults] = useState<UserSearchResult[]>([]);
   const [teamMutationLoading, setTeamMutationLoading] = useState<boolean>(false);
-  const [activeView, setActiveView] = useState<'dashboard' | 'settings' | 'analytics' | 'event-tracking'>('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'settings' | 'event-tracking'>('dashboard');
   const [activeProjectForNotes, setActiveProjectForNotes] = useState<Project | null>(null);
   const [activeEpicForNotes, setActiveEpicForNotes] = useState<Epic | null>(null);
   const [activeNoteEditor, setActiveNoteEditor] = useState<ActiveNoteEditor | null>(null);
@@ -1674,8 +1673,6 @@ function DashboardPage(): JSX.Element {
                   <span className="text-zinc-300 dark:text-slate-600">/</span>
                   <span className="text-zinc-600 dark:text-slate-300">{activeProject.name}</span>
                 </>
-              ) : activeView === 'analytics' ? (
-                <span className="text-zinc-600 dark:text-slate-300">Analytics</span>
               ) : (
                 <span className="text-zinc-600 dark:text-slate-300">All Projects</span>
               )}
@@ -1747,16 +1744,6 @@ function DashboardPage(): JSX.Element {
               </div>
               <div className="p-8">
                 <SettingsPanel />
-              </div>
-            </div>
-          ) : activeView === 'analytics' ? (
-            <div className="h-full overflow-y-auto">
-              <div className="px-8 py-6 border-b border-zinc-200 dark:border-slate-700 bg-white/60 dark:bg-slate-900/60">
-                <h3 className="text-xl font-semibold text-olive-950 dark:text-slate-100 m-0">Analytics</h3>
-                <p className="text-zinc-500 dark:text-slate-400 m-0 text-sm mt-0.5">Observability & Tracking</p>
-              </div>
-              <div className="p-8">
-                <AnalyticsDashboardPanel />
               </div>
             </div>
           ) : activeView === 'event-tracking' ? (
@@ -2071,8 +2058,9 @@ function DashboardPage(): JSX.Element {
                               selectedTaskId={selectedTaskId}
                               selectedTaskIds={selectedTaskIds}
                               onToggleSelection={handleToggleTaskSelection}
+                              loading={loading && tasks.length === 0}
                             />
-                            {activeEpicTasks.length === 0 && (
+                            {!loading && activeEpicTasks.length === 0 && (
                               <div className="py-20 flex flex-col items-center opacity-30">
                                 <EmptyState description="No tasks scheduled for this epic." icon={Calendar} title="Empty Workspace" />
                               </div>
@@ -2094,6 +2082,7 @@ function DashboardPage(): JSX.Element {
                                 void handleDeleteTask(taskId, task?.title ?? 'this task');
                               }}
                               onEditTask={(task) => setEditingTask(task)}
+                              loading={loading && tasks.length === 0}
                             />
                           </div>
                         )}
@@ -2532,7 +2521,7 @@ function DashboardPage(): JSX.Element {
           titlePlaceholder="Sprint recap"
         />
       ) : null}
-      {loading && <GlobalLoader message="Updating Dashboard..." />}
+      {loading && tasks.length === 0 && <GlobalLoader message="Updating Dashboard..." />}
     </div>
   );
 }
