@@ -146,6 +146,20 @@ const EventExplorer: React.FC<EventExplorerProps> = ({ selectedKeyId }) => {
     getRowId: (row) => row._id,
   });
 
+  const toggleRow = (event: RawEvent) => {
+    const row = table.getRowModel().rows.find(r => r.original._id === event._id);
+    if (!row) return;
+
+    const isExpanding = !row.getIsExpanded();
+
+    // Mutual exclusivity: Close all others if we are expanding
+    if (isExpanding) {
+      table.toggleAllRowsExpanded(false);
+    }
+
+    row.toggleExpanded();
+  };
+
   return (
     <div className="bg-white dark:bg-slate-900 rounded-xl border border-zinc-200/80 dark:border-slate-700/80 shadow-sm overflow-hidden flex flex-col h-full">
       <div className="p-6 border-b border-zinc-100 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-zinc-50/30 dark:bg-slate-900/50">
@@ -173,7 +187,7 @@ const EventExplorer: React.FC<EventExplorerProps> = ({ selectedKeyId }) => {
       <DataTable
         table={table}
         loading={loading && events.length === 0}
-        onRowClick={(event) => setExpandedEventId(expandedEventId === event._id ? null : event._id)}
+        onRowClick={toggleRow}
         renderExpandedRow={(event) => (
           <div className="px-8 py-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
