@@ -17,9 +17,9 @@ const Loader: React.FC<LoaderProps> = ({ size = 'md', className = '', center = f
     <div
       className={`
         ${sizeClasses[size]}
-        border-zinc-200 dark:border-slate-800 
-        border-t-olive-600 dark:border-t-olive-400 
-        rounded-full animate-spin ${className}
+        border-zinc-200/50 dark:border-slate-800/50 
+        border-t-olive-600 dark:border-t-olive-500 
+        rounded-full animate-[spin_0.8s_linear_infinite] ${className}
       `}
     />
   );

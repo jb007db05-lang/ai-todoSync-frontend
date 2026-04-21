@@ -23,7 +23,6 @@ import NotificationBox, { Notification } from '@/components/NotificationBox';
 import TaskList from '@/components/TaskList';
 import KanbanBoard from '@/components/KanbanBoard';
 import CommentSection from '@/components/CommentSection';
-import GlobalLoader from '@/components/GlobalLoader';
 import TaskFilterBar, { TaskFilters } from '@/components/TaskFilterBar';
 import SourceBadge from '@/components/SourceBadge';
 import UserAvatar from '@/components/UserAvatar';
@@ -2521,7 +2520,7 @@ function DashboardPage(): JSX.Element {
           titlePlaceholder="Sprint recap"
         />
       ) : null}
-      {loading && tasks.length === 0 && <GlobalLoader message="Updating Dashboard..." />}
+
     </div>
   );
 }
