@@ -14,7 +14,9 @@ import { getAnalyticsEvents, RawEvent } from '@/services/eventTracking';
 import {
   useReactTable,
   getCoreRowModel,
+  getExpandedRowModel,
   createColumnHelper,
+  ExpandedState,
 } from '@tanstack/react-table';
 import DataTable from './DataTable';
 
@@ -27,7 +29,7 @@ interface EventExplorerProps {
 const EventExplorer: React.FC<EventExplorerProps> = ({ selectedKeyId }) => {
   const [events, setEvents] = useState<RawEvent[]>([]);
   const [loading, setLoading] = useState(false);
-  const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<ExpandedState>({});
   const [searchTerm, setSearchTerm] = useState('');
 
   const fetchEvents = async () => {
@@ -126,18 +128,37 @@ const EventExplorer: React.FC<EventExplorerProps> = ({ selectedKeyId }) => {
       cell: ({ row }) => (
         <div className="text-right">
           <div className="text-zinc-300 dark:text-slate-600 group-hover:text-blue-500 transition-colors inline-block p-1">
-            {expandedEventId === row.original._id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            {row.getIsExpanded() ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </div>
         </div>
       ),
     }),
-  ], [expandedEventId]);
+  ], []);
 
   const table = useReactTable({
     data: events,
     columns,
+    state: { expanded },
+    onExpandedChange: setExpanded,
     getCoreRowModel: getCoreRowModel(),
+    getExpandedRowModel: getExpandedRowModel(),
+    getRowCanExpand: () => true,
+    getRowId: (row) => row._id,
   });
+
+  const toggleRow = (event: RawEvent) => {
+    const row = table.getRowModel().rows.find(r => r.original._id === event._id);
+    if (!row) return;
+
+    const isExpanding = !row.getIsExpanded();
+
+    // Mutual exclusivity: Close all others if we are expanding
+    if (isExpanding) {
+      table.toggleAllRowsExpanded(false);
+    }
+
+    row.toggleExpanded();
+  };
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-xl border border-zinc-200/80 dark:border-slate-700/80 shadow-sm overflow-hidden flex flex-col h-full">
@@ -166,7 +187,7 @@ const EventExplorer: React.FC<EventExplorerProps> = ({ selectedKeyId }) => {
       <DataTable
         table={table}
         loading={loading && events.length === 0}
-        onRowClick={(event) => setExpandedEventId(expandedEventId === event._id ? null : event._id)}
+        onRowClick={toggleRow}
         renderExpandedRow={(event) => (
           <div className="px-8 py-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
