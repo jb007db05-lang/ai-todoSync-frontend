@@ -34,7 +34,7 @@ const EventExplorer: React.FC<EventExplorerProps> = ({ selectedKeyId }) => {
     setLoading(true);
     try {
       const data = await getAnalyticsEvents({
-        keyId: selectedKeyId,
+        apiKeyId: selectedKeyId,
         eventName: searchTerm || undefined,
         limit: 20
       });
