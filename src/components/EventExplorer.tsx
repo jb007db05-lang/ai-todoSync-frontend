@@ -14,7 +14,9 @@ import { getAnalyticsEvents, RawEvent } from '@/services/eventTracking';
 import {
   useReactTable,
   getCoreRowModel,
+  getExpandedRowModel,
   createColumnHelper,
+  ExpandedState,
 } from '@tanstack/react-table';
 import DataTable from './DataTable';
 
@@ -27,7 +29,7 @@ interface EventExplorerProps {
 const EventExplorer: React.FC<EventExplorerProps> = ({ selectedKeyId }) => {
   const [events, setEvents] = useState<RawEvent[]>([]);
   const [loading, setLoading] = useState(false);
-  const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<ExpandedState>({});
   const [searchTerm, setSearchTerm] = useState('');
 
   const fetchEvents = async () => {
@@ -126,17 +128,22 @@ const EventExplorer: React.FC<EventExplorerProps> = ({ selectedKeyId }) => {
       cell: ({ row }) => (
         <div className="text-right">
           <div className="text-zinc-300 dark:text-slate-600 group-hover:text-blue-500 transition-colors inline-block p-1">
-            {expandedEventId === row.original._id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            {row.getIsExpanded() ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </div>
         </div>
       ),
     }),
-  ], [expandedEventId]);
+  ], []);
 
   const table = useReactTable({
     data: events,
     columns,
+    state: { expanded },
+    onExpandedChange: setExpanded,
     getCoreRowModel: getCoreRowModel(),
+    getExpandedRowModel: getExpandedRowModel(),
+    getRowCanExpand: () => true,
+    getRowId: (row) => row._id,
   });
 
   return (

@@ -40,6 +40,7 @@ export interface RawEvent {
   timestamp: string;
   properties: Record<string, unknown>;
   sessionId: string;
+  payload?: Record<string, unknown>; // Added for raw logs
   context: {
     page?: {
       url: string;
@@ -105,9 +106,9 @@ export const getAnalyticsEvents = async (params: {
   offset?: number;
   eventName?: string;
 }): Promise<{ events: RawEvent[]; total: number }> => {
-  const response = await api.get('/analytics/events', { params });
-  // The backend might return { message, data: { events, total } } or just { events, total }
-  // Based on backend/src/controllers/analytics.controller.ts, it returns { message, data: result }
-  return response.data.data || response.data;
+  const response = await api.get('/analytics/all-logs', { params });
+  const data = response.data.data || response.data;
+  
+  return data || { events: [], total: 0 };
 };
 

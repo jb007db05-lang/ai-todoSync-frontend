@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Plus,
-  User,
   Search,
   ChevronRight,
   Trash2,
@@ -9,7 +8,8 @@ import {
   Check,
   RefreshCw,
   ChevronDown,
-  ChevronLeft
+  ChevronLeft,
+  Loader2
 } from 'lucide-react';
 import {
   listApiKeys,
@@ -17,7 +17,9 @@ import {
   deleteApiKey,
   AnalyticsKey,
   getAnalyticsEvents,
-  RawEvent
+  getEventLogs,
+  RawEvent,
+  EventLog
 } from '@/services/eventTracking';
 import Modal from '@/components/Modal';
 import noDataImage from '@/assets/no_data.png';
@@ -25,7 +27,9 @@ import { Activity } from 'lucide-react';
 import {
   useReactTable,
   getCoreRowModel,
+  getExpandedRowModel,
   createColumnHelper,
+  ExpandedState,
 } from '@tanstack/react-table';
 
 import DataTable from '@/components/DataTable';
@@ -33,42 +37,36 @@ import DataTable from '@/components/DataTable';
 const columnHelper = createColumnHelper<RawEvent>();
 
 const columns = [
-  columnHelper.accessor('_id', {
-    header: 'Status',
-    size: 80,
-    cell: () => (
-      <div className="flex items-center justify-center">
-        <div className="w-2 h-2 rounded-full bg-emerald-500" title="Ingested" />
-      </div>
-    ),
-  }),
   columnHelper.accessor('userId', {
     header: 'Identity',
-    size: 250,
-    cell: info => (
-      <div className="flex items-center gap-3">
-        <User size={16} className="text-zinc-400" />
-        <strong className="text-olive-900 dark:text-slate-100 font-bold text-[0.95rem]">
-          {info.getValue() || 'Anonymous'}
-        </strong>
-      </div>
-    ),
+    size: 200,
+    cell: info => {
+      const value = info.getValue() || '-';
+      return (
+        <div className="flex items-center gap-1 min-w-0">
+          <strong className="text-zinc-600 dark:text-slate-400 font-mono text-[0.78rem] truncate">
+            {value}
+          </strong>
+        </div>
+      );
+    },
   }),
   columnHelper.accessor('eventName', {
     header: 'Signal',
     size: 200,
     cell: info => {
       const name = info.getValue();
-      const getEventColor = (name: string) => {
+      const getEventStyle = (name: string) => {
         const lowerName = name.toLowerCase();
-        if (lowerName.includes('identify')) return 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20';
-        if (lowerName.includes('page') || lowerName.includes('view')) return 'text-blue-600 bg-blue-50 dark:bg-blue-900/20';
-        if (lowerName.includes('click') || lowerName.includes('select')) return 'text-amber-600 bg-amber-50 dark:bg-amber-900/20';
-        if (lowerName.includes('error') || lowerName.includes('fail')) return 'text-red-600 bg-red-50 dark:bg-red-900/20';
-        return 'text-zinc-600 bg-zinc-50 dark:bg-zinc-800/50';
+        if (lowerName.includes('identify')) return 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-800/30';
+        if (lowerName.includes('page') || lowerName.includes('view') || lowerName.includes('list')) return 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-800/30';
+        if (lowerName.includes('click') || lowerName.includes('select') || lowerName.includes('create')) return 'text-amber-600 bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-800/30';
+        if (lowerName.includes('error') || lowerName.includes('fail')) return 'text-red-600 bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-800/30';
+        return 'text-zinc-600 bg-zinc-50 dark:bg-zinc-800/50 border-zinc-200/50 dark:border-slate-700/50';
       };
+
       return (
-        <span className={`px-2 py-0.5 rounded text-[0.75rem] font-bold uppercase tracking-tight ${getEventColor(name)}`}>
+        <span className={`px-2.5 py-1 rounded-md text-[0.72rem] font-bold uppercase border ${getEventStyle(name)}`}>
           {name.replace(/_/g, ' ')}
         </span>
       );
@@ -77,22 +75,39 @@ const columns = [
   columnHelper.accessor('timestamp', {
     id: 'date',
     header: 'Date',
-    size: 120,
-    cell: info => new Date(info.getValue()).toLocaleDateString([], { month: 'short', day: 'numeric' }),
+    size: 140,
+    cell: info => (
+      <div className="text-[0.78rem] font-mono font-bold text-slate-400 dark:text-slate-500">
+        {new Date(info.getValue()).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '.')}
+      </div>
+    ),
   }),
   columnHelper.accessor('timestamp', {
     id: 'time',
     header: 'Time',
     size: 100,
-    cell: info => new Date(info.getValue()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    cell: info => (
+      <div className="text-[0.8rem] font-mono font-black text-olive-950 dark:text-blue-100">
+        {new Date(info.getValue()).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
+      </div>
+    ),
   }),
   columnHelper.display({
-    id: 'actions',
+    id: 'expander',
     header: '',
-    size: 60,
-    cell: () => {
-      // Handled in DataTable's expanded state logic or row click
-      return null;
+    size: 40,
+    cell: ({ row }) => {
+      const isExpanded = row.getIsExpanded();
+      return (
+        <div className="flex justify-end pr-2">
+          <div className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+            <ChevronDown
+              size={18}
+              className={`transition-colors duration-200 ${isExpanded ? 'text-olive-600 dark:text-blue-400' : 'text-zinc-300 dark:text-slate-600'}`}
+            />
+          </div>
+        </div>
+      );
     },
   }),
 ];
@@ -114,7 +129,9 @@ const EventTrackingPage: React.FC = () => {
   const [isCreateKeyModalOpen, setIsCreateKeyModalOpen] = useState(false);
   const [newKeyName, setNewKeyName] = useState('');
   const [newlyCreatedKey, setNewlyCreatedKey] = useState<AnalyticsKey | null>(null);
-  const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<ExpandedState>({});
+  const [logDetails, setLogDetails] = useState<Record<string, EventLog>>({});
+  const [fetchingPayloadId, setFetchingPayloadId] = useState<string | null>(null);
 
   const [copiedKey, setCopiedKey] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -210,12 +227,44 @@ const EventTrackingPage: React.FC = () => {
     return keys.find(k => k.id === selectedKeyId);
   }, [keys, selectedKeyId]);
 
-
   const table = useReactTable({
     data: rawLogs,
     columns,
+    state: { expanded },
+    onExpandedChange: setExpanded,
     getCoreRowModel: getCoreRowModel(),
+    getExpandedRowModel: getExpandedRowModel(),
+    getRowCanExpand: () => true,
+    getRowId: (row) => row._id,
   });
+
+  const toggleRow = async (event: RawEvent) => {
+    const row = table.getRow(event._id);
+    if (!row) return;
+
+    const isExpanding = !row.getIsExpanded();
+
+    // Mutual exclusivity: Close all others if we are expanding
+    if (isExpanding) {
+      table.toggleAllRowsExpanded(false);
+    }
+
+    row.toggleExpanded();
+
+    if (isExpanding && !logDetails[event._id] && selectedKeyId) {
+      setFetchingPayloadId(event._id);
+      try {
+        const logs = await getEventLogs(event._id, selectedKeyId);
+        if (logs && logs.length > 0) {
+          setLogDetails(prev => ({ ...prev, [event._id]: logs[0] }));
+        }
+      } catch (err) {
+        console.error('Failed to fetch payload details', err);
+      } finally {
+        setFetchingPayloadId(null);
+      }
+    }
+  };
 
   const totalPages = Math.ceil(totalLogs / pageSize);
 
@@ -293,76 +342,78 @@ const EventTrackingPage: React.FC = () => {
       {/* Main Content */}
       <div className="flex-1 overflow-hidden flex flex-col">
         {!selectedKeyId ? (
-          <div className="flex-1 flex flex-col items-center justify-center py-24 text-center animate-in fade-in zoom-in duration-500">
-            <div className="relative">
+          <div className="flex-1 flex flex-col items-center justify-center py-24 text-center animate-in fade-in zoom-in duration-500 bg-white dark:bg-slate-900">
+            <div className="relative mb-6">
+              <div className="absolute inset-0 bg-olive-500/10 blur-3xl rounded-full" />
               <img
                 src={noDataImage}
                 alt="No Node Selected"
-                className="relative w-100 h-100 mx-auto object-contain opacity-90"
+                className="relative w-72 h-72 mx-auto object-contain opacity-90 filter drop-shadow-2xl"
               />
             </div>
 
-            <h3 className="text-xl font-bold text-olive-950 dark:text-white mb-2 tracking-tight font-['Outfit']">
-              No Node Selected
+            <h3 className="text-2xl font-black text-olive-950 dark:text-white mb-3 tracking-tighter font-['Outfit']">
+              Telemetry Node Required
             </h3>
 
-            <p className="text-zinc-500 dark:text-slate-400 text-sm max-w-[360px] mx-auto mb-8 leading-relaxed">
-              Choose a telemetry node from the switcher above to start exploring incoming interaction signals in real-time.
+            <p className="text-zinc-500 dark:text-slate-400 text-[0.9rem] max-w-[420px] mx-auto mb-10 leading-relaxed font-medium">
+              Start monitoring your synchronization ecosystem. Select a telemetry node from the dashboard above to explore incoming interaction signals in real-time.
             </p>
 
             <button
               onClick={() => setIsNodeSwitcherOpen(true)}
-              className="inline-flex items-center gap-2.5 px-6 py-2.5 bg-blue-600 dark:bg-blue-600 text-white rounded-lg text-sm font-bold shadow-lg shadow-blue-600/20 hover:bg-blue-700 dark:hover:bg-blue-500 transform transition-all active:scale-95 duration-200"
+              className="inline-flex items-center gap-3 px-8 py-3.5 bg-olive-900 dark:bg-olive-600 text-white rounded-xl text-sm font-black shadow-2xl shadow-olive-900/30 hover:bg-olive-800 dark:hover:bg-olive-500 transform transition-all active:scale-95 duration-200 uppercase tracking-[0.1em]"
               type="button"
             >
-              <Activity size={18} strokeWidth={2.5} />
-              <span>Select Telemetry Node</span>
+              <Activity size={20} strokeWidth={3} className="text-olive-300" />
+              <span>Provision Tracking Node</span>
             </button>
           </div>
         ) : (
           <DataTable
             table={table}
             loading={refreshing || (loading && rawLogs.length === 0)}
-            onRowClick={(event) => setExpandedLogId(expandedLogId === event._id ? null : event._id)}
+            onRowClick={toggleRow}
             stickyHeader={true}
-            renderExpandedRow={(event) => (
-              <div className="px-10 py-8 space-y-8 animate-in slide-in-from-top-2 duration-300">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2 mb-4">
-                      <div className="w-1.5 h-4 bg-olive-600 rounded-full" />
-                      <h4 className="text-[0.65rem] font-black uppercase tracking-[0.2em] text-zinc-400">Contextual Meta</h4>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-white dark:bg-slate-950 p-4 rounded-xl border border-zinc-100 dark:border-slate-800 shadow-sm">
-                        <span className="text-[0.6rem] font-bold text-zinc-400 uppercase tracking-widest block mb-1">OS Environment</span>
-                        <p className="text-[0.8rem] font-bold text-zinc-800 dark:text-slate-200">{event.context?.device?.os || 'System SDK'}</p>
+            tableClassName="border-separate border-spacing-y-0"
+            renderExpandedRow={(event) => {
+              const details = logDetails[event._id];
+              const isFetching = fetchingPayloadId === event._id;
+
+              return (
+                <div className="pb-8 pt-2 animate-in slide-in-from-top-3 duration-500 ease-out">
+                  <div className="flex flex-col p-8 transition-all">
+
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-4">
+                        <div className="w-1.5 h-6 bg-olive-600 dark:bg-blue-500 rounded-full" />
+                        <h4 className="text-[0.72rem] font-bold uppercase text-zinc-500 dark:text-slate-400">
+                          {event.eventName.replace(/_/g, ' ')} <span className="opacity-30 mx-2">•</span> <span className="text-zinc-400 dark:text-slate-500 font-medium font-mono">RAW LOG DATA</span>
+                        </h4>
                       </div>
-                      <div className="bg-white dark:bg-slate-950 p-4 rounded-xl border border-zinc-100 dark:border-slate-800 shadow-sm">
-                        <span className="text-[0.6rem] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Agent Library</span>
-                        <p className="text-[0.8rem] font-bold text-zinc-800 dark:text-slate-200">{event.context?.library?.name} v{event.context?.library?.version}</p>
+                    </div>
+
+                    {isFetching ? (
+                      <div className="flex-1 flex flex-col items-center justify-center py-16 gap-4 text-olive-500/40">
+                        <Loader2 size={32} className="animate-spin" />
+                        <span className="text-[0.65rem] font-black uppercase">Syncing Payload...</span>
                       </div>
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2 mb-4">
-                      <div className="w-1.5 h-4 bg-indigo-500 rounded-full" />
-                      <h4 className="text-[0.65rem] font-black uppercase tracking-[0.2em] text-zinc-400">Payload Source</h4>
-                    </div>
-                    <div className="bg-slate-900 rounded-xl p-5 border border-zinc-800 relative group">
-                      <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <code className="text-[0.6rem] text-zinc-600 font-mono">RAW_JSON</code>
+                    ) : (
+                      <div className="rounded-xl bg-slate-950 border border-slate-800/80 shadow-inner p-6 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-3 opacity-[0.03] pointer-events-none transition-opacity group-hover:opacity-[0.06]">
+                          <Activity size={120} className="text-white" />
+                        </div>
+                        <pre className="text-[0.88rem] font-mono leading-relaxed overflow-x-auto max-h-[500px] custom-scrollbar scrollbar-dark text-blue-50 relative z-10">
+                          <code>{JSON.stringify(event.payload || details.payload, null, 2)}</code>
+                        </pre>
                       </div>
-                      <pre className="text-[0.75rem] text-blue-200/90 font-mono leading-relaxed overflow-x-auto max-h-[300px] custom-scrollbar">
-                        <code>{JSON.stringify(event.properties, null, 2)}</code>
-                      </pre>
-                    </div>
+                    )}
                   </div>
                 </div>
-              </div>
-            )}
+              );
+            }}
             skeletonRows={10}
-            className="flex-1 overflow-y-auto px-4 py-2"
+            className="flex-1 overflow-y-auto px-4"
           />
         )}
       </div>
