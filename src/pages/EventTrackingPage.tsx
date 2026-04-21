@@ -344,7 +344,6 @@ const EventTrackingPage: React.FC = () => {
         {!selectedKeyId ? (
           <div className="flex-1 flex flex-col items-center justify-center py-24 text-center animate-in fade-in zoom-in duration-500 bg-white dark:bg-slate-900">
             <div className="relative mb-6">
-              <div className="absolute inset-0 bg-olive-500/10 blur-3xl rounded-full" />
               <img
                 src={noDataImage}
                 alt="No Node Selected"
