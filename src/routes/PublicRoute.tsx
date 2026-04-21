@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
 
 import { useAuth } from '@/context/AuthContext';
+import Loader from '@/components/Loader';
 
 interface PublicRouteProps {
   children: ReactNode;
@@ -12,7 +13,7 @@ function PublicRoute({ children, redirectTo = '/' }: PublicRouteProps): JSX.Elem
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <div className="route-state">Checking your session...</div>;
+    return <Loader center />;
   }
 
   if (user != null) {

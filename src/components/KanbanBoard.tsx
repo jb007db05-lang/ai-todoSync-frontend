@@ -2,6 +2,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea
 import { createPortal } from 'react-dom';
 import { type Task, type TaskWorkflowStatus, TASK_WORKFLOW_STATUS_OPTIONS } from '@/types/task';
 import TaskCard from './TaskCard';
+import Skeleton from './Skeleton';
 
 interface KanbanBoardProps {
   tasks: Task[];
@@ -11,6 +12,7 @@ interface KanbanBoardProps {
   onEditTask: (task: Task) => void;
   onCommentTask?: (task: Task) => void;
   onToggleBlocked?: (task: Task) => void;
+  loading?: boolean;
 }
 
 const COLUMNS: TaskWorkflowStatus[] = ['BACKLOG', 'TODO', 'IN_PROGRESS', 'IN_REVIEW', 'BLOCKED', 'DONE'];
@@ -22,13 +24,15 @@ function KanbanBoard({
   onDeleteTask,
   onEditTask,
   onCommentTask,
-  onToggleBlocked
+  onToggleBlocked,
+  loading = false
 }: KanbanBoardProps): JSX.Element {
   
   const getTasksByStatus = (status: TaskWorkflowStatus) => {
     return tasks.filter((task) => task.status === status)
       .sort((a, b) => (a.order || 0) - (b.order || 0));
   };
+
 
   const onDragEnd = async (result: DropResult) => {
     const { destination, source, draggableId } = result;
@@ -77,38 +81,58 @@ function KanbanBoard({
                         snapshot.isDraggingOver ? 'bg-blue-50/30 dark:bg-blue-500/5' : ''
                       }`}
                     >
-                      {columnTasks.map((task, index) => (
-                        <Draggable key={task.id} draggableId={task.id} index={index}>
-                          {(provided, snapshot) => {
-                            const content = (
-                              <div
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                {...provided.dragHandleProps}
-                                className={`${snapshot.isDragging ? 'shadow-2xl scale-[1.02] z-[9999]' : ''}`}
-                                style={{
-                                  ...provided.draggableProps.style,
-                                  // Avoid potential position jumps during portal creation
-                                  cursor: snapshot.isDragging ? 'grabbing' : 'grab',
-                                }}
-                              >
-                                <TaskCard
-                                  task={task}
-                                  onDelete={onDeleteTask}
-                                  onEditTask={onEditTask}
-                                  onSelect={onSelectTask}
-                                  onComment={onCommentTask}
-                                  onToggleBlocked={onToggleBlocked}
-                                />
+                      {loading ? (
+                        Array.from({ length: 3 }).map((_, i) => (
+                          <div key={`skeleton-${status}-${i}`} className="p-4 bg-white dark:bg-slate-800/80 rounded-xl border border-zinc-100 dark:border-slate-700/50 space-y-3">
+                            <div className="flex justify-between items-center">
+                              <Skeleton variant="text" className="w-1/2 h-4" />
+                              <Skeleton variant="rectangle" className="w-4 h-4 rounded" />
+                            </div>
+                            <Skeleton variant="text" className="w-full h-3" />
+                            <div className="flex justify-between items-center pt-2">
+                              <Skeleton variant="circle" className="w-6 h-6" />
+                              <div className="flex gap-1">
+                                <Skeleton variant="rectangle" className="w-6 h-6 rounded" />
+                                <Skeleton variant="rectangle" className="w-6 h-6 rounded" />
                               </div>
-                            );
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        columnTasks.map((task, index) => (
+                          <Draggable key={task.id} draggableId={task.id} index={index}>
+                            {(provided, snapshot) => {
+                              const content = (
+                                <div
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                  className={`${snapshot.isDragging ? 'shadow-2xl scale-[1.02] z-[9999]' : ''}`}
+                                  style={{
+                                    ...provided.draggableProps.style,
+                                    // Avoid potential position jumps during portal creation
+                                    cursor: snapshot.isDragging ? 'grabbing' : 'grab',
+                                  }}
+                                >
+                                  <TaskCard
+                                    task={task}
+                                    onDelete={onDeleteTask}
+                                    onEditTask={onEditTask}
+                                    onSelect={onSelectTask}
+                                    onComment={onCommentTask}
+                                    onToggleBlocked={onToggleBlocked}
+                                  />
+                                </div>
+                              );
 
-                            return snapshot.isDragging 
-                              ? createPortal(content, document.body) 
-                              : content;
-                          }}
-                        </Draggable>
-                      ))}
+                              return snapshot.isDragging 
+                                ? createPortal(content, document.body) 
+                                : content;
+                            }}
+                          </Draggable>
+                        ))
+                      )}
+
                       {provided.placeholder}
                     </div>
                   )}
