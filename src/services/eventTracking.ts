@@ -100,7 +100,7 @@ export const getUserEvents = async (identifier: string, apiKeyId: string): Promi
 };
 
 export const getAnalyticsEvents = async (params: {
-  keyId?: string;
+  apiKeyId?: string;
   limit?: number;
   offset?: number;
   eventName?: string;

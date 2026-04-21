@@ -2521,7 +2521,7 @@ function DashboardPage(): JSX.Element {
           titlePlaceholder="Sprint recap"
         />
       ) : null}
-      {loading && tasks.length === 0 && <GlobalLoader message="Updating Dashboard..." />}
+
     </div>
   );
 }

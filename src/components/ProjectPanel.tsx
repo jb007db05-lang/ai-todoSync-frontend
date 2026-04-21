@@ -1,9 +1,29 @@
+import React, { useState, useMemo } from 'react';
 import type { Project } from '@/types/project';
-import { useState } from 'react';
-import { ChevronLeft, ChevronRight, FolderKanban, Layers3, Pencil, Plus, Search, Trash2, Calendar } from 'lucide-react';
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  FolderKanban, 
+  Layers3, 
+  Pencil, 
+  Plus, 
+  Search, 
+  Trash2, 
+  Calendar 
+} from 'lucide-react';
 import UserAvatar from './UserAvatar';
 import noDataImage from '@/assets/no_data.png';
 import Skeleton from './Skeleton';
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  createColumnHelper,
+  SortingState,
+} from '@tanstack/react-table';
+import DataTable from './DataTable';
+
+const columnHelper = createColumnHelper<Project>();
 
 interface ProjectPanelProps {
   actionProjectId: string | null;
@@ -38,48 +58,163 @@ function ProjectPanel({
   onSearch,
   searchTerm,
 }: ProjectPanelProps): JSX.Element {
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [rowSelection, setRowSelection] = useState({});
+  const [sorting, setSorting] = useState<SortingState>([]);
+
+  const columns = useMemo(() => [
+    columnHelper.display({
+      id: 'select',
+      header: ({ table }) => (
+        <div className="flex items-center justify-center">
+          <input
+            type="checkbox"
+            className="w-5 h-5 cursor-pointer accent-olive-600"
+            checked={table.getIsAllPageRowsSelected()}
+            ref={(el) => {
+              if (el) {
+                el.indeterminate = table.getIsSomePageRowsSelected();
+              }
+            }}
+            onChange={table.getToggleAllPageRowsSelectedHandler()}
+          />
+        </div>
+      ),
+      cell: ({ row }) => (
+        <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+          <input
+            type="checkbox"
+            className="w-5 h-5 cursor-pointer accent-olive-600"
+            checked={row.getIsSelected()}
+            disabled={row.original.currentUserRole !== 'ADMIN'}
+            onChange={row.getToggleSelectedHandler()}
+          />
+        </div>
+      ),
+      enableSorting: false,
+    }),
+    columnHelper.accessor('name', {
+      header: 'Project',
+      cell: info => (
+        <div className="flex items-center gap-3">
+          <FolderKanban className="text-olive-600 dark:text-olive-500 shrink-0" size={18} />
+          <div className="grid gap-0.5">
+            <strong className="text-olive-900 dark:text-slate-100 font-bold text-[1rem]">{info.getValue()}</strong>
+            {info.row.original.description && (
+              <span className="text-zinc-400 dark:text-slate-500 text-[0.85rem] truncate max-w-[300px]">
+                {info.row.original.description}
+              </span>
+            )}
+          </div>
+        </div>
+      ),
+    }),
+    columnHelper.accessor('creator', {
+      header: 'Creator',
+      cell: info => {
+        const creator = info.getValue();
+        return (
+          <div className="flex items-center gap-3">
+            {creator ? (
+              <UserAvatar size="md" name={creator.name} email={creator.email} />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 flex items-center justify-center">
+                <Plus size={14} className="text-zinc-400" />
+              </div>
+            )}
+            <span className="text-zinc-700 dark:text-slate-300 font-semibold truncate max-w-[120px]">
+              {creator?.name || creator?.email || 'Unknown'}
+            </span>
+          </div>
+        );
+      },
+    }),
+    columnHelper.accessor('createdAt', {
+      id: 'date',
+      header: 'Date',
+      cell: info => (
+        <div className="flex items-center gap-2 text-zinc-600 dark:text-slate-300">
+          <Calendar size={14} className="opacity-60" />
+          <span>{formatDate(info.getValue())}</span>
+        </div>
+      ),
+    }),
+    columnHelper.accessor('createdAt', {
+      id: 'time',
+      header: 'Time',
+      cell: info => formatTime(info.getValue()),
+      enableSorting: false,
+    }),
+    columnHelper.display({
+      id: 'actions',
+      header: () => <div className="text-right">Actions</div>,
+      cell: ({ row }) => {
+        const project = row.original;
+        const rowActionCls = 'flex items-center justify-center w-7 h-7 rounded text-zinc-400 dark:text-slate-500 transition-all duration-150 hover:-translate-y-px';
+        return (
+          <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+            <button
+              className={`${rowActionCls} !w-10 !h-10 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 hover:text-olive-600 dark:hover:text-blue-400 disabled:opacity-40`}
+              disabled={project.currentUserRole !== 'ADMIN'}
+              onClick={() => onOpenEpicManager(project)}
+              title="Epics"
+              type="button"
+            >
+              <Layers3 size={20} />
+            </button>
+            <button
+              className={`${rowActionCls} !w-10 !h-10 hover:bg-zinc-100 dark:hover:bg-slate-700 hover:text-olive-900 dark:hover:text-slate-100 disabled:opacity-40`}
+              disabled={project.currentUserRole !== 'ADMIN'}
+              onClick={() => onOpenUpdateProject(project)}
+              title="Edit project"
+              type="button"
+            >
+              <Pencil size={20} />
+            </button>
+            <button
+              className={`${rowActionCls} !w-10 !h-10 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 dark:hover:text-red-400 disabled:opacity-50`}
+              disabled={actionProjectId === project.id || project.currentUserRole !== 'ADMIN'}
+              onClick={() => void onDeleteProject(project.id)}
+              title="Delete project"
+              type="button"
+            >
+              <Trash2 size={20} />
+            </button>
+          </div>
+        );
+      },
+      enableSorting: false,
+    }),
+  ], [onOpenEpicManager, onOpenUpdateProject, onDeleteProject, actionProjectId]);
+
+  const table = useReactTable({
+    data: projects,
+    columns,
+    state: {
+      rowSelection,
+      sorting,
+    },
+    onRowSelectionChange: setRowSelection,
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getRowId: row => row.id,
+  });
+
+  const selectedProjects = useMemo(() => {
+    return table.getSelectedRowModel().flatRows.map(row => row.original);
+  }, [rowSelection, projects]);
+
+  const handleDeleteSelected = async () => {
+    if (selectedProjects.length === 0) return;
+    await onDeleteProjects(selectedProjects.map(p => p.id));
+    setRowSelection({});
+  };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onSearch(e.target.value);
   };
-  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.checked) {
-      setSelectedIds(new Set(projects.filter((project) => project.currentUserRole === 'ADMIN').map((project) => project.id)));
-    } else {
-      setSelectedIds(new Set());
-    }
-  };
-
-  const handleSelectRow = (projectId: string, e: React.MouseEvent | React.ChangeEvent) => {
-    if (e.type === 'change' || (e as React.MouseEvent).target instanceof HTMLInputElement) {
-      // managed below
-    }
-    const project = projects.find((entry) => entry.id === projectId);
-    if (project?.currentUserRole !== 'ADMIN') {
-      return;
-    }
-    const next = new Set(selectedIds);
-    if (next.has(projectId)) {
-      next.delete(projectId);
-    } else {
-      next.add(projectId);
-    }
-    setSelectedIds(next);
-  };
-
-  const handleDeleteSelected = async () => {
-    if (selectedIds.size === 0) return;
-    await onDeleteProjects(Array.from(selectedIds));
-    setSelectedIds(new Set());
-  };
-
-  const adminProjectsCount = projects.filter((project) => project.currentUserRole === 'ADMIN').length;
-  const isAllSelected = adminProjectsCount > 0 && selectedIds.size === adminProjectsCount;
-  const isSomeSelected = selectedIds.size > 0 && selectedIds.size < adminProjectsCount;
 
   const thCls = 'text-left px-4 py-3 text-[0.8rem] font-bold uppercase tracking-[0.05em] text-zinc-500 dark:text-slate-400 bg-zinc-50 dark:bg-slate-800 border-b border-zinc-200 dark:border-slate-700 sticky top-0 z-10';
-  const rowActionCls = 'flex items-center justify-center w-7 h-7 rounded text-zinc-400 dark:text-slate-500 transition-all duration-150 hover:-translate-y-px';
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'N/A';
@@ -119,14 +254,14 @@ function ProjectPanel({
           />
         </div>
 
-        {selectedIds.size > 0 && (
+        {selectedProjects.length > 0 && (
           <button
             className="inline-flex items-center gap-2 h-9 px-4 bg-white dark:bg-slate-700 border border-red-200 dark:border-red-800 rounded text-red-600 dark:text-red-400 text-sm hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
             onClick={handleDeleteSelected}
             type="button"
           >
             <Trash2 size={16} />
-            <span>Delete Selected ({selectedIds.size})</span>
+            <span>Delete Selected ({selectedProjects.length})</span>
           </button>
         )}
 
@@ -142,199 +277,55 @@ function ProjectPanel({
 
       {/* Table Section */}
       <div className="flex-1 overflow-y-auto px-1 py-1">
-        <table className="w-full border-separate border-spacing-y-2 text-[0.95rem]">
-          <thead>
-            <tr>
-              <th className={`${thCls} !pl-5`} style={{ width: 40 }}>
-                <input
-                  checked={isAllSelected}
-                  className="w-5 h-5 cursor-pointer accent-olive-600"
-                  onChange={handleSelectAll}
-                  ref={el => el && (el.indeterminate = isSomeSelected)}
-                  type="checkbox"
+        {projects.length === 0 && !loading ? (
+          <div className="py-20 border-y border-transparent">
+            {/* Custom Empty State preserved for brand consistency */}
+            <div className="flex flex-col items-center justify-center max-w-[400px] mx-auto text-center animate-in fade-in zoom-in duration-500">
+              <div className="relative">
+                <img 
+                  src={noDataImage} 
+                  alt="No Data" 
+                  className="relative w-100 h-100 mx-auto object-contain opacity-90" 
                 />
-              </th>
-              <th className={thCls} style={{ width: '35%' }}>Project</th>
-              <th className={thCls} style={{ width: '20%' }}>Creator</th>
-              <th className={thCls} style={{ width: '15%' }}>Date</th>
-              <th className={thCls} style={{ width: '10%' }}>Time</th>
-              <th className={`${thCls} text-right !pr-6`} style={{ width: '20%' }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <tr key={`skeleton-${i}`} className="bg-white dark:bg-slate-800/80 shadow-sm border border-zinc-50 dark:border-slate-700/30">
-                  <td className="px-5 py-5 rounded-l-xl">
-                    <Skeleton variant="rectangle" className="w-5 h-5 mx-auto" />
-                  </td>
-                  <td className="px-5 py-5">
-                    <div className="flex items-center gap-3">
-                      <Skeleton variant="circle" className="w-5 h-5 flex-shrink-0" />
-                      <div className="space-y-2 flex-1">
-                        <Skeleton variant="text" className="w-32" />
-                        <Skeleton variant="text" className="w-48 h-3" />
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-5 py-5">
-                    <div className="flex items-center gap-3">
-                      <Skeleton variant="circle" className="w-8 h-8 flex-shrink-0" />
-                      <Skeleton variant="text" className="w-20" />
-                    </div>
-                  </td>
-                  <td className="px-5 py-5">
-                    <Skeleton variant="text" className="w-24" />
-                  </td>
-                  <td className="px-5 py-5">
-                    <Skeleton variant="text" className="w-12" />
-                  </td>
-                  <td className="px-5 py-5 rounded-r-xl text-right">
-                    <div className="inline-flex gap-2 justify-end">
-                      <Skeleton variant="rectangle" className="w-8 h-8" />
-                      <Skeleton variant="rectangle" className="w-8 h-8" />
-                      <Skeleton variant="rectangle" className="w-8 h-8" />
-                    </div>
-                  </td>
-                </tr>
-              ))
-            ) : projects.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="py-20 border-y border-transparent">
-                  <div className="flex flex-col items-center justify-center max-w-[400px] mx-auto text-center animate-in fade-in zoom-in duration-500">
-                    <div className="relative">
-                      <img 
-                        src={noDataImage} 
-                        alt="No Data" 
-                        className="relative w-100 h-100 mx-auto object-contain opacity-90" 
-                      />
-                    </div>
-                    
-                    <h3 className="text-xl font-bold text-olive-950 dark:text-white mb-2 tracking-tight">
-                      {searchTerm ? "No Matches Found" : "Your Directory is Empty"}
-                    </h3>
-                    
-                    <p className="text-zinc-500 dark:text-slate-400 text-sm mb-8 leading-relaxed px-4">
-                      {searchTerm 
-                        ? "We couldn't find any projects matching your current filter. Try adjusting your search term to see more results."
-                        : "It looks like you haven't created any projects yet. Start by provisioning a new node for your synchronization workspace."}
-                    </p>
-                    
-                    <button
-                      onClick={searchTerm ? () => onSearch('') : onOpenCreateProject}
-                      className="inline-flex items-center gap-2 px-6 py-2.5 bg-olive-900 dark:bg-olive-600 text-white rounded-lg text-sm font-bold shadow-lg shadow-olive-950/20 hover:bg-olive-800 dark:hover:bg-olive-500 transform transition-all active:scale-95 duration-200"
-                      type="button"
-                    >
-                      {searchTerm ? (
-                        <>
-                          <Search size={16} strokeWidth={2.5} />
-                          <span>Clear search filter</span>
-                        </>
-                      ) : (
-                        <>
-                          <Plus size={18} strokeWidth={2.5} />
-                          <span>Create first project</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              projects.map((project) => (
-                <tr
-                  className={[
-                    'cursor-pointer transition-all duration-200 relative bg-white dark:bg-slate-800/80 shadow-sm hover:shadow-md border border-zinc-100 dark:border-slate-700/50 group',
-                    selectedIds.has(project.id)
-                      ? 'ring-2 ring-olive-500/30'
-                      : ''
-                  ].join(' ')}
-                  key={project.id}
-                  onClick={() => onOpenProject(project.id)}
-                >
-                  <td className="px-5 py-3 align-middle group-first/tr:rounded-tl-xl group-first/tr:rounded-bl-xl border-y border-l border-transparent first:rounded-l-xl" onClick={(e) => e.stopPropagation()}>
-                    <input
-                      checked={selectedIds.has(project.id)}
-                      className="w-5 h-5 cursor-pointer accent-olive-600"
-                      disabled={project.currentUserRole !== 'ADMIN'}
-                      onChange={(e) => handleSelectRow(project.id, e)}
-                      type="checkbox"
-                    />
-                  </td>
-                  <td className="px-5 py-3 align-middle border-y border-transparent">
-                    <div className="flex items-center gap-3">
-                      <FolderKanban className="text-olive-600 dark:text-olive-500 shrink-0" size={18} />
-                      <div className="grid gap-0.5">
-                        <strong className="text-olive-900 dark:text-slate-100 font-bold text-[1rem]">{project.name}</strong>
-                        {project.description && (
-                          <span className="text-zinc-400 dark:text-slate-500 text-[0.85rem] truncate max-w-[300px]">{project.description}</span>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3 align-middle border-y border-transparent text-[0.95rem]">
-                    <div className="flex items-center gap-3">
-                      {project.creator ? (
-                        <UserAvatar
-                          size="md"
-                          name={project.creator.name}
-                          email={project.creator.email}
-                        />
-                      ) : (
-                        <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 flex items-center justify-center">
-                          <Plus size={14} className="text-zinc-400" />
-                        </div>
-                      )}
-                      <span className="text-zinc-700 dark:text-slate-300 font-semibold">
-                        {project.creator?.name || project.creator?.email || 'Unknown'}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3 align-middle border-y border-transparent text-[0.95rem]">
-                    <div className="flex items-center gap-2 text-zinc-600 dark:text-slate-300">
-                      <Calendar size={14} className="opacity-60" />
-                      <span>{formatDate(project.createdAt)}</span>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3 align-middle border-y border-transparent text-[0.95rem] font-medium text-zinc-500 dark:text-slate-400">
-                    {formatTime(project.createdAt)}
-                  </td>
-                  <td className="px-5 py-3 align-middle border-y border-r border-transparent last:rounded-r-xl">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <button
-                        className={`${rowActionCls} !w-10 !h-10 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 hover:text-olive-600 dark:hover:text-blue-400 disabled:opacity-40`}
-                        disabled={project.currentUserRole !== 'ADMIN'}
-                        onClick={(e) => { e.stopPropagation(); onOpenEpicManager(project); }}
-                        title="Epics"
-                        type="button"
-                      >
-                        <Layers3 size={20} />
-                      </button>
-                      <button
-                        className={`${rowActionCls} !w-10 !h-10 hover:bg-zinc-100 dark:hover:bg-slate-700 hover:text-olive-900 dark:hover:text-slate-100 disabled:opacity-40`}
-                        disabled={project.currentUserRole !== 'ADMIN'}
-                        onClick={(e) => { e.stopPropagation(); onOpenUpdateProject(project); }}
-                        title="Edit project"
-                        type="button"
-                      >
-                        <Pencil size={20} />
-                      </button>
-                      <button
-                        className={`${rowActionCls} !w-10 !h-10 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 dark:hover:text-red-400 disabled:opacity-50`}
-                        disabled={actionProjectId === project.id || project.currentUserRole !== 'ADMIN'}
-                        onClick={(e) => { e.stopPropagation(); void onDeleteProject(project.id); }}
-                        title="Delete project"
-                        type="button"
-                      >
-                        <Trash2 size={20} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              </div>
+              
+              <h3 className="text-xl font-bold text-olive-950 dark:text-white mb-2 tracking-tight">
+                {searchTerm ? "No Matches Found" : "Your Directory is Empty"}
+              </h3>
+              
+              <p className="text-zinc-500 dark:text-slate-400 text-sm mb-8 leading-relaxed px-4">
+                {searchTerm 
+                  ? "We couldn't find any projects matching your current filter. Try adjusting your search term to see more results."
+                  : "It looks like you haven't created any projects yet. Start by provisioning a new node for your synchronization workspace."}
+              </p>
+              
+              <button
+                onClick={searchTerm ? () => onSearch('') : onOpenCreateProject}
+                className="inline-flex items-center gap-2 px-6 py-2.5 bg-olive-900 dark:bg-olive-600 text-white rounded-lg text-sm font-bold shadow-lg shadow-olive-950/20 hover:bg-olive-800 dark:hover:bg-olive-500 transform transition-all active:scale-95 duration-200"
+                type="button"
+              >
+                {searchTerm ? (
+                  <>
+                    <Search size={16} strokeWidth={2.5} />
+                    <span>Clear search filter</span>
+                  </>
+                ) : (
+                  <>
+                    <Plus size={18} strokeWidth={2.5} />
+                    <span>Create first project</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <DataTable
+            table={table}
+            loading={loading}
+            onRowClick={(project) => onOpenProject(project.id)}
+            skeletonRows={5}
+          />
+        )}
       </div>
 
       {/* Pagination */}
