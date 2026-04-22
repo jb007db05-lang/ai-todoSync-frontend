@@ -12,53 +12,65 @@ import Loader from '@/components/Loader';
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
 const LoginPage = lazy(() => import('@/pages/LoginPage'));
 const RegisterPage = lazy(() => import('@/pages/RegisterPage'));
+const SdkDocsPage = lazy(() => import('@/pages/SdkDocsPage'));
 
 import { LoadingProvider } from '@/context/LoadingContext';
 import GlobalLoadingSpinner from '@/components/GlobalLoadingSpinner';
+import { ToastProvider } from '@/context/ToastContext';
 
 function App(): JSX.Element {
   return (
     <ThemeProvider>
-      <LoadingProvider>
-        <AuthProvider>
-          <ChatProvider>
-            <ConfirmationProvider>
-              <BrowserRouter>
-                <Suspense fallback={<Loader center />}>
-                  <Routes>
-                    <Route
-                      path="/login"
-                      element={
-                        <PublicRoute>
-                          <LoginPage />
-                        </PublicRoute>
-                      }
-                    />
-                    <Route
-                      path="/register"
-                      element={
-                        <PublicRoute>
-                          <RegisterPage />
-                        </PublicRoute>
-                      }
-                    />
+      <ToastProvider>
+        <LoadingProvider>
+          <AuthProvider>
+            <ChatProvider>
+              <ConfirmationProvider>
+                <BrowserRouter>
+                  <Suspense fallback={<Loader center />}>
+                    <Routes>
+                      <Route
+                        path="/login"
+                        element={
+                          <PublicRoute>
+                            <LoginPage />
+                          </PublicRoute>
+                        }
+                      />
+                      <Route
+                        path="/register"
+                        element={
+                          <PublicRoute>
+                            <RegisterPage />
+                          </PublicRoute>
+                        }
+                      />
                     <Route
                       path="/"
                       element={
                         <PrivateRoute>
                           <DashboardPage />
+                          </PrivateRoute>
+                      }
+                    />
+                    <Route
+                      path="/sdk-docs"
+                      element={
+                        <PrivateRoute>
+                          <SdkDocsPage />
                         </PrivateRoute>
                       }
                     />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </Suspense>
-              </BrowserRouter>
-              <GlobalLoadingSpinner />
-            </ConfirmationProvider>
-          </ChatProvider>
-        </AuthProvider>
-      </LoadingProvider>
+                </BrowserRouter>
+                <GlobalLoadingSpinner />
+              </ConfirmationProvider>
+            </ChatProvider>
+          </AuthProvider>
+        </LoadingProvider>
+      </ToastProvider>
     </ThemeProvider>
   );
 }
