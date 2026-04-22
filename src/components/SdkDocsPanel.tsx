@@ -410,40 +410,6 @@ function SdkDocsPanel(): JSX.Element {
             Full public API coverage.
           </p>
         </div>
-
-        {filteredDocs.map((doc) => (
-          <SectionCard className="grid gap-5" id={doc.id} key={doc.id}>
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="grid gap-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full bg-olive-600/10 px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-[0.12em] text-olive-700 dark:bg-blue-500/10 dark:text-blue-300">
-                    {doc.kind}
-                  </span>
-                  <h3 className="m-0 text-xl font-bold text-olive-950 dark:text-slate-100">{doc.title}</h3>
-                </div>
-                <p className="m-0 max-w-3xl text-sm leading-6 text-zinc-600 dark:text-slate-400">{doc.description}</p>
-              </div>
-            </div>
-
-            <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
-              <CodePanel copiedId={copiedId} id={doc.id + '-example'} onCopy={handleCopy} title="Example">
-                {doc.example}
-              </CodePanel>
-              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
-                <h4 className="m-0 text-sm font-bold uppercase tracking-[0.12em] text-zinc-500 dark:text-slate-400">Return Value</h4>
-                <p className="mb-0 mt-3 text-sm leading-6 text-zinc-700 dark:text-slate-300">{doc.returns}</p>
-                <div className="mt-5">
-                  <h4 className="m-0 text-sm font-bold uppercase tracking-[0.12em] text-zinc-500 dark:text-slate-400">Common Errors</h4>
-                  <ul className="mb-0 mt-3 space-y-2 pl-5 text-sm leading-6 text-zinc-700 dark:text-slate-300">
-                    {doc.errors.map((error) => (
-                      <li key={error}>{error}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </SectionCard>
-        ))}
       </div>
 
       <SectionCard className="grid gap-6" id="examples">
