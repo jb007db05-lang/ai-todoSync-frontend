@@ -133,23 +133,20 @@ export default function DataTable<TData>({
               table.getRowModel().rows.map((row: Row<TData>) => (
                 <React.Fragment key={row.id}>
                   <tr
-                    className={`group transition-all duration-300 relative bg-white dark:bg-slate-800/80 shadow-sm border border-zinc-100 dark:border-slate-700 hover:border-olive-500/30 dark:hover:border-blue-500/30 ${
-                      onRowClick ? 'cursor-pointer' : ''
-                    } ${
-                      row.getIsExpanded()
+                    className={`group transition-all duration-300 relative bg-white dark:bg-slate-800/80 shadow-sm border border-zinc-100 dark:border-slate-700 hover:border-olive-500/30 dark:hover:border-blue-500/30 ${onRowClick ? 'cursor-pointer' : ''
+                      } ${row.getIsExpanded()
                         ? 'ring-1 ring-inset ring-olive-500/10 dark:ring-blue-500/10 bg-zinc-50/80 dark:bg-slate-900 border-l-[6px] border-l-olive-600 dark:border-l-blue-500'
                         : ''
-                    }`}
+                      }`}
                     onClick={() => onRowClick?.(row.original)}
                   >
                     {row.getVisibleCells().map((cell: Cell<TData, unknown>) => (
                       <td
                         key={cell.id}
-                        className={`px-6 py-4 align-middle border-y border-transparent transition-all duration-300 ${
-                          !tableClassName.includes('border-spacing-y-0') && !tableClassName.includes('border-collapse')
-                            ? 'first:rounded-l-xl last:rounded-r-xl'
-                            : 'first:border-l last:border-r border-zinc-100 dark:border-slate-800'
-                        }`}
+                        className={`px-6 py-4 align-middle border-y border-transparent transition-all duration-300 ${!tableClassName.includes('border-spacing-y-0') && !tableClassName.includes('border-collapse')
+                          ? 'first:rounded-l-xl last:rounded-r-xl'
+                          : 'first:border-l last:border-r border-zinc-100 dark:border-slate-800'
+                          }`}
                       >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </td>
@@ -157,17 +154,15 @@ export default function DataTable<TData>({
                   </tr>
                   {renderExpandedRow && (
                     <tr
-                      className={`transition-all duration-500 ease-in-out ${
-                        row.getIsExpanded()
-                          ? 'bg-zinc-50/80 dark:bg-slate-900 border-x border-b border-zinc-100 dark:border-slate-700 opacity-100'
-                          : 'opacity-0 invisible pointer-events-none'
-                      }`}
+                      className={`transition-all duration-500 ease-in-out ${row.getIsExpanded()
+                        ? 'bg-zinc-50/80 dark:bg-slate-900 border-x border-b border-zinc-100 dark:border-slate-700 opacity-100'
+                        : 'opacity-0 invisible pointer-events-none'
+                        }`}
                     >
                       <td colSpan={columnsCount} className="p-0">
                         <div
-                          className={`grid transition-all duration-500 ease-in-out ${
-                            row.getIsExpanded() ? 'grid-rows-[1fr] py-0' : 'grid-rows-[0fr]'
-                          }`}
+                          className={`grid transition-all duration-500 ease-in-out ${row.getIsExpanded() ? 'grid-rows-[1fr] py-0' : 'grid-rows-[0fr]'
+                            }`}
                         >
                           <div className="overflow-hidden">
                             {renderExpandedRow(row.original)}
@@ -209,11 +204,10 @@ export default function DataTable<TData>({
                     <span className="px-1 text-xs text-zinc-400 dark:text-slate-500">...</span>
                   ) : null}
                   <button
-                    className={`flex h-8 min-w-8 items-center justify-center rounded border px-2 text-xs font-semibold transition-colors ${
-                      page === currentPage
-                        ? 'border-olive-700 bg-olive-900 text-white dark:border-olive-500 dark:bg-olive-600'
-                        : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'
-                    }`}
+                    className={`flex h-8 min-w-8 items-center justify-center rounded border px-2 text-xs font-semibold transition-colors ${page === currentPage
+                      ? 'border-olive-700 bg-olive-900 text-white dark:border-olive-500 dark:bg-olive-600'
+                      : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'
+                      }`}
                     onClick={() => changePage(page)}
                     type="button"
                   >

@@ -5,10 +5,11 @@ import {
   Plus,
   Settings,
   Activity,
-  LogOut
+  LogOut,
+  BookOpen
 } from 'lucide-react';
 
-export type SidebarView = 'dashboard' | 'settings' | 'event-tracking';
+export type SidebarView = 'dashboard' | 'settings' | 'event-tracking' | 'sdk-docs';
 
 interface SidebarProps {
   activeView: SidebarView;
@@ -43,7 +44,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         <button
           className={[
             'flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-[0.95rem] font-medium transition-all duration-200 justify-start',
-            selectedProjectView === allProjectsValue && activeView !== 'settings' && activeView !== 'event-tracking'
+            selectedProjectView === allProjectsValue && activeView !== 'settings' && activeView !== 'event-tracking' && activeView !== 'sdk-docs'
               ? 'bg-olive-700 text-white shadow-md shadow-olive-700/20' 
               : 'text-zinc-600 hover:text-olive-950 hover:bg-zinc-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800'
           ].join(' ')}
@@ -70,6 +71,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           <span>Event Tracking</span>
         </button>
 
+
         <button
           className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-[0.95rem] font-medium text-olive-600 hover:text-olive-700 hover:bg-olive-50 dark:text-olive-500 dark:hover:bg-olive-900/40 transition-all duration-200 justify-start mt-1 border border-dashed border-olive-200 dark:border-olive-800"
           onClick={onNewProject}
@@ -82,6 +84,21 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Footer */}
       <div className="flex flex-col gap-1 p-4 border-t border-zinc-200 dark:border-slate-800 shrink-0">
+        <button
+          className={[
+            'flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-[0.95rem] font-medium transition-all duration-200 justify-start',
+            activeView === 'sdk-docs' 
+              ? 'bg-olive-700 text-white shadow-md shadow-olive-700/20' 
+              : 'text-zinc-600 hover:text-olive-950 hover:bg-zinc-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800'
+          ].join(' ')}
+          onClick={() => onViewChange('sdk-docs')}
+          title="SDK Documentation"
+          type="button"
+        >
+          <BookOpen size={18} strokeWidth={2} />
+          <span>SDK Documentation</span>
+        </button>
+
         <button
           className={[
             'flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-[0.95rem] font-medium transition-all duration-200 justify-start',
