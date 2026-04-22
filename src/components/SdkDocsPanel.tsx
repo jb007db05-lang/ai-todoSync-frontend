@@ -1,0 +1,188 @@
+import React, {  useState } from 'react';
+import {
+  Check,
+  Copy,
+  ExternalLink,
+} from 'lucide-react';
+
+import PageHeader from '@/components/PageHeader';
+import SectionCard from '@/components/SectionCard';
+import { useToast } from '@/context/ToastContext';
+
+const INSTALL_SNIPPET = 'npm install @jamesbond007db05/events-sdk';
+
+const QUICK_START_SNIPPET = "import { initTracker } from '@jamesbond007db05/events-sdk';\n\nconst tracker = initTracker({\n  apiKey: 'your_api_key_here',\n  autoPage: true,\n  debug: false\n});\n\nawait tracker.track('signup_started', {\n  plan: 'pro',\n  source: 'landing-page'\n});";
+
+const ERROR_HANDLING_SNIPPET = "import {\n  initTracker,\n  normalizeSdkError,\n  SDKValidationError\n} from '@jamesbond007db05/events-sdk';\n\ntry {\n  const tracker = initTracker({ apiKey: 'your_api_key_here' });\n  await tracker.track('checkout_completed', { amount: 199 });\n} catch (error) {\n  const normalized = normalizeSdkError(error);\n  console.error(normalized.code, normalized.message);\n\n  if (error instanceof SDKValidationError) {\n    // show friendly validation feedback\n  }\n}";
+
+function SdkDocsPanel(): JSX.Element {
+  const { showToast } = useToast();
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const handleCopy = async (text: string, id: string): Promise<void> => {
+    await navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    showToast({ variant: 'success', message: 'Code copied.' });
+    window.setTimeout(() => setCopiedId((current) => (current === id ? null : current)), 1600);
+  };
+
+  return (
+    <div className="grid gap-6 p-2">
+      <SectionCard className="overflow-hidden p-0">
+        <div className="bg-white/80 px-6 py-5 backdrop-blur dark:border-slate-700 dark:bg-slate-900/70">
+          <PageHeader
+            title="Events SDK Documentation"
+            description="Production-ready guide for installation, initialization, public API, and validation utilities."
+            actions={
+              <a
+                className="inline-flex h-10 items-center gap-2 rounded-xl bg-olive-900 px-4 text-sm font-semibold text-white transition-colors hover:bg-olive-800 dark:bg-olive-600 dark:hover:bg-olive-500"
+                href="https://www.npmjs.com/package/@jamesbond007db05/events-sdk"
+                rel="noreferrer"
+                target="_blank"
+              >
+                Package
+                <ExternalLink size={15} />
+              </a>
+            }
+          />
+        </div>
+      </SectionCard>
+
+      <SectionCard className="grid gap-6" id="getting-started">
+        <div>
+          <p className="mb-2 text-[0.72rem] font-bold uppercase tracking-[0.16em] text-olive-600 dark:text-blue-400">Getting Started</p>
+          <h2 className="m-0 text-2xl font-bold text-olive-950 dark:text-slate-100">Install, initialize, ship events</h2>
+        </div>
+        <div className="w-full flex flex-col">
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-slate-700 dark:bg-slate-800/80">
+              <h3 className="m-0 text-base font-bold text-olive-950 dark:text-slate-100">1. Install package</h3>
+              <p className="mb-0 mt-2 text-sm leading-6 text-zinc-600 dark:text-slate-400 pb-3">
+                Use npm in your frontend app. SDK ships browser-focused tracking APIs.
+              </p>
+              <CodePanel copiedId={copiedId} id="install" onCopy={handleCopy} title="Installation">
+                {INSTALL_SNIPPET}
+              </CodePanel>
+            </div>
+            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-slate-700 dark:bg-slate-800/80">
+              <h3 className="m-0 text-base font-bold text-olive-950 dark:text-slate-100">2. Create API key</h3>
+              <p className="mb-0 mt-2 text-sm leading-6 text-zinc-600 dark:text-slate-400">
+                Open Event Tracking in app, provision a node, copy secret key once, then store it in your app config.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-slate-700 dark:bg-slate-800/80">
+              <h3 className="m-0 text-base font-bold text-olive-950 dark:text-slate-100">3. Initialize once</h3>
+              <p className="mb-0 mt-2 text-sm leading-6 text-zinc-600 dark:text-slate-400">
+                Call initTracker() once at app bootstrap. Base URL is hardcoded internally.
+              </p>
+            </div>
+          </div>
+        </div>
+      </SectionCard>
+
+      <SectionCard className="grid gap-6" id="quick-start">
+        <div className="grid gap-2">
+          <h2 className="m-0 text-xl font-bold text-olive-950 dark:text-slate-100">Quick Start</h2>
+          <p className="m-0 text-sm leading-6 text-zinc-600 dark:text-slate-400">
+            Copy-paste setup for most browser apps.
+          </p>
+        </div>
+        <CodePanel copiedId={copiedId} id="quick-start-code" onCopy={handleCopy} title="Quick Start Example">
+          {QUICK_START_SNIPPET}
+        </CodePanel>
+      </SectionCard>
+
+      <div className="space-y-5" id="functions">
+        <div className="grid gap-2">
+          <h2 className="m-0 text-2xl font-bold text-olive-950 dark:text-slate-100">Function Reference</h2>
+          <p className="m-0 text-sm leading-6 text-zinc-600 dark:text-slate-400">
+            Full public API coverage.
+          </p>
+        </div>
+      </div>
+
+      <SectionCard className="grid gap-6" id="examples">
+        <div className="grid gap-2">
+          <h2 className="m-0 text-xl font-bold text-olive-950 dark:text-slate-100">Real-World Examples</h2>
+          <p className="m-0 text-sm leading-6 text-zinc-600 dark:text-slate-400">
+            Practical patterns you can drop into app code.
+          </p>
+        </div>
+        <div className="grid gap-5 lg:grid-cols-2">
+          <CodePanel copiedId={copiedId} id="example-onboarding" onCopy={handleCopy} title="Onboarding Flow">
+            {"const tracker = initTracker({\n  apiKey: 'live_1234567890abcdef',\n  autoPage: true\n});\n\nawait tracker.identify('user_42', {\n  role: 'owner',\n  workspace: 'northstar'\n});\n\nawait tracker.track('workspace_created', {\n  template: 'product-ops'\n});\n\nawait tracker.flush();"}
+          </CodePanel>
+          <CodePanel copiedId={copiedId} id="example-auth" onCopy={handleCopy} title="Anonymous to Authenticated">
+            {"const tracker = initTracker({ apiKey: 'live_1234567890abcdef' });\n\nawait tracker.track('pricing_viewed', {\n  source: 'landing'\n});\n\nawait tracker.alias('anon_browser_id', 'user_42');\nawait tracker.identify('user_42', {\n  email: 'ada@example.com'\n});\n\nawait tracker.trackWithUser('user_42', 'checkout_completed', {\n  amount: 199,\n  currency: 'USD'\n});"}
+          </CodePanel>
+        </div>
+      </SectionCard>
+
+      <SectionCard className="grid gap-6" id="errors">
+        <div className="grid gap-2">
+          <h2 className="m-0 text-xl font-bold text-olive-950 dark:text-slate-100">Common Errors and Solutions</h2>
+          <p className="m-0 text-sm leading-6 text-zinc-600 dark:text-slate-400">
+            Use normalized errors in UI and logs.
+          </p>
+        </div>
+        <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+          <CodePanel copiedId={copiedId} id="error-snippet" onCopy={handleCopy} title="Error Handling">
+            {ERROR_HANDLING_SNIPPET}
+          </CodePanel>
+          <div className="grid gap-3">
+            {[
+              ['API_KEY_REQUIRED', 'Pass non-empty apiKey to initTracker().'],
+              ['API_KEY_INVALID', 'Use real node key from Event Tracking page.'],
+              ['PAYLOAD_INVALID', 'Send plain object to validatePayload().'],
+              ['Event payload too large', 'Reduce nested payload size or split event shape.'],
+              ['Tracker not initialized', 'Call initTracker() before getTracker().'],
+            ].map(([code, fix]) => (
+              <div
+                className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-slate-700 dark:bg-slate-800/70"
+                key={code}
+              >
+                <strong className="font-mono text-sm text-olive-950 dark:text-slate-100">{code}</strong>
+                <p className="mb-0 mt-2 text-sm leading-6 text-zinc-600 dark:text-slate-400">{fix}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </SectionCard>
+    </div>
+  );
+}
+
+function CodePanel({
+  title,
+  children,
+  id,
+  copiedId,
+  onCopy
+}: {
+  title: string;
+  children: string;
+  id: string;
+  copiedId: string | null;
+  onCopy: (text: string, id: string) => Promise<void>;
+}): JSX.Element {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-zinc-200 dark:border-slate-700">
+      <div className="flex items-center justify-between gap-3 border-b border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
+        <strong className="text-sm text-olive-950 dark:text-slate-100">{title}</strong>
+        <button
+          className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-600 transition-colors hover:bg-zinc-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+          onClick={() => void onCopy(children, id)}
+          type="button"
+        >
+          {copiedId === id ? <Check size={13} /> : <Copy size={13} />}
+          {copiedId === id ? 'Copied' : 'Copy'}
+        </button>
+      </div>
+      <pre className="overflow-x-auto bg-slate-950 p-4 text-[0.82rem] leading-7 text-white">
+        <code>{children}</code>
+      </pre>
+    </div>
+  );
+}
+
+export default SdkDocsPanel;

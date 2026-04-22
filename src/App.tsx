@@ -15,50 +15,53 @@ const RegisterPage = lazy(() => import('@/pages/RegisterPage'));
 
 import { LoadingProvider } from '@/context/LoadingContext';
 import GlobalLoadingSpinner from '@/components/GlobalLoadingSpinner';
+import { ToastProvider } from '@/context/ToastContext';
 
 function App(): JSX.Element {
   return (
     <ThemeProvider>
-      <LoadingProvider>
-        <AuthProvider>
-          <ChatProvider>
-            <ConfirmationProvider>
-              <BrowserRouter>
-                <Suspense fallback={<Loader center />}>
-                  <Routes>
-                    <Route
-                      path="/login"
-                      element={
-                        <PublicRoute>
-                          <LoginPage />
-                        </PublicRoute>
-                      }
-                    />
-                    <Route
-                      path="/register"
-                      element={
-                        <PublicRoute>
-                          <RegisterPage />
-                        </PublicRoute>
-                      }
-                    />
+      <ToastProvider>
+        <LoadingProvider>
+          <AuthProvider>
+            <ChatProvider>
+              <ConfirmationProvider>
+                <BrowserRouter>
+                  <Suspense fallback={<Loader center />}>
+                    <Routes>
+                      <Route
+                        path="/login"
+                        element={
+                          <PublicRoute>
+                            <LoginPage />
+                          </PublicRoute>
+                        }
+                      />
+                      <Route
+                        path="/register"
+                        element={
+                          <PublicRoute>
+                            <RegisterPage />
+                          </PublicRoute>
+                        }
+                      />
                     <Route
                       path="/"
                       element={
                         <PrivateRoute>
                           <DashboardPage />
-                        </PrivateRoute>
+                          </PrivateRoute>
                       }
                     />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </Suspense>
-              </BrowserRouter>
-              <GlobalLoadingSpinner />
-            </ConfirmationProvider>
-          </ChatProvider>
-        </AuthProvider>
-      </LoadingProvider>
+                </BrowserRouter>
+                <GlobalLoadingSpinner />
+              </ConfirmationProvider>
+            </ChatProvider>
+          </AuthProvider>
+        </LoadingProvider>
+      </ToastProvider>
     </ThemeProvider>
   );
 }

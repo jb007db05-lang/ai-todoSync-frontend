@@ -15,6 +15,7 @@ import {
   useReactTable,
   getCoreRowModel,
   getExpandedRowModel,
+  getPaginationRowModel,
   createColumnHelper,
   ExpandedState,
 } from '@tanstack/react-table';
@@ -142,6 +143,12 @@ const EventExplorer: React.FC<EventExplorerProps> = ({ selectedKeyId }) => {
     onExpandedChange: setExpanded,
     getCoreRowModel: getCoreRowModel(),
     getExpandedRowModel: getExpandedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    initialState: {
+      pagination: {
+        pageSize: 10,
+      },
+    },
     getRowCanExpand: () => true,
     getRowId: (row) => row._id,
   });
@@ -232,17 +239,8 @@ const EventExplorer: React.FC<EventExplorerProps> = ({ selectedKeyId }) => {
         skeletonRows={5}
         stickyHeader={true}
         className="flex-1 overflow-y-auto"
+        emptyMessage="No events found"
       />
-
-      <div className="p-4 border-t border-zinc-100 dark:border-slate-800 bg-zinc-50/50 dark:bg-slate-900/80 flex items-center justify-between">
-        <p className="text-[0.65rem] font-bold text-zinc-400 uppercase tracking-widest">Showing {events.length} most recent signals</p>
-        <button
-          onClick={() => fetchEvents()}
-          className="text-[0.65rem] font-black uppercase tracking-widest text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1.5 transition-colors"
-        >
-          Refresh Log
-        </button>
-      </div>
     </div>
   );
 };

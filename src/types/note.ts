@@ -1,6 +1,8 @@
 export interface Note {
   id: string;
   entityType: 'project' | 'epic';
+  parentType: 'project' | 'epic' | 'task' | 'subtask';
+  parentId: string;
   projectId: string;
   epicId: string | null;
   title: string;
