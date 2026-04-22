@@ -22,13 +22,6 @@ import {
   SYNC_CHATGPT_INSTRUCTION_TEXT
 } from '@/features/sync/schema';
 
-import step1 from '@/assets/gptIntegration/step1.png';
-import step2 from '@/assets/gptIntegration/step2.png';
-import step3 from '@/assets/gptIntegration/step3.png';
-import step4 from '@/assets/gptIntegration/step4.png';
-import step5 from '@/assets/gptIntegration/step5.png';
-import step6 from '@/assets/gptIntegration/step6.png';
-
 interface RegenerateSyncKeyResponse {
   message: string;
   data: {
@@ -72,7 +65,7 @@ const chatGptIntegrationSteps = [
       "Click 'GPTs' to open the GPT explorer page.",
       "This section allows you to browse, manage, and create your own GPTs."
     ],
-    image: step1
+    image: "https://res.cloudinary.com/diqzswlyr/image/upload/q_auto/f_auto/v1776863067/step1_fv1uo6.png"
   },
   {
     title: "Step 2: Click on Create to start a new GPT",
@@ -83,7 +76,7 @@ const chatGptIntegrationSteps = [
       "This opens the GPT Builder interface.",
       "You’ll be taken to the screen where you configure your custom GPT."
     ],
-    image: step2
+    image: "https://res.cloudinary.com/diqzswlyr/image/upload/q_auto/f_auto/v1776863066/step2_xi5if1.png"
   },
   {
     title: "Step 3: Configure your GPT details",
@@ -95,7 +88,7 @@ const chatGptIntegrationSteps = [
       "Paste the following instructions:"
     ],
     code: SYNC_CHATGPT_INSTRUCTION_TEXT,
-    image: step3
+    image: "https://res.cloudinary.com/diqzswlyr/image/upload/q_auto/f_auto/v1776863066/step3_sgj3se.png"
   },
   {
     title: "Step 4: Add actions and connect your API",
@@ -108,7 +101,7 @@ const chatGptIntegrationSteps = [
       "Copy and paste the following schema into the Schema field:"
     ],
     code: SYNC_CHATGPT_ACTION_SCHEMA,
-    image: step4
+    image: "https://res.cloudinary.com/diqzswlyr/image/upload/q_auto/f_auto/v1776863066/step4_b9fukz.png"
   },
   {
     title: "Step 5: Configure API authentication",
@@ -120,7 +113,7 @@ const chatGptIntegrationSteps = [
       "In 'Custom Header Name', enter: x-sync-api-key",
       "Click 'Save' to apply the authentication settings."
     ],
-    image: step5
+    image: "https://res.cloudinary.com/diqzswlyr/image/upload/q_auto/f_auto/v1776863066/step5_o7jbyl.png"
   },
   {
     title: "Step 6: Create your GPT",
@@ -132,7 +125,7 @@ const chatGptIntegrationSteps = [
       "Your custom GPT will now be created and ready to use.",
       "You can immediately start testing tasks, epics, project notes, and summary queries."
     ],
-    image: step6
+    image: "https://res.cloudinary.com/diqzswlyr/image/upload/q_auto/f_auto/v1776863065/step6_ix2pos.png"
   }
 ];
 

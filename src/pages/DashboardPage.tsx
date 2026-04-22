@@ -16,6 +16,7 @@ import SettingsPanel from '@/components/SettingsPanel';
 import SubtaskForm from '@/components/SubtaskForm';
 import ChatPanel from '@/components/ChatPanel';
 import ActivityHistoryPanel from '@/components/ActivityHistoryPanel';
+import SdkDocsPanel from '@/components/SdkDocsPanel';
 import EventTrackingPage from '@/pages/EventTrackingPage';
 import Sidebar, { SidebarView } from '@/components/Sidebar';
 import { useChat } from '@/context/ChatContext';
@@ -233,7 +234,7 @@ function DashboardPage(): JSX.Element {
 
   const [memberSearchResults, setMemberSearchResults] = useState<UserSearchResult[]>([]);
   const [teamMutationLoading, setTeamMutationLoading] = useState<boolean>(false);
-  const [activeView, setActiveView] = useState<'dashboard' | 'settings' | 'event-tracking'>('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'settings' | 'event-tracking' | 'sdk-docs'>('dashboard');
   const [activeProjectForNotes, setActiveProjectForNotes] = useState<Project | null>(null);
   const [activeEpicForNotes, setActiveEpicForNotes] = useState<Epic | null>(null);
   const [activeNoteEditor, setActiveNoteEditor] = useState<ActiveNoteEditor | null>(null);
@@ -1645,7 +1646,13 @@ function DashboardPage(): JSX.Element {
         <header className="relative z-50 flex items-center justify-between gap-4 px-8 h-[72px] shrink-0 bg-white dark:bg-slate-900 border-b border-zinc-200 dark:border-slate-800 transition-colors">
           <div className="flex flex-col justify-center">
             <h1 className="text-[1.15rem] font-bold font-['Outfit'] text-olive-950 dark:text-white leading-tight">
-              {activeView === 'settings' ? 'Settings' : (activeProject ? activeProject.name : 'All Projects')}
+              {activeView === 'settings' 
+                ? 'Settings' 
+                : activeView === 'sdk-docs' 
+                  ? 'SDK Documentation' 
+                  : activeView === 'event-tracking' 
+                    ? 'Event Tracking' 
+                    : (activeProject ? activeProject.name : 'All Projects')}
             </h1>
             <div className="flex items-center text-[0.75rem] font-semibold text-zinc-400 dark:text-slate-500 mt-0.5 gap-1.5">
               <button 
@@ -1660,6 +1667,10 @@ function DashboardPage(): JSX.Element {
 
               {activeView === 'settings' ? (
                 <span className="text-zinc-600 dark:text-slate-300">Settings</span>
+              ) : activeView === 'sdk-docs' ? (
+                <span className="text-zinc-600 dark:text-slate-300">SDK Documentation</span>
+              ) : activeView === 'event-tracking' ? (
+                <span className="text-zinc-600 dark:text-slate-300">Event Tracking</span>
               ) : activeProject ? (
                 <>
                   <button 
@@ -1747,7 +1758,17 @@ function DashboardPage(): JSX.Element {
             </div>
           ) : activeView === 'event-tracking' ? (
             <div className="h-full overflow-y-auto">
-               <EventTrackingPage />
+               <EventTrackingPage onOpenDocs={() => setActiveView('sdk-docs')} />
+            </div>
+          ) : activeView === 'sdk-docs' ? (
+            <div className="h-full overflow-y-auto">
+              <div className="px-8 py-6 border-b border-zinc-200 dark:border-slate-700 bg-white/60 dark:bg-slate-900/60">
+                <h3 className="text-xl font-semibold text-olive-950 dark:text-slate-100 m-0">SDK Documentation</h3>
+                <p className="text-zinc-500 dark:text-slate-400 m-0 text-sm mt-0.5">Integration Guide &amp; API Reference</p>
+              </div>
+              <div className="p-3">
+                <SdkDocsPanel />
+              </div>
             </div>
           ) : !activeProject ? (
             <div className="h-full overflow-y-auto">
