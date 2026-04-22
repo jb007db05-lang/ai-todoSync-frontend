@@ -3,7 +3,6 @@ import {
   Check,
   Copy,
   ExternalLink,
-  Search
 } from 'lucide-react';
 
 import PageHeader from '@/components/PageHeader';
@@ -33,8 +32,6 @@ interface FunctionDoc {
 const INSTALL_SNIPPET = 'npm install @jamesbond007db05/events-sdk';
 
 const QUICK_START_SNIPPET = "import { initTracker } from '@jamesbond007db05/events-sdk';\n\nconst tracker = initTracker({\n  apiKey: 'your_api_key_here',\n  autoPage: true,\n  debug: false\n});\n\nawait tracker.track('signup_started', {\n  plan: 'pro',\n  source: 'landing-page'\n});";
-
-const TRACKER_CONFIG_SNIPPET = "type TrackerConfig = {\n  apiKey: string;\n  batchSize?: number;\n  flushIntervalMs?: number;\n  sampleRate?: number;\n  autoPage?: boolean;\n  debug?: boolean;\n  maxRetries?: number;\n  requestTimeoutMs?: number;\n  maxEventBytes?: number;\n  maxBatchBytes?: number;\n  storageKey?: string;\n}";
 
 const ERROR_HANDLING_SNIPPET = "import {\n  initTracker,\n  normalizeSdkError,\n  SDKValidationError\n} from '@jamesbond007db05/events-sdk';\n\ntry {\n  const tracker = initTracker({ apiKey: 'your_api_key_here' });\n  await tracker.track('checkout_completed', { amount: 199 });\n} catch (error) {\n  const normalized = normalizeSdkError(error);\n  console.error(normalized.code, normalized.message);\n\n  if (error instanceof SDKValidationError) {\n    // show friendly validation feedback\n  }\n}";
 
@@ -331,18 +328,7 @@ const searchableText = (doc: FunctionDoc): string =>
 
 function SdkDocsPanel(): JSX.Element {
   const { showToast } = useToast();
-  const [query, setQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
-
-  const filteredDocs = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-
-    if (!normalizedQuery) {
-      return FUNCTION_DOCS;
-    }
-
-    return FUNCTION_DOCS.filter((doc) => searchableText(doc).includes(normalizedQuery));
-  }, [query]);
 
   const handleCopy = async (text: string, id: string): Promise<void> => {
     await navigator.clipboard.writeText(text);

@@ -9,8 +9,7 @@ import {
   Loader2,
   Filter,
   BookOpen,
-  X,
-  Search
+  X
 } from 'lucide-react';
 import {
   listApiKeys,
