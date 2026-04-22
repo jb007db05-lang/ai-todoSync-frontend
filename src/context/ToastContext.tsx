@@ -1,0 +1,154 @@
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { CheckCircle2, CircleAlert, X } from 'lucide-react';
+
+export type ToastVariant = 'success' | 'error';
+
+interface ToastItem {
+  id: string;
+  variant: ToastVariant;
+  message: string;
+  dedupeKey: string;
+}
+
+interface ToastContextValue {
+  showToast: (input: { variant: ToastVariant; message: string; dedupeKey?: string }) => void;
+  dismissToast: (id: string) => void;
+}
+
+const TOAST_DURATION_MS = 5000;
+const ToastContext = createContext<ToastContextValue | undefined>(undefined);
+
+let showGlobalToastFn:
+  | ((input: { variant: ToastVariant; message: string; dedupeKey?: string }) => void)
+  | null = null;
+
+export const showGlobalToast = (input: {
+  variant: ToastVariant;
+  message: string;
+  dedupeKey?: string;
+}): void => {
+  showGlobalToastFn?.(input);
+};
+
+const ToastViewport: React.FC<{
+  toasts: ToastItem[];
+  onDismiss: (id: string) => void;
+}> = ({ toasts, onDismiss }) => (
+  <div className="fixed top-4 right-4 z-[10000] flex w-[min(92vw,380px)] flex-col gap-3">
+    {toasts.map((toast) => (
+      <div
+        key={toast.id}
+        className={[
+          'flex items-start gap-3 rounded-2xl border px-4 py-3 shadow-[0_18px_50px_rgba(15,23,42,0.16)] backdrop-blur-sm',
+          toast.variant === 'success'
+            ? 'border-emerald-200 bg-emerald-50/95 text-emerald-950'
+            : 'border-red-200 bg-red-50/95 text-red-950'
+        ].join(' ')}
+      >
+        <span className="mt-0.5 shrink-0">
+          {toast.variant === 'success' ? <CheckCircle2 size={18} /> : <CircleAlert size={18} />}
+        </span>
+        <p className="m-0 flex-1 text-sm leading-6">{toast.message}</p>
+        <button
+          aria-label="Dismiss notification"
+          className="shrink-0 rounded-full p-1 transition-colors hover:bg-black/5"
+          onClick={() => onDismiss(toast.id)}
+          type="button"
+        >
+          <X size={14} />
+        </button>
+      </div>
+    ))}
+  </div>
+);
+
+export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+
+  const dismissToast = (id: string) => {
+    setToasts((current) => current.filter((toast) => toast.id !== id));
+  };
+
+  const showToast = ({
+    variant,
+    message,
+    dedupeKey
+  }: {
+    variant: ToastVariant;
+    message: string;
+    dedupeKey?: string;
+  }) => {
+    const normalizedMessage = message.trim();
+
+    if (!normalizedMessage) {
+      return;
+    }
+
+    const normalizedDedupeKey = dedupeKey ?? `${variant}:${normalizedMessage}`;
+
+    setToasts((current) => {
+      if (current.some((toast) => toast.dedupeKey === normalizedDedupeKey)) {
+        return current;
+      }
+
+      return [
+        ...current,
+        {
+          id: crypto.randomUUID(),
+          variant,
+          message: normalizedMessage,
+          dedupeKey: normalizedDedupeKey
+        }
+      ];
+    });
+  };
+
+  useEffect(() => {
+    showGlobalToastFn = showToast;
+
+    return () => {
+      showGlobalToastFn = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (toasts.length === 0) {
+      return;
+    }
+
+    const timers = toasts.map((toast) =>
+      window.setTimeout(() => {
+        dismissToast(toast.id);
+      }, TOAST_DURATION_MS)
+    );
+
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+    };
+  }, [toasts]);
+
+  const value = useMemo(
+    () => ({
+      showToast,
+      dismissToast
+    }),
+    []
+  );
+
+  return (
+    <ToastContext.Provider value={value}>
+      {children}
+      <ToastViewport onDismiss={dismissToast} toasts={toasts} />
+    </ToastContext.Provider>
+  );
+};
+
+export const useToast = (): ToastContextValue => {
+  const context = useContext(ToastContext);
+
+  if (context === undefined) {
+    throw new Error('useToast must be used within a ToastProvider');
+  }
+
+  return context;
+};

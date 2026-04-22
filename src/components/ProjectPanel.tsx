@@ -1,8 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import type { Project } from '@/types/project';
 import { 
-  ChevronLeft, 
-  ChevronRight, 
   FolderKanban, 
   Layers3, 
   Pencil, 
@@ -322,34 +320,13 @@ function ProjectPanel({
             loading={loading}
             onRowClick={(project) => onOpenProject(project.id)}
             skeletonRows={5}
+            pagination={{
+              page: currentPage,
+              totalPages,
+              onPageChange
+            }}
           />
         )}
-      </div>
-
-      {/* Pagination */}
-      <div className="flex items-center justify-between gap-3 px-4 py-3 border-t border-zinc-200 dark:border-slate-700 bg-zinc-50 dark:bg-slate-800">
-        <div className="text-[0.75rem] text-zinc-400 dark:text-slate-500">
-          Page <strong className="text-zinc-700 dark:text-slate-300">{currentPage}</strong> of{' '}
-          <strong className="text-zinc-700 dark:text-slate-300">{totalPages}</strong>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <button
-            className="w-7 h-7 p-0 flex items-center justify-center bg-white dark:bg-slate-700 border border-zinc-200 dark:border-slate-600 rounded text-zinc-500 dark:text-slate-400 hover:bg-zinc-50 dark:hover:bg-slate-600 disabled:opacity-50 transition-colors"
-            disabled={currentPage <= 1}
-            onClick={() => onPageChange(Math.max(1, currentPage - 1))}
-            type="button"
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <button
-            className="w-7 h-7 p-0 flex items-center justify-center bg-white dark:bg-slate-700 border border-zinc-200 dark:border-slate-600 rounded text-zinc-500 dark:text-slate-400 hover:bg-zinc-50 dark:hover:bg-slate-600 disabled:opacity-50 transition-colors"
-            disabled={currentPage >= totalPages || totalPages === 0}
-            onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
-            type="button"
-          >
-            <ChevronRight size={16} />
-          </button>
-        </div>
       </div>
     </div>
   );

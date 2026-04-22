@@ -1,4 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { showGlobalToast } from '@/context/ToastContext';
+import { normalizeApiError } from '@/utils/apiError';
 
 const baseURL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api';
 const TOKEN_STORAGE_KEY = 'todo_token';
@@ -27,6 +29,8 @@ api.interceptors.response.use(
     return response;
   },
   (error: AxiosError) => {
+    const normalizedError = normalizeApiError(error);
+
     if (error.response?.status === 401) {
       localStorage.removeItem(TOKEN_STORAGE_KEY);
 
@@ -35,7 +39,13 @@ api.interceptors.response.use(
       }
     }
 
-    return Promise.reject(error);
+    showGlobalToast({
+      variant: 'error',
+      message: normalizedError.message,
+      dedupeKey: `${normalizedError.code}:${normalizedError.message}`
+    });
+
+    return Promise.reject(normalizedError);
   }
 );
 

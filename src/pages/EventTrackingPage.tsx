@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Plus,
-  Search,
-  ChevronRight,
   Trash2,
   Copy,
   Check,
   RefreshCw,
   ChevronDown,
-  ChevronLeft,
-  Loader2
+  Loader2,
+  Filter,
+  BookOpen
 } from 'lucide-react';
 import {
   listApiKeys,
@@ -18,8 +17,10 @@ import {
   AnalyticsKey,
   getAnalyticsEvents,
   getEventLogs,
+  getTrackedEvents,
   RawEvent,
-  EventLog
+  EventLog,
+  TrackedEvent
 } from '@/services/eventTracking';
 import Modal from '@/components/Modal';
 import noDataImage from '@/assets/no_data.png';
@@ -116,9 +117,9 @@ const EventTrackingPage: React.FC = () => {
   const [keys, setKeys] = useState<AnalyticsKey[]>([]);
   const [selectedKeyId, setSelectedKeyId] = useState<string>('');
   const [rawLogs, setRawLogs] = useState<RawEvent[]>([]);
-  const [totalLogs, setTotalLogs] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(30);
+  const [totalPages, setTotalPages] = useState(1);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -132,9 +133,19 @@ const EventTrackingPage: React.FC = () => {
   const [expanded, setExpanded] = useState<ExpandedState>({});
   const [logDetails, setLogDetails] = useState<Record<string, EventLog>>({});
   const [fetchingPayloadId, setFetchingPayloadId] = useState<string | null>(null);
-
   const [copiedKey, setCopiedKey] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [isFiltersModalOpen, setIsFiltersModalOpen] = useState(false);
+  const [availableEvents, setAvailableEvents] = useState<TrackedEvent[]>([]);
+  const [draftFilters, setDraftFilters] = useState({
+    eventNames: [] as string[],
+    startDate: '',
+    endDate: ''
+  });
+  const [appliedFilters, setAppliedFilters] = useState({
+    eventNames: [] as string[],
+    startDate: '',
+    endDate: ''
+  });
 
   const loadInitialData = async () => {
     setLoading(true);
@@ -154,19 +165,29 @@ const EventTrackingPage: React.FC = () => {
   const loadLogs = async (keyId: string, page: number) => {
     setRefreshing(true);
     try {
-      const offset = (page - 1) * pageSize;
       const data = await getAnalyticsEvents({
         apiKeyId: keyId,
+        page,
         limit: pageSize,
-        offset,
-        eventName: searchTerm || undefined
+        eventNames: appliedFilters.eventNames.length > 0 ? appliedFilters.eventNames : undefined,
+        startDate: appliedFilters.startDate || undefined,
+        endDate: appliedFilters.endDate || undefined
       });
       setRawLogs(data.events);
-      setTotalLogs(data.total);
+      setTotalPages(data.totalPages || 1);
     } catch (err) {
       console.error('Failed to load logs', err);
     } finally {
       setRefreshing(false);
+    }
+  };
+
+  const loadAvailableEvents = async (keyId: string) => {
+    try {
+      const data = await getTrackedEvents(keyId);
+      setAvailableEvents(data);
+    } catch (err) {
+      console.error('Failed to load available events', err);
     }
   };
 
@@ -177,9 +198,10 @@ const EventTrackingPage: React.FC = () => {
   useEffect(() => {
     if (selectedKeyId) {
       setCurrentPage(1);
+      void loadAvailableEvents(selectedKeyId);
       loadLogs(selectedKeyId, 1);
     }
-  }, [selectedKeyId, searchTerm]);
+  }, [selectedKeyId, appliedFilters]);
 
   useEffect(() => {
     if (selectedKeyId) {
@@ -266,8 +288,6 @@ const EventTrackingPage: React.FC = () => {
     }
   };
 
-  const totalPages = Math.ceil(totalLogs / pageSize);
-
   return (
     <div className="flex flex-col h-full bg-white dark:bg-slate-900">
       {/* Clean Toolbar (Matches ProjectPanel) */}
@@ -318,17 +338,30 @@ const EventTrackingPage: React.FC = () => {
           {isNodeSwitcherOpen && <div className="fixed inset-0 z-40" onClick={() => setIsNodeSwitcherOpen(false)} />}
         </div>
 
-        {/* Search */}
-        <div className="relative flex-1 flex items-center">
-          <Search className="absolute left-3.5 text-zinc-400 dark:text-slate-500" size={14} />
-          <input
-            className="w-full h-9 pl-10 pr-3 text-[0.85rem] bg-white dark:bg-slate-700 border border-zinc-200 dark:border-slate-600 rounded-md shadow-inner transition-all duration-200 focus:outline-none focus:border-blue-500 text-olive-950 dark:text-slate-100 placeholder:text-zinc-400"
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Filter interaction signals..."
-            type="text"
-            value={searchTerm}
-          />
-        </div>
+        <div className="flex-1" />
+
+        <button
+          className="inline-flex items-center gap-2 h-9 px-4 bg-olive-900 dark:bg-olive-600 rounded text-[0.85rem] font-semibold text-white shadow-sm hover:bg-olive-800 dark:hover:bg-olive-500 transition-colors"
+          onClick={() => window.open('/sdk-docs', '_blank', 'noopener,noreferrer')}
+          type="button"
+        >
+          <BookOpen size={14} />
+          <span>SDK Documentation</span>
+        </button>
+
+        <button
+          className="inline-flex items-center gap-2 h-9 px-4 bg-white dark:bg-slate-700 border border-zinc-200 dark:border-slate-600 rounded text-[0.85rem] font-medium text-zinc-600 dark:text-slate-200 shadow-sm hover:bg-zinc-50 dark:hover:bg-slate-600 transition-colors"
+          onClick={() => setIsFiltersModalOpen(true)}
+          type="button"
+        >
+          <Filter size={14} />
+          <span>Filters</span>
+          {appliedFilters.eventNames.length > 0 || appliedFilters.startDate || appliedFilters.endDate ? (
+            <span className="rounded-full bg-olive-900 px-1.5 py-0.5 text-[0.65rem] font-bold text-white dark:bg-olive-600">
+              {appliedFilters.eventNames.length + (appliedFilters.startDate ? 1 : 0) + (appliedFilters.endDate ? 1 : 0)}
+            </span>
+          ) : null}
+        </button>
 
         <button
           onClick={() => { if (selectedKeyId) loadLogs(selectedKeyId, currentPage); }}
@@ -413,37 +446,113 @@ const EventTrackingPage: React.FC = () => {
             }}
             skeletonRows={10}
             className="flex-1 overflow-y-auto px-4"
+            pagination={{
+              page: currentPage,
+              totalPages: totalPages || 1,
+              onPageChange: setCurrentPage
+            }}
+            emptyMessage="No event logs match current filters"
           />
         )}
       </div>
 
-      {/* Simple Pagination Bar */}
-      <div className="flex items-center justify-between gap-3 px-4 py-3 border-t border-zinc-200 dark:border-slate-700 bg-zinc-50 dark:bg-slate-800">
-        <div className="text-[0.75rem] text-zinc-400 dark:text-slate-500">
-          Page <strong className="text-zinc-700 dark:text-slate-300">{currentPage}</strong> of{' '}
-          <strong className="text-zinc-700 dark:text-slate-300">{totalPages || 1}</strong>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <button
-            className="w-7 h-7 p-0 flex items-center justify-center bg-white dark:bg-slate-700 border border-zinc-200 dark:border-slate-600 rounded text-zinc-500 dark:text-slate-400 hover:bg-zinc-50 dark:hover:bg-slate-600 disabled:opacity-50 transition-colors"
-            disabled={currentPage <= 1}
-            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-            type="button"
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <button
-            className="w-7 h-7 p-0 flex items-center justify-center bg-white dark:bg-slate-700 border border-zinc-200 dark:border-slate-600 rounded text-zinc-500 dark:text-slate-400 hover:bg-zinc-50 dark:hover:bg-slate-600 disabled:opacity-50 transition-colors"
-            disabled={currentPage >= totalPages || totalPages === 0}
-            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-            type="button"
-          >
-            <ChevronRight size={16} />
-          </button>
-        </div>
-      </div>
-
       {/* --- MODALS --- */}
+      {isFiltersModalOpen && (
+        <Modal
+          title="Filter Event Logs"
+          onClose={() => setIsFiltersModalOpen(false)}
+          maxWidth="max-w-[520px]"
+        >
+          <div className="space-y-5">
+            <div className="space-y-2">
+              <label className="block text-[0.75rem] font-bold text-zinc-500 uppercase tracking-wider">
+                Events
+              </label>
+              <div className="max-h-[220px] space-y-2 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-slate-700 dark:bg-slate-800">
+                {availableEvents.map((event) => {
+                  const checked = draftFilters.eventNames.includes(event.eventName);
+                  return (
+                    <label key={event.id} className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 text-sm text-zinc-700 dark:bg-slate-900 dark:text-slate-200">
+                      <span className="truncate">{event.eventName}</span>
+                      <input
+                        checked={checked}
+                        onChange={() => {
+                          setDraftFilters((current) => ({
+                            ...current,
+                            eventNames: checked
+                              ? current.eventNames.filter((item) => item !== event.eventName)
+                              : [...current.eventNames, event.eventName]
+                          }));
+                        }}
+                        type="checkbox"
+                      />
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <label className="grid gap-2">
+                <span className="text-[0.75rem] font-bold text-zinc-500 uppercase tracking-wider">Start date</span>
+                <input
+                  className="h-10 rounded-lg border border-zinc-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-800"
+                  onChange={(event) => setDraftFilters((current) => ({ ...current, startDate: event.target.value }))}
+                  type="date"
+                  value={draftFilters.startDate}
+                />
+              </label>
+              <label className="grid gap-2">
+                <span className="text-[0.75rem] font-bold text-zinc-500 uppercase tracking-wider">End date</span>
+                <input
+                  className="h-10 rounded-lg border border-zinc-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-800"
+                  onChange={(event) => setDraftFilters((current) => ({ ...current, endDate: event.target.value }))}
+                  type="date"
+                  value={draftFilters.endDate}
+                />
+              </label>
+            </div>
+
+            <div className="flex items-center justify-between gap-3">
+              <button
+                className="rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                onClick={() => {
+                  setDraftFilters({ eventNames: [], startDate: '', endDate: '' });
+                  setAppliedFilters({ eventNames: [], startDate: '', endDate: '' });
+                  setCurrentPage(1);
+                  setIsFiltersModalOpen(false);
+                }}
+                type="button"
+              >
+                Reset
+              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  className="rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                  onClick={() => {
+                    setDraftFilters(appliedFilters);
+                    setIsFiltersModalOpen(false);
+                  }}
+                  type="button"
+                >
+                  Cancel
+                </button>
+                <button
+                  className="rounded-lg bg-olive-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-olive-800 dark:bg-olive-600 dark:hover:bg-olive-500"
+                  onClick={() => {
+                    setAppliedFilters(draftFilters);
+                    setCurrentPage(1);
+                    setIsFiltersModalOpen(false);
+                  }}
+                  type="button"
+                >
+                  Apply
+                </button>
+              </div>
+            </div>
+          </div>
+        </Modal>
+      )}
       {isManageKeysModalOpen && (
         <Modal
           title="Node Management"
