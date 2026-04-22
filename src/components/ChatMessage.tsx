@@ -11,6 +11,7 @@ import {
 import type { ChatMessage, MessageSender, MessageReaction } from '@/types/chat';
 import { MessageType } from '@/types/chat';
 import { formatDate } from '@/utils/date';
+import { useConfirm } from '@/context/ConfirmationContext';
 
 interface ChatMessageProps {
   message: ChatMessage;
@@ -92,6 +93,7 @@ function ChatMessageComponent({
   allMessages = [],
   depth = 0,
 }: ChatMessageProps) {
+  const confirm = useConfirm();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -159,11 +161,18 @@ function ChatMessageComponent({
   );
 
   // Handle delete
-  const handleDelete = useCallback(() => {
-    if (confirm('Are you sure you want to delete this message?')) {
+  const handleDelete = useCallback(async () => {
+    const isConfirmed = await confirm({
+      title: 'Delete Message',
+      message: 'Are you sure you want to delete this message? This action is irreversible.',
+      confirmText: 'Delete',
+      type: 'danger'
+    });
+
+    if (isConfirmed) {
       onDelete(message.id);
     }
-  }, [message.id, onDelete]);
+  }, [message.id, onDelete, confirm]);
 
   // Render system message
   if (isSystemMessage) {

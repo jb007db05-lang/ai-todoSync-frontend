@@ -24,6 +24,7 @@ import {
   TrackedEvent
 } from '@/services/eventTracking';
 import Modal from '@/components/Modal';
+import { useConfirm } from '@/context/ConfirmationContext';
 import { Activity } from 'lucide-react';
 import {
   useReactTable,
@@ -180,6 +181,7 @@ interface EventTrackingPageProps {
 }
 
 const EventTrackingPage: React.FC<EventTrackingPageProps> = ({ onOpenDocs }) => {
+  const confirm = useConfirm();
   const [keys, setKeys] = useState<AnalyticsKey[]>([]);
   const [selectedKeyId, setSelectedKeyId] = useState<string>('');
   const [rawLogs, setRawLogs] = useState<RawEvent[]>([]);
@@ -292,7 +294,15 @@ const EventTrackingPage: React.FC<EventTrackingPageProps> = ({ onOpenDocs }) => 
   };
 
   const handleDeleteKey = async (id: string, name: string) => {
-    if (!window.confirm(`Are you sure you want to delete the API key "${name}"? This action is irreversible.`)) return;
+    const isConfirmed = await confirm({
+      title: 'Delete Telemetry Node',
+      message: `Are you sure you want to delete the API key "${name}"? This action is irreversible and all events tracked with this key will no longer be visible.`,
+      confirmText: 'Delete Node',
+      type: 'danger'
+    });
+
+    if (!isConfirmed) return;
+
     try {
       await deleteApiKey(id);
       const updatedKeys = await listApiKeys();

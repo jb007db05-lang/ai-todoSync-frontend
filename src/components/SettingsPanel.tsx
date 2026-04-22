@@ -16,6 +16,7 @@ import Modal from '@/components/Modal';
 import SectionCard from '@/components/SectionCard';
 import { useAuth } from '@/context/AuthContext';
 import { useConfirm } from '@/context/ConfirmationContext';
+import { useToast } from '@/context/ToastContext';
 import api from '@/services/api';
 import {
   SYNC_CHATGPT_ACTION_SCHEMA,
@@ -175,6 +176,7 @@ function SettingsPanel(): JSX.Element {
     key: string;
     deviceName: string;
   } | null>(null);
+  const { showToast } = useToast();
   const confirm = useConfirm();
   const canManagePrimarySecurity = session?.deviceType === 'primary';
 
@@ -260,7 +262,7 @@ function SettingsPanel(): JSX.Element {
       setCopiedIndex(index);
       setTimeout(() => setCopiedIndex(null), 1500);
     } catch {
-      alert('Unable to copy to clipboard.');
+      showToast({ message: 'Unable to copy to clipboard.', variant: 'error' });
     }
   };
 
