@@ -302,7 +302,7 @@ function ProjectPanel({
                 <img
                   src="https://res.cloudinary.com/diqzswlyr/image/upload/q_auto/f_auto/v1776863078/no_data_lyzl4t.png"
                   alt="No Data"
-                  className="relative w-100 h-100 mx-auto object-contain opacity-90"
+                  className="relative w-82 h-82 mx-auto object-contain opacity-90"
                 />
               </div>
 
