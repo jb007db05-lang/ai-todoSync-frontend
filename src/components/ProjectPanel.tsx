@@ -18,6 +18,7 @@ import {
   SortingState,
 } from '@tanstack/react-table';
 import DataTable from './DataTable';
+import { useConfirm } from '@/context/ConfirmationContext';
 
 const columnHelper = createColumnHelper<Project>();
 
@@ -54,6 +55,7 @@ function ProjectPanel({
   onSearch,
   searchTerm,
 }: ProjectPanelProps): JSX.Element {
+  const confirm = useConfirm();
   const [rowSelection, setRowSelection] = useState({});
   const [sorting, setSorting] = useState<SortingState>([]);
 
@@ -169,7 +171,17 @@ function ProjectPanel({
             <button
               className={`${rowActionCls} !w-10 !h-10 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 dark:hover:text-red-400 disabled:opacity-50`}
               disabled={actionProjectId === project.id || project.currentUserRole !== 'ADMIN'}
-              onClick={() => void onDeleteProject(project.id)}
+              onClick={async () => {
+                const isConfirmed = await confirm({
+                  title: 'Delete Project',
+                  message: `Are you sure you want to delete "${project.name}"? This action is irreversible.`,
+                  confirmText: 'Delete Project',
+                  type: 'danger'
+                });
+                if (isConfirmed) {
+                  await onDeleteProject(project.id);
+                }
+              }}
               title="Delete project"
               type="button"
             >
@@ -202,6 +214,16 @@ function ProjectPanel({
 
   const handleDeleteSelected = async () => {
     if (selectedProjects.length === 0) return;
+
+    const isConfirmed = await confirm({
+      title: 'Delete Multiple Projects',
+      message: `Are you sure you want to delete ${selectedProjects.length} selected projects? This action is irreversible.`,
+      confirmText: 'Delete Projects',
+      type: 'danger'
+    });
+
+    if (!isConfirmed) return;
+
     await onDeleteProjects(selectedProjects.map(p => p.id));
     setRowSelection({});
   };
