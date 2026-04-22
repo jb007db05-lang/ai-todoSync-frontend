@@ -380,7 +380,7 @@ const EventTrackingPage: React.FC = () => {
               <img
                 src={noDataImage}
                 alt="No Node Selected"
-                className="relative w-72 h-72 mx-auto object-contain opacity-90 filter drop-shadow-2xl"
+                className="relative w-100 h-100 mx-auto object-contain opacity-90"
               />
             </div>
 
