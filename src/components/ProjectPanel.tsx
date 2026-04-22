@@ -10,7 +10,6 @@ import {
   Calendar
 } from 'lucide-react';
 import UserAvatar from './UserAvatar';
-import noDataImage from '@/assets/no_data.png';
 import {
   useReactTable,
   getCoreRowModel,
@@ -279,7 +278,7 @@ function ProjectPanel({
             <div className="flex flex-col items-center justify-center max-w-[400px] mx-auto text-center animate-in fade-in zoom-in duration-500">
               <div className="relative">
                 <img
-                  src={noDataImage}
+                  src="https://res.cloudinary.com/diqzswlyr/image/upload/q_auto/f_auto/v1776863078/no_data_lyzl4t.png"
                   alt="No Data"
                   className="relative w-100 h-100 mx-auto object-contain opacity-90"
                 />

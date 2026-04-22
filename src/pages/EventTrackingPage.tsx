@@ -25,7 +25,6 @@ import {
   TrackedEvent
 } from '@/services/eventTracking';
 import Modal from '@/components/Modal';
-import noDataImage from '@/assets/no_data.png';
 import { Activity } from 'lucide-react';
 import {
   useReactTable,
@@ -445,7 +444,7 @@ const EventTrackingPage: React.FC<EventTrackingPageProps> = ({ onOpenDocs }) => 
           <div className="flex-1 flex flex-col items-center justify-center py-24 text-center animate-in fade-in zoom-in duration-500 bg-white dark:bg-slate-900">
             <div className="relative mb-6">
               <img
-                src={noDataImage}
+                src="https://res.cloudinary.com/diqzswlyr/image/upload/q_auto/f_auto/v1776863078/no_data_lyzl4t.png"
                 alt="No Node Selected"
                 className="relative w-100 h-100 mx-auto object-contain opacity-90"
               />
