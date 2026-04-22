@@ -12,7 +12,6 @@ import Loader from '@/components/Loader';
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
 const LoginPage = lazy(() => import('@/pages/LoginPage'));
 const RegisterPage = lazy(() => import('@/pages/RegisterPage'));
-const SdkDocsPage = lazy(() => import('@/pages/SdkDocsPage'));
 
 import { LoadingProvider } from '@/context/LoadingContext';
 import GlobalLoadingSpinner from '@/components/GlobalLoadingSpinner';
@@ -51,14 +50,6 @@ function App(): JSX.Element {
                         <PrivateRoute>
                           <DashboardPage />
                           </PrivateRoute>
-                      }
-                    />
-                    <Route
-                      path="/sdk-docs"
-                      element={
-                        <PrivateRoute>
-                          <SdkDocsPage />
-                        </PrivateRoute>
                       }
                     />
                     <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,13 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import type { Project } from '@/types/project';
-import { 
-  FolderKanban, 
-  Layers3, 
-  Pencil, 
-  Plus, 
-  Search, 
-  Trash2, 
-  Calendar 
+import {
+  FolderKanban,
+  Layers3,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  Calendar
 } from 'lucide-react';
 import UserAvatar from './UserAvatar';
 import noDataImage from '@/assets/no_data.png';
@@ -278,23 +278,23 @@ function ProjectPanel({
             {/* Custom Empty State preserved for brand consistency */}
             <div className="flex flex-col items-center justify-center max-w-[400px] mx-auto text-center animate-in fade-in zoom-in duration-500">
               <div className="relative">
-                <img 
-                  src={noDataImage} 
-                  alt="No Data" 
-                  className="relative w-100 h-100 mx-auto object-contain opacity-90" 
+                <img
+                  src={noDataImage}
+                  alt="No Data"
+                  className="relative w-100 h-100 mx-auto object-contain opacity-90"
                 />
               </div>
-              
+
               <h3 className="text-xl font-bold text-olive-950 dark:text-white mb-2 tracking-tight">
                 {searchTerm ? "No Matches Found" : "Your Directory is Empty"}
               </h3>
-              
+
               <p className="text-zinc-500 dark:text-slate-400 text-sm mb-8 leading-relaxed px-4">
-                {searchTerm 
+                {searchTerm
                   ? "We couldn't find any projects matching your current filter. Try adjusting your search term to see more results."
                   : "It looks like you haven't created any projects yet. Start by provisioning a new node for your synchronization workspace."}
               </p>
-              
+
               <button
                 onClick={searchTerm ? () => onSearch('') : onOpenCreateProject}
                 className="inline-flex items-center gap-2 px-6 py-2.5 bg-olive-900 dark:bg-olive-600 text-white rounded-lg text-sm font-bold shadow-lg shadow-olive-950/20 hover:bg-olive-800 dark:hover:bg-olive-500 transform transition-all active:scale-95 duration-200"

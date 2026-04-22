@@ -8,7 +8,9 @@ import {
   ChevronDown,
   Loader2,
   Filter,
-  BookOpen
+  BookOpen,
+  X,
+  Search
 } from 'lucide-react';
 import {
   listApiKeys,
@@ -113,7 +115,73 @@ const columns = [
   }),
 ];
 
-const EventTrackingPage: React.FC = () => {
+const MultiSelect = ({
+  options,
+  selected,
+  onChange,
+  placeholder = "Select events..."
+}: {
+  options: string[],
+  selected: string[],
+  onChange: (selected: string[]) => void,
+  placeholder?: string
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const remainingOptions = options.filter(opt => !selected.includes(opt));
+
+  return (
+    <div className="relative">
+      <div
+        className="min-h-[42px] p-2 flex flex-wrap gap-2 rounded-xl border border-zinc-200 bg-white dark:border-slate-700 dark:bg-slate-900 cursor-pointer transition-all focus-within:ring-2 focus-within:ring-olive-500/20"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        {selected.length === 0 && (
+          <span className="px-2 py-1 text-sm text-zinc-400">{placeholder}</span>
+        )}
+        {selected.map(item => (
+          <span key={item} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-slate-800 text-[0.75rem] font-bold text-zinc-700 dark:text-slate-300 border border-zinc-200 dark:border-slate-700">
+            {item.replace(/_/g, ' ')}
+            <X
+              size={14}
+              className="cursor-pointer hover:text-rose-500 transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange(selected.filter(i => i !== item));
+              }}
+            />
+          </span>
+        ))}
+      </div>
+
+      {isOpen && remainingOptions.length > 0 && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
+          <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-[220px] overflow-y-auto rounded-xl border border-zinc-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900 animate-in fade-in slide-in-from-top-1 duration-200 p-1">
+            {remainingOptions.map(opt => (
+              <div
+                key={opt}
+                className="px-3 py-2.5 rounded-lg text-sm text-zinc-700 dark:text-slate-300 hover:bg-zinc-50 dark:hover:bg-slate-800 cursor-pointer transition-colors font-medium"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onChange([...selected, opt]);
+                  setIsOpen(false);
+                }}
+              >
+                {opt.replace(/_/g, ' ')}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+interface EventTrackingPageProps {
+  onOpenDocs?: () => void;
+}
+
+const EventTrackingPage: React.FC<EventTrackingPageProps> = ({ onOpenDocs }) => {
   const [keys, setKeys] = useState<AnalyticsKey[]>([]);
   const [selectedKeyId, setSelectedKeyId] = useState<string>('');
   const [rawLogs, setRawLogs] = useState<RawEvent[]>([]);
@@ -307,7 +375,6 @@ const EventTrackingPage: React.FC = () => {
             className="flex items-center gap-3 h-9 px-3 bg-white dark:bg-slate-700 border border-zinc-200 dark:border-slate-600 rounded text-[0.85rem] font-medium text-olive-950 dark:text-slate-100 shadow-sm hover:bg-zinc-50 dark:hover:bg-slate-600 transition-colors min-w-[180px] justify-between"
           >
             <div className="flex items-center gap-2 truncate">
-              <div className={`w-2 h-2 rounded-full ${activeKey ? 'bg-emerald-500' : 'bg-zinc-300'}`} />
               <span className="truncate">{activeKey ? activeKey.name : 'Select Node'}</span>
             </div>
             <ChevronDown size={14} className="text-zinc-400" />
@@ -320,7 +387,7 @@ const EventTrackingPage: React.FC = () => {
                   <button
                     key={key.id}
                     onClick={() => { setSelectedKeyId(key.id); setIsNodeSwitcherOpen(false); }}
-                    className={`w-full px-4 py-2 text-left text-[0.85rem] transition-colors ${selectedKeyId === key.id ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600' : 'text-zinc-600 dark:text-slate-300 hover:bg-zinc-50 dark:hover:bg-slate-700'}`}
+                    className={`w-full py-2 text-left text-[0.85rem] transition-colors ${selectedKeyId === key.id ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600' : 'text-zinc-600 dark:text-slate-300 hover:bg-zinc-50 dark:hover:bg-slate-700'}`}
                   >
                     {key.name}
                   </button>
@@ -342,7 +409,7 @@ const EventTrackingPage: React.FC = () => {
 
         <button
           className="inline-flex items-center gap-2 h-9 px-4 bg-olive-900 dark:bg-olive-600 rounded text-[0.85rem] font-semibold text-white shadow-sm hover:bg-olive-800 dark:hover:bg-olive-500 transition-colors"
-          onClick={() => window.open('/sdk-docs', '_blank', 'noopener,noreferrer')}
+          onClick={() => onOpenDocs?.()}
           type="button"
         >
           <BookOpen size={14} />
@@ -468,28 +535,12 @@ const EventTrackingPage: React.FC = () => {
               <label className="block text-[0.75rem] font-bold text-zinc-500 uppercase tracking-wider">
                 Events
               </label>
-              <div className="max-h-[220px] space-y-2 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-slate-700 dark:bg-slate-800">
-                {availableEvents.map((event) => {
-                  const checked = draftFilters.eventNames.includes(event.eventName);
-                  return (
-                    <label key={event.id} className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 text-sm text-zinc-700 dark:bg-slate-900 dark:text-slate-200">
-                      <span className="truncate">{event.eventName}</span>
-                      <input
-                        checked={checked}
-                        onChange={() => {
-                          setDraftFilters((current) => ({
-                            ...current,
-                            eventNames: checked
-                              ? current.eventNames.filter((item) => item !== event.eventName)
-                              : [...current.eventNames, event.eventName]
-                          }));
-                        }}
-                        type="checkbox"
-                      />
-                    </label>
-                  );
-                })}
-              </div>
+              <MultiSelect
+                options={availableEvents.map(e => e.eventName)}
+                selected={draftFilters.eventNames}
+                onChange={(eventNames) => setDraftFilters(prev => ({ ...prev, eventNames }))}
+                placeholder="Choose events to monitor..."
+              />
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
