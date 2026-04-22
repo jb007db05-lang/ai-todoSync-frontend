@@ -13,16 +13,18 @@ function CommentSection({ taskId }: CommentSectionProps): JSX.Element {
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
     const loadComments = async () => {
       try {
         setLoading(true);
+        setError(null);
         const data = await getComments(taskId);
         if (isMounted) setComments(data);
-      } catch (err) {
-        console.error('Failed to load comments', err);
+      } catch {
+        if (isMounted) setError('Unable to load comments.');
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -38,11 +40,12 @@ function CommentSection({ taskId }: CommentSectionProps): JSX.Element {
 
     try {
       setSubmitting(true);
+      setError(null);
       const newComment = await addComment(taskId, content.trim());
       setComments((prev) => [...prev, newComment]);
       setContent('');
-    } catch (err) {
-      console.error('Failed to add comment', err);
+    } catch {
+      setError('Unable to post comment.');
     } finally {
       setSubmitting(false);
     }
@@ -64,6 +67,10 @@ function CommentSection({ taskId }: CommentSectionProps): JSX.Element {
         {loading ? (
           <div className="flex justify-center p-8">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+          </div>
+        ) : error ? (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-300">
+            {error}
           </div>
         ) : comments.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-slate-400 py-8">
@@ -101,7 +108,7 @@ function CommentSection({ taskId }: CommentSectionProps): JSX.Element {
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            placeholder="Add a comment... (use @ to mention)"
+            placeholder="Add a comment..."
             className="w-full pl-4 pr-12 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none max-h-32"
             rows={2}
           />

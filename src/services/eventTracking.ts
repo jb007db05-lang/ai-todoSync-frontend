@@ -58,6 +58,17 @@ export interface RawEvent {
   };
 }
 
+export interface EventFilters {
+  apiKeyId?: string;
+  page?: number;
+  limit?: number;
+  offset?: number;
+  eventName?: string;
+  eventNames?: string[];
+  startDate?: string;
+  endDate?: string;
+}
+
 export const createApiKey = async (name: string): Promise<AnalyticsKey> => {
   const response = await api.post('/keys', { name });
   return response.data;
@@ -100,15 +111,9 @@ export const getUserEvents = async (identifier: string, apiKeyId: string): Promi
   return response.data;
 };
 
-export const getAnalyticsEvents = async (params: {
-  apiKeyId?: string;
-  limit?: number;
-  offset?: number;
-  eventName?: string;
-}): Promise<{ events: RawEvent[]; total: number }> => {
+export const getAnalyticsEvents = async (params: EventFilters): Promise<{ events: RawEvent[]; total: number; page: number; totalPages: number }> => {
   const response = await api.get('/analytics/all-logs', { params });
   const data = response.data.data || response.data;
   
-  return data || { events: [], total: 0 };
+  return data || { events: [], total: 0, page: 1, totalPages: 1 };
 };
-
