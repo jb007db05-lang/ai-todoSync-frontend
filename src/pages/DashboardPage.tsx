@@ -19,6 +19,7 @@ import ActivityHistoryPanel from '@/components/ActivityHistoryPanel';
 import SdkDocsPanel from '@/components/SdkDocsPanel';
 import EventTrackingPage from '@/pages/EventTrackingPage';
 import Sidebar, { SidebarView } from '@/components/Sidebar';
+import Topbar from '@/components/Topbar';
 import { useChat } from '@/context/ChatContext';
 import NotificationBox, { Notification } from '@/components/NotificationBox';
 import TaskList from '@/components/TaskList';
@@ -1643,18 +1644,24 @@ function DashboardPage(): JSX.Element {
       {/* Right side wrapper */}
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         {/* Top bar */}
-        <header className="relative z-50 flex items-center justify-between gap-4 px-8 h-[72px] shrink-0 bg-white dark:bg-slate-900 border-b border-zinc-200 dark:border-slate-800 transition-colors">
-          <div className="flex flex-col justify-center">
-            <h1 className="text-[1.15rem] font-bold font-['Outfit'] text-olive-950 dark:text-white leading-tight">
-              {activeView === 'settings' 
-                ? 'Settings' 
-                : activeView === 'sdk-docs' 
-                  ? 'SDK Documentation' 
-                  : activeView === 'event-tracking' 
-                    ? 'Event Tracking' 
-                    : (activeProject ? activeProject.name : 'All Projects')}
-            </h1>
-            <div className="flex items-center text-[0.75rem] font-semibold text-zinc-400 dark:text-slate-500 mt-0.5 gap-1.5">
+        <Topbar
+          title={activeView === 'settings' 
+            ? 'Settings' 
+            : activeView === 'sdk-docs' 
+              ? 'SDK Documentation' 
+              : activeView === 'event-tracking' 
+                ? 'Event Tracking' 
+                : (activeProject ? activeProject.name : 'All Projects')}
+          user={{ name: user?.name || null, email: user?.email || '' }}
+          notifications={notifications}
+          isNotificationsOpen={isNotificationsOpen}
+          onNotificationsToggle={() => setIsNotificationsOpen(!isNotificationsOpen)}
+          onNotificationsClose={() => setIsNotificationsOpen(false)}
+          onMarkAsRead={handleMarkAsRead}
+          onClearAll={handleClearAll}
+          onNotificationClick={handleNotificationClick}
+          breadcrumbs={
+            <>
               <button 
                 onClick={() => { setActiveView('dashboard'); handleProjectSelect(ALL_PROJECTS_VALUE); }}
                 className="hover:text-olive-600 dark:hover:text-olive-400 transition-colors"
@@ -1686,63 +1693,16 @@ function DashboardPage(): JSX.Element {
               ) : (
                 <span className="text-zinc-600 dark:text-slate-300">All Projects</span>
               )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-5">
-            {activeView !== 'settings' && (
+            </>
+          }
+          rightContent={
+            activeView !== 'settings' && (
               <div className="mr-2">
                 <DateNavigator date={selectedDate} disabled={loading} onChange={setSelectedDate} />
               </div>
-            )}
-
-            {/* Notification Bell */}
-            <div className="relative">
-              <button
-                className="relative flex items-center justify-center p-2 rounded-full text-zinc-600 hover:bg-zinc-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
-                onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-                title="Notifications"
-                type="button"
-              >
-                <Bell className="w-5 h-5" />
-                {notifications.some(n => !n.isRead) && (
-                  <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-olive-600 text-[10px] font-bold text-white ring-2 ring-white dark:ring-slate-900">
-                    {notifications.filter(n => !n.isRead).length > 9 ? '9+' : notifications.filter(n => !n.isRead).length}
-                  </span>
-                )}
-              </button>
-
-              {isNotificationsOpen && (
-                <NotificationBox
-                  notifications={notifications}
-                  onClose={() => setIsNotificationsOpen(false)}
-                  onMarkAsRead={handleMarkAsRead}
-                  onClearAll={handleClearAll}
-                  onNotificationClick={handleNotificationClick}
-                />
-              )}
-            </div>
-
-            {/* User Profile Pill */}
-            <div className="flex items-center gap-3 pl-5 border-l border-zinc-200 dark:border-slate-800">
-              <UserAvatar 
-                name={user?.name || null} 
-                email={user?.email || ''} 
-                size="lg"
-                showTooltip={false}
-              />
-              <div className="hidden sm:flex flex-col">
-                <span className="text-[0.8rem] font-bold text-olive-900 dark:text-slate-200 leading-tight">
-                  {user?.name || 'Current User'}
-                </span>
-                <span className="text-[0.7rem] text-zinc-500 dark:text-slate-400 font-medium">
-                  {user?.email}
-                </span>
-              </div>
-              {/* <ChevronDown className="w-4 h-4 text-zinc-400" /> */}
-            </div>
-          </div>
-        </header>
+            )
+          }
+        />
 
         {/* Main */}
         <main className="flex-1 overflow-hidden">
