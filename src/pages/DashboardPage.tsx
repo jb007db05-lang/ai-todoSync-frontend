@@ -21,7 +21,7 @@ import EventTrackingPage from '@/pages/EventTrackingPage';
 import Sidebar, { SidebarView } from '@/components/Sidebar';
 import Topbar from '@/components/Topbar';
 import { useChat } from '@/context/ChatContext';
-import NotificationBox, { Notification } from '@/components/NotificationBox';
+import { Notification } from '@/components/NotificationBox';
 import TaskList from '@/components/TaskList';
 import KanbanBoard from '@/components/KanbanBoard';
 import CommentSection from '@/components/CommentSection';
@@ -38,7 +38,6 @@ import {
   Folder,
   Layout,
   List,
-  Bell,
   MessageCircle,
   MessageSquare,
   NotebookPen,
