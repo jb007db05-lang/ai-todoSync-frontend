@@ -426,7 +426,10 @@ const EventTrackingPage: React.FC<EventTrackingPageProps> = ({ onOpenDocs }) => 
 
         <button
           className="inline-flex items-center gap-2 h-9 px-4 bg-white dark:bg-slate-700 border border-zinc-200 dark:border-slate-600 rounded text-[0.85rem] font-medium text-zinc-600 dark:text-slate-200 shadow-sm hover:bg-zinc-50 dark:hover:bg-slate-600 transition-colors"
-          onClick={() => setIsFiltersModalOpen(true)}
+          onClick={() => {
+            setDraftFilters(appliedFilters);
+            setIsFiltersModalOpen(true);
+          }}
           type="button"
         >
           <Filter size={14} />
@@ -535,7 +538,10 @@ const EventTrackingPage: React.FC<EventTrackingPageProps> = ({ onOpenDocs }) => 
       {isFiltersModalOpen && (
         <Modal
           title="Filter Event Logs"
-          onClose={() => setIsFiltersModalOpen(false)}
+          onClose={() => {
+            setDraftFilters(appliedFilters);
+            setIsFiltersModalOpen(false);
+          }}
           maxWidth="max-w-[520px]"
         >
           <div className="space-y-5">

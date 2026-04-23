@@ -6,7 +6,7 @@ import {
   Row,
   Cell,
 } from '@tanstack/react-table';
-import { ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import Skeleton from './Skeleton';
 
 interface ExternalPagination {
@@ -179,52 +179,83 @@ export default function DataTable<TData>({
       </div>
 
       {totalPages > 1 ? (
-        <div className="flex items-center justify-between gap-3 border-t border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
-          <div className="text-[0.75rem] text-zinc-400 dark:text-slate-500">
-            Page <strong className="text-zinc-700 dark:text-slate-300">{currentPage}</strong> of{' '}
-            <strong className="text-zinc-700 dark:text-slate-300">{totalPages}</strong>
+        <div className="flex items-center justify-between gap-4 border-t border-zinc-200 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md px-6 py-4 dark:border-slate-800 shadow-[0_-1px_3px_0_rgba(0,0,0,0.05)]">
+          <div className="flex items-center gap-2">
+            <span className="text-[0.68rem] font-black uppercase tracking-widest text-zinc-400 dark:text-slate-500">Page</span>
+            <div className="flex items-center px-3 py-1 rounded-full bg-zinc-100 dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 shadow-inner">
+              <span className="text-[0.75rem] font-bold text-olive-900 dark:text-slate-100">{currentPage}</span>
+              <span className="mx-1.5 text-[0.65rem] text-zinc-400 dark:text-slate-600 font-bold">/</span>
+              <span className="text-[0.75rem] font-bold text-zinc-500 dark:text-slate-400">{totalPages}</span>
+            </div>
           </div>
-          <div className="flex items-center gap-1.5">
-            <button
-              className="flex h-8 w-8 items-center justify-center rounded border border-zinc-200 bg-white text-zinc-500 transition-colors hover:bg-zinc-50 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-400 dark:hover:bg-slate-600"
-              disabled={currentPage <= 1}
-              onClick={() => changePage(Math.max(1, currentPage - 1))}
-              type="button"
-            >
-              <ChevronLeft size={16} />
-            </button>
 
-            {pageNumbers.map((page, index) => {
-              const previousPage = pageNumbers[index - 1];
-              const showGap = previousPage != null && page - previousPage > 1;
+          <div className="flex items-center gap-2">
+            <div className="flex items-center p-1 rounded-xl bg-zinc-100/50 dark:bg-slate-800/50 border border-zinc-200/50 dark:border-slate-700/50">
+              <button
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-400 transition-all hover:bg-white dark:hover:bg-slate-700 hover:text-olive-600 dark:hover:text-blue-400 disabled:opacity-20 disabled:hover:bg-transparent"
+                disabled={currentPage <= 1}
+                onClick={() => changePage(1)}
+                title="First Page"
+                type="button"
+              >
+                <ChevronsLeft size={18} strokeWidth={2.5} />
+              </button>
+              <button
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-400 transition-all hover:bg-white dark:hover:bg-slate-700 hover:text-olive-600 dark:hover:text-blue-400 disabled:opacity-20 disabled:hover:bg-transparent"
+                disabled={currentPage <= 1}
+                onClick={() => changePage(currentPage - 1)}
+                title="Previous Page"
+                type="button"
+              >
+                <ChevronLeft size={18} strokeWidth={2.5} />
+              </button>
+            </div>
 
-              return (
-                <React.Fragment key={page}>
-                  {showGap ? (
-                    <span className="px-1 text-xs text-zinc-400 dark:text-slate-500">...</span>
-                  ) : null}
-                  <button
-                    className={`flex h-8 min-w-8 items-center justify-center rounded border px-2 text-xs font-semibold transition-colors ${page === currentPage
-                      ? 'border-olive-700 bg-olive-900 text-white dark:border-olive-500 dark:bg-olive-600'
-                      : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'
-                      }`}
-                    onClick={() => changePage(page)}
-                    type="button"
-                  >
-                    {page}
-                  </button>
-                </React.Fragment>
-              );
-            })}
+            <div className="hidden sm:flex items-center gap-1.5 px-2">
+              {pageNumbers.map((page, index) => {
+                const previousPage = pageNumbers[index - 1];
+                const showGap = previousPage != null && page - previousPage > 1;
 
-            <button
-              className="flex h-8 w-8 items-center justify-center rounded border border-zinc-200 bg-white text-zinc-500 transition-colors hover:bg-zinc-50 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-400 dark:hover:bg-slate-600"
-              disabled={currentPage >= totalPages}
-              onClick={() => changePage(Math.min(totalPages, currentPage + 1))}
-              type="button"
-            >
-              <ChevronRight size={16} />
-            </button>
+                return (
+                  <React.Fragment key={page}>
+                    {showGap ? (
+                      <span className="w-6 text-center text-xs font-black text-zinc-300 dark:text-slate-700 tracking-widest">...</span>
+                    ) : null}
+                    <button
+                      className={`flex h-9 min-w-[36px] items-center justify-center rounded-lg px-2 text-[0.72rem] font-black transition-all duration-200 ${page === currentPage
+                        ? 'bg-olive-900 text-white shadow-lg shadow-olive-900/20 scale-110 z-10 dark:bg-olive-600 dark:shadow-olive-600/20'
+                        : 'text-zinc-500 hover:bg-white dark:hover:bg-slate-700 hover:text-olive-900 dark:hover:text-slate-100'
+                        }`}
+                      onClick={() => changePage(page)}
+                      type="button"
+                    >
+                      {page.toString().padStart(2, '0')}
+                    </button>
+                  </React.Fragment>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center p-1 rounded-xl bg-zinc-100/50 dark:bg-slate-800/50 border border-zinc-200/50 dark:border-slate-700/50">
+              <button
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-400 transition-all hover:bg-white dark:hover:bg-slate-700 hover:text-olive-600 dark:hover:text-blue-400 disabled:opacity-20 disabled:hover:bg-transparent"
+                disabled={currentPage >= totalPages}
+                onClick={() => changePage(currentPage + 1)}
+                title="Next Page"
+                type="button"
+              >
+                <ChevronRight size={18} strokeWidth={2.5} />
+              </button>
+              <button
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-400 transition-all hover:bg-white dark:hover:bg-slate-700 hover:text-olive-600 dark:hover:text-blue-400 disabled:opacity-20 disabled:hover:bg-transparent"
+                disabled={currentPage >= totalPages}
+                onClick={() => changePage(totalPages)}
+                title="Last Page"
+                type="button"
+              >
+                <ChevronsRight size={18} strokeWidth={2.5} />
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
