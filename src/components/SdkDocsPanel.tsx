@@ -1,4 +1,4 @@
-import React, {  useState } from 'react';
+import React, { useState } from 'react';
 import {
   Check,
   Copy,
@@ -178,7 +178,7 @@ function CodePanel({
           {copiedId === id ? 'Copied' : 'Copy'}
         </button>
       </div>
-      <pre className="overflow-x-auto bg-white p-4 text-[0.82rem] leading-7 text-white">
+      <pre className="overflow-x-auto bg-slate-800 p-4 text-[0.82rem] leading-7 text-white">
         <code>{children}</code>
       </pre>
     </div>
