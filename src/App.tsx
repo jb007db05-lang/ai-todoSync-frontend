@@ -4,7 +4,6 @@ import React, { Suspense, lazy } from 'react';
 import AuthProvider from '@/context/AuthContext';
 import { ChatProvider } from '@/context/ChatContext';
 import { ConfirmationProvider } from '@/context/ConfirmationContext';
-import ThemeProvider from '@/context/ThemeContext';
 import PrivateRoute from '@/routes/PrivateRoute';
 import PublicRoute from '@/routes/PublicRoute';
 import Loader from '@/components/Loader';
@@ -19,50 +18,48 @@ import { ToastProvider } from '@/context/ToastContext';
 
 function App(): JSX.Element {
   return (
-    <ThemeProvider>
-      <ToastProvider>
-        <LoadingProvider>
-          <AuthProvider>
-            <ChatProvider>
-              <ConfirmationProvider>
-                <BrowserRouter>
-                  <Suspense fallback={<Loader center />}>
-                    <Routes>
-                      <Route
-                        path="/login"
-                        element={
-                          <PublicRoute>
-                            <LoginPage />
-                          </PublicRoute>
-                        }
-                      />
-                      <Route
-                        path="/register"
-                        element={
-                          <PublicRoute>
-                            <RegisterPage />
-                          </PublicRoute>
-                        }
-                      />
+    <ToastProvider>
+      <LoadingProvider>
+        <AuthProvider>
+          <ChatProvider>
+            <ConfirmationProvider>
+              <BrowserRouter>
+                <Suspense fallback={<Loader center />}>
+                  <Routes>
+                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
                     <Route
-                      path="/"
+                      path="/login"
                       element={
-                        <PrivateRoute>
-                          <DashboardPage />
-                          </PrivateRoute>
+                        <PublicRoute>
+                          <LoginPage />
+                        </PublicRoute>
                       }
                     />
-                    <Route path="*" element={<Navigate to="/" replace />} />
+                    <Route
+                      path="/register"
+                      element={
+                        <PublicRoute>
+                          <RegisterPage />
+                        </PublicRoute>
+                      }
+                    />
+                    <Route path="/dashboard" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
+                    <Route path="/intelligence" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
+                    <Route path="/event-tracking" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
+                    <Route path="/sdk-docs" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
+                    <Route path="/settings" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
+                    <Route path="/projects/:projectId" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
+                    <Route path="/projects/:projectId/epics/:epicId" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
+                    <Route path="*" element={<Navigate to="/dashboard" replace />} />
                   </Routes>
                 </Suspense>
-                </BrowserRouter>
-                <GlobalLoadingSpinner />
-              </ConfirmationProvider>
-            </ChatProvider>
-          </AuthProvider>
-        </LoadingProvider>
-      </ToastProvider>
-    </ThemeProvider>
+              </BrowserRouter>
+              <GlobalLoadingSpinner />
+            </ConfirmationProvider>
+          </ChatProvider>
+        </AuthProvider>
+      </LoadingProvider>
+    </ToastProvider>
   );
 }
 

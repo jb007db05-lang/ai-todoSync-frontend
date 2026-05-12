@@ -45,20 +45,19 @@ function Modal({ backdropClassName, bodyClassName, children, onClose, panelClass
         className={[
           'relative w-full max-h-[90vh] overflow-y-auto',
           maxWidth,
-          'bg-white dark:bg-slate-900 border border-zinc-200 dark:border-slate-700',
-          'rounded-lg shadow-sm',
+          'bg-white border border-olive-200',
+          'rounded-lg shadow-xl',
           'animate-modalIn',
-        panelClassName ?? '',
-        'shadow-[0_24px_48px_-12px_rgba(30,41,59,0.25)] dark:shadow-[0_24px_48px_-12px_rgba(0,0,0,0.45)]'
-      ].join(' ')}
-      onClick={(event) => event.stopPropagation()}
+          panelClassName ?? ''
+        ].join(' ')}
+        onClick={(event) => event.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-zinc-200 dark:border-slate-700 bg-zinc-50 dark:bg-slate-800 rounded-t-lg">
-          <h2 className="text-[1.1rem] font-semibold m-0 text-olive-950 dark:text-slate-100">{title}</h2>
+        <div className="flex items-center justify-between px-6 py-5 border-b border-olive-200 bg-olive-50 rounded-t-lg">
+          <h2 className="text-[1.1rem] font-semibold m-0 text-olive-950">{title}</h2>
           <button
             aria-label="Close modal"
-            className="h-8 px-3 text-[0.8rem] bg-white dark:bg-slate-700 border border-zinc-200 dark:border-slate-600 rounded text-zinc-700 dark:text-slate-200 hover:bg-zinc-50 dark:hover:bg-slate-600 transition-colors"
+            className="h-8 px-3 text-[0.8rem] bg-white border border-olive-200 rounded text-olive-700 hover:bg-olive-50 transition-colors"
             onClick={onClose}
             type="button"
           >

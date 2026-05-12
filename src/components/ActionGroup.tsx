@@ -6,7 +6,7 @@ interface ActionGroupProps {
 
 function ActionGroup({ children }: ActionGroupProps): JSX.Element {
   return (
-    <div className="flex flex-wrap gap-3 mt-5 border-t border-zinc-200 dark:border-slate-700 pt-4">
+    <div className="flex flex-wrap gap-3 mt-5 border-t border-olive-200  pt-4">
       {children}
     </div>
   );

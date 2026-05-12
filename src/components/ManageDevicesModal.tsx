@@ -112,34 +112,34 @@ function ManageDevicesModal({ onClose, onDevicesChanged }: ManageDevicesModalPro
     }));
   };
 
-  const ghostBtn = 'inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded text-zinc-600 dark:text-slate-300 text-[0.75rem] hover:bg-zinc-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors';
-  const dangerBtn = 'inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-red-200 dark:border-red-800 rounded text-red-600 dark:text-red-400 text-[0.75rem] hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 transition-colors';
+  const ghostBtn = 'inline-flex items-center gap-1.5 px-3 py-1.5 bg-white  border border-olive-200  rounded text-olive-600  text-[0.75rem] hover:bg-olive-50  disabled:opacity-50 transition-colors';
+  const dangerBtn = 'inline-flex items-center gap-1.5 px-3 py-1.5 bg-white  border border-red-200  rounded text-red-600  text-[0.75rem] hover:bg-red-50  disabled:opacity-50 transition-colors';
 
   return (
     <Modal onClose={onClose} title="Manage Companion Devices" panelClassName="max-w-[600px]">
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <p className="text-sm text-zinc-500 dark:text-slate-400 m-0">
+          <p className="text-sm text-olive-500  m-0">
             You can rename or revoke access for your secondary devices below.
           </p>
           <button
             onClick={() => void loadDevices()}
             disabled={loading}
-            className="p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-slate-800 text-zinc-400 dark:text-slate-500 transition-colors"
+            className="p-1.5 rounded-md hover:bg-olive-100  text-olive-400  transition-colors"
           >
             <RefreshCcw size={16} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
 
-        {error && <p className="text-xs text-red-500 bg-red-50 dark:bg-red-900/20 p-2 rounded border border-red-200 dark:border-red-800 m-0">{error}</p>}
+        {error && <p className="text-xs text-red-500 bg-red-50  p-2 rounded border border-red-200  m-0">{error}</p>}
 
         <div className="flex flex-col gap-3 min-h-[100px]">
           {loading && devices.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center p-8 text-zinc-400 dark:text-slate-500 italic text-sm">
+            <div className="flex-1 flex items-center justify-center p-8 text-olive-400  italic text-sm">
               Syncing device list...
             </div>
           ) : devices.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center p-8 text-zinc-400 dark:text-slate-500 italic text-sm">
+            <div className="flex-1 flex items-center justify-center p-8 text-olive-400  italic text-sm">
               No registered companion devices.
             </div>
           ) : (
@@ -149,31 +149,31 @@ function ManageDevicesModal({ onClose, onDevicesChanged }: ManageDevicesModalPro
               const isWorking = activeActionId === device.id;
 
               return (
-                <div key={device.id} className="p-4 rounded-xl border border-zinc-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 flex flex-col gap-4">
+                <div key={device.id} className="p-4 rounded-xl border border-olive-200  bg-white  flex flex-col gap-4">
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-zinc-100 dark:bg-slate-800 text-zinc-500 dark:text-slate-400">
+                      <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-olive-100  text-olive-500 ">
                         <Icon size={18} />
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-semibold text-olive-950 dark:text-slate-100 text-sm">
+                          <span className="font-semibold text-olive-950  text-sm">
                             {device.deviceName}
                           </span>
                           {device.status === 'pending' && (
-                            <span className="text-[10px] font-bold bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded border border-amber-200/50 dark:border-amber-800/50 uppercase">
+                            <span className="text-[10px] font-bold bg-amber-50  text-amber-600  px-1.5 py-0.5 rounded border border-amber-200/50  uppercase">
                               Pending
                             </span>
                           )}
                         </div>
-                        <p className="text-[0.7rem] text-zinc-400 dark:text-slate-500 m-0 uppercase tracking-wider font-bold">
+                        <p className="text-[0.7rem] text-olive-400  m-0 uppercase tracking-wider font-bold">
                           {device.deviceType}
                         </p>
                       </div>
                     </div>
                     <span className={`text-[0.65rem] font-bold px-2 py-0.5 rounded uppercase tracking-wide border ${device.status === 'pending'
-                        ? 'bg-amber-100/50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-500 border-amber-200/50 dark:border-amber-800/50'
-                        : 'bg-green-100/50 dark:bg-green-900/20 text-green-600 dark:text-green-500 border-green-200/50 dark:border-green-800/50'
+                      ? 'bg-amber-100/50  text-amber-600  border-amber-200/50'
+                      : 'bg-green-100/50  text-green-600  border-green-200/50'
                       }`}>
                       {device.status}
                     </span>
@@ -181,17 +181,17 @@ function ManageDevicesModal({ onClose, onDevicesChanged }: ManageDevicesModalPro
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-[0.65rem] font-bold text-zinc-400 dark:text-slate-500 uppercase tracking-widest pl-1">Name</label>
+                      <label className="text-[0.65rem] font-bold text-olive-400  uppercase tracking-widest pl-1">Name</label>
                       <input
-                        className="bg-zinc-50 dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-olive-950 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-olive-500"
+                        className="bg-olive-50  border border-olive-200  rounded-lg px-3 py-2 text-sm text-olive-950  focus:outline-none focus:ring-1 focus:ring-olive-500"
                         value={draft.deviceName}
                         onChange={e => handleDraftChange(device.id, 'deviceName', e.target.value)}
                       />
                     </div>
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-[0.65rem] font-bold text-zinc-400 dark:text-slate-500 uppercase tracking-widest pl-1">Category</label>
+                      <label className="text-[0.65rem] font-bold text-olive-400  uppercase tracking-widest pl-1">Category</label>
                       <select
-                        className="bg-zinc-50 dark:bg-slate-800 border border-zinc-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-olive-950 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-olive-500"
+                        className="bg-olive-50  border border-olive-200  rounded-lg px-3 py-2 text-sm text-olive-950  focus:outline-none focus:ring-1 focus:ring-olive-500"
                         value={draft.deviceType}
                         onChange={e => handleDraftChange(device.id, 'deviceType', e.target.value)}
                       >
@@ -203,7 +203,7 @@ function ManageDevicesModal({ onClose, onDevicesChanged }: ManageDevicesModalPro
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-100 dark:border-slate-800/50 text-[0.75rem]">
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-olive-100  text-[0.75rem]">
                     <button
                       className={ghostBtn}
                       disabled={isWorking || (draft.deviceName === device.deviceName && draft.deviceType === device.deviceType)}

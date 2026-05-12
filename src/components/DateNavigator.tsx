@@ -35,7 +35,7 @@ const NavBtn = ({ children, disabled, onClick, title }: {
   title?: string;
 }): JSX.Element => (
   <button
-    className="flex items-center justify-center w-7 h-7 rounded bg-white dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 text-zinc-500 dark:text-slate-400 hover:bg-zinc-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
+    className="flex items-center justify-center w-7 h-7 rounded bg-white  border border-olive-200  text-olive-500  hover:bg-olive-50  disabled:opacity-50 transition-colors"
     disabled={disabled}
     onClick={onClick}
     title={title}
@@ -67,17 +67,17 @@ function DateNavigator({ date, disabled = false, onChange }: DateNavigatorProps)
   const today = getTodayDate();
 
   return (
-    <div className="flex items-center gap-0.5 bg-zinc-100 dark:bg-slate-800 p-0.5 rounded-md border border-zinc-200 dark:border-slate-600">
+    <div className="flex items-center gap-0.5 bg-olive-100  p-0.5 rounded-md border border-olive-200 ">
       <NavBtn disabled={disabled} onClick={() => onChange(shiftDate(date, -1))} title="Previous Day">
         <ChevronLeft size={18} />
       </NavBtn>
 
       {/* Date pill */}
       <div
-        className="relative flex items-center gap-2 px-2.5 h-7 bg-white dark:bg-slate-700 rounded border border-zinc-200 dark:border-slate-600 min-w-[140px] cursor-pointer"
+        className="relative flex items-center gap-2 px-2.5 h-7 bg-white  rounded border border-olive-200  min-w-[140px] cursor-pointer"
         onClick={handleContainerClick}
       >
-        <CalendarDays className="text-zinc-400 dark:text-slate-400 shrink-0" size={16} />
+        <CalendarDays className="text-olive-400  shrink-0" size={16} />
         <input
           ref={inputRef}
           className="absolute inset-0 w-full h-full opacity-0 pointer-events-none"
@@ -86,7 +86,7 @@ function DateNavigator({ date, disabled = false, onChange }: DateNavigatorProps)
           type="date"
           value={date}
         />
-        <span className="text-[0.75rem] font-semibold text-olive-600 dark:text-blue-400 whitespace-nowrap">
+        <span className="text-[0.75rem] font-semibold text-olive-600  whitespace-nowrap">
           {new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
         </span>
       </div>

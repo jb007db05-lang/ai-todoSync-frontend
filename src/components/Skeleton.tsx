@@ -16,13 +16,13 @@ const Skeleton: React.FC<SkeletonProps> = ({
   const variantClasses = {
     rectangle: 'rounded-lg',
     circle: 'rounded-full',
-    text: 'rounded h-4 w-full',
+    text: 'rounded h-4 w-full'
   };
 
   return (
     <div
       className={`
-        relative overflow-hidden bg-zinc-100 dark:bg-slate-800
+        relative overflow-hidden bg-olive-100 
         ${variantClasses[variant]}
         ${className}
       `}

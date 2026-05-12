@@ -11,7 +11,7 @@ interface UserAvatarProps {
 const sizeClasses = {
   sm: 'w-7 h-7 text-[0.65rem]',
   md: 'w-8 h-8 text-[0.75rem]',
-  lg: 'w-9 h-9 text-sm',
+  lg: 'w-9 h-9 text-sm'
 };
 
 export default function UserAvatar({ 
@@ -31,7 +31,7 @@ export default function UserAvatar({
 
   const content = (
     <div 
-      className={`flex items-center justify-center rounded-full bg-olive-100 dark:bg-olive-800/50 text-olive-700 dark:text-olive-300 font-bold shadow-sm border border-olive-200/50 dark:border-olive-700/50 shrink-0 ${sizeClasses[size]} ${className}`}
+      className={`flex items-center justify-center rounded-full bg-olive-100  text-olive-700  font-bold shadow-sm border border-olive-200/50  shrink-0 ${sizeClasses[size]} ${className}`}
     >
       {initials}
     </div>

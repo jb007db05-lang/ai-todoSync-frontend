@@ -12,7 +12,7 @@ interface SubtaskInlineEditProps {
   members: ProjectMember[];
 }
 
-const inputCls = 'w-full bg-white dark:bg-slate-900 border border-zinc-200 dark:border-slate-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-olive-500 transition-all';
+const inputCls = 'w-full bg-white  border border-olive-200  rounded px-3 py-2 text-sm focus:outline-none focus:border-olive-500 transition-all';
 
 export default function SubtaskInlineEdit({ subtask, onSave, onCancel, isSaving, members }: SubtaskInlineEditProps) {
   const [title, setTitle] = useState(subtask.title);
@@ -31,9 +31,9 @@ export default function SubtaskInlineEdit({ subtask, onSave, onCancel, isSaving,
   };
 
   return (
-    <div className="mt-3 grid gap-3 p-3 bg-zinc-50 dark:bg-slate-900/50 rounded-lg border border-zinc-200 dark:border-slate-700">
+    <div className="mt-3 grid gap-3 p-3 bg-olive-50  rounded-lg border border-olive-200 ">
       <div className="grid gap-1.5">
-        <span className="text-[0.7rem] font-bold text-zinc-500 dark:text-slate-400 uppercase tracking-wider">Subtask Title</span>
+        <span className="text-[0.7rem] font-bold text-olive-500  uppercase tracking-wider">Subtask Title</span>
         <input
           autoFocus
           className={inputCls}
@@ -46,7 +46,7 @@ export default function SubtaskInlineEdit({ subtask, onSave, onCancel, isSaving,
       </div>
 
       <div className="grid gap-1.5">
-        <span className="text-[0.7rem] font-bold text-zinc-500 dark:text-slate-400 uppercase tracking-wider">Description (optional)</span>
+        <span className="text-[0.7rem] font-bold text-olive-500  uppercase tracking-wider">Description (optional)</span>
         <textarea
           className={`${inputCls} min-h-[60px] resize-none`}
           onChange={(e) => setDescription(e.target.value)}
@@ -57,7 +57,7 @@ export default function SubtaskInlineEdit({ subtask, onSave, onCancel, isSaving,
       </div>
 
       <div className="grid gap-1.5">
-        <span className="text-[0.7rem] font-bold text-zinc-500 dark:text-slate-400 uppercase tracking-wider">Internal Note (optional)</span>
+        <span className="text-[0.7rem] font-bold text-olive-500  uppercase tracking-wider">Internal Note (optional)</span>
         <textarea
           className={`${inputCls} min-h-[60px] resize-none`}
           onChange={(e) => setNote(e.target.value)}
@@ -68,7 +68,7 @@ export default function SubtaskInlineEdit({ subtask, onSave, onCancel, isSaving,
       </div>
 
       <div className="grid gap-1.5">
-        <span className="text-[0.7rem] font-bold text-zinc-500 dark:text-slate-400 uppercase tracking-wider">Assignee</span>
+        <span className="text-[0.7rem] font-bold text-olive-500  uppercase tracking-wider">Assignee</span>
         <div className="flex items-center gap-3">
           <select
             className={`${inputCls} !py-2`}
@@ -95,7 +95,7 @@ export default function SubtaskInlineEdit({ subtask, onSave, onCancel, isSaving,
 
       <div className="flex justify-end gap-2">
         <button
-          className="p-1.5 text-zinc-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+          className="p-1.5 text-olive-500 hover:text-red-500 hover:bg-red-50  rounded-md transition-colors"
           onClick={onCancel}
           title="Cancel"
           type="button"

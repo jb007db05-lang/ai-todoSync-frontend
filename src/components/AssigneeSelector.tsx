@@ -55,7 +55,7 @@ export default function AssigneeSelector({
 
   return (
     <div className={`relative z-30 ${className}`}>
-      {label && <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">{label}</label>}
+      {label && <label className="block text-xs font-medium text-olive-500  mb-1.5">{label}</label>}
       
       <button
         ref={triggerRef}
@@ -64,8 +64,8 @@ export default function AssigneeSelector({
         onClick={() => setIsOpen(!isOpen)}
         className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl border transition-all ${
           isOpen 
-            ? 'border-olive-500 ring-2 ring-olive-500/10 bg-white dark:bg-slate-800/50' 
-            : 'border-slate-200 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-900/30 hover:border-slate-300 dark:hover:border-slate-600'
+            ? 'border-olive-500 ring-2 ring-olive-500/10 bg-white'
+            : 'border-olive-200  bg-olive-50/50  hover:border-olive-300'
         } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
       >
         {selectedMember ? (
@@ -76,16 +76,16 @@ export default function AssigneeSelector({
               size="sm" 
               showTooltip={false} 
             />
-            <span className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">
+            <span className="text-sm font-medium text-olive-700  truncate">
               {selectedMember.user.name || selectedMember.user.email}
             </span>
           </>
         ) : (
           <>
-            <div className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
-              <User className="w-4 h-4 text-slate-500" />
+            <div className="w-7 h-7 rounded-full bg-olive-200  flex items-center justify-center">
+              <User className="w-4 h-4 text-olive-500" />
             </div>
-            <span className="text-sm text-slate-500">Unassigned</span>
+            <span className="text-sm text-olive-500">Unassigned</span>
           </>
         )}
       </button>
@@ -97,7 +97,7 @@ export default function AssigneeSelector({
             onClick={() => setIsOpen(false)}
           ></div>
           <div 
-            className="fixed z-[6001] max-h-60 overflow-y-auto bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xl p-1.5 animate-modalIn"
+            className="fixed z-[6001] max-h-60 overflow-y-auto bg-white  rounded-xl border border-olive-200  shadow-xl p-1.5 animate-modalIn"
             style={{
               top: `${dropdownPos.top + 8}px`,
               left: `${dropdownPos.left}px`,
@@ -105,7 +105,7 @@ export default function AssigneeSelector({
             }}
           >
             {members.length === 0 ? (
-              <div className="p-3 text-sm text-slate-500 text-center">No members found</div>
+              <div className="p-3 text-sm text-olive-500 text-center">No members found</div>
             ) : (
               members.map((member) => (
                 <button
@@ -117,8 +117,8 @@ export default function AssigneeSelector({
                   }}
                   className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg transition-colors ${
                     String(selectedUserId) === String(member.userId)
-                      ? 'bg-olive-50 dark:bg-olive-900/40 text-olive-700 dark:text-olive-300 ring-1 ring-olive-500/20' 
-                      : 'hover:bg-slate-50 dark:hover:bg-slate-700/50 text-slate-700 dark:text-slate-300'
+                      ? 'bg-olive-50  text-olive-700  ring-1 ring-olive-500/20' 
+                      : 'hover:bg-olive-50  text-olive-700'
                   }`}
                 >
                   <UserAvatar 
@@ -132,7 +132,7 @@ export default function AssigneeSelector({
                       {member.user.name || member.user.email}
                     </span>
                     {member.user.name && (
-                      <span className="text-[0.65rem] text-slate-500 dark:text-slate-400 truncate">
+                      <span className="text-[0.65rem] text-olive-500  truncate">
                         {member.user.email}
                       </span>
                     )}

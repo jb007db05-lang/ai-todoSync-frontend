@@ -54,11 +54,11 @@ function CommentSection({ taskId }: CommentSectionProps): JSX.Element {
   const displayDate = (dateString: string) => formatDate(dateString, 'short');
 
   return (
-    <div className="flex flex-col h-full bg-slate-50/30 dark:bg-slate-900/30 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800">
-      <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2 bg-white dark:bg-slate-900">
-        <MessageSquare size={16} className="text-slate-400" />
-        <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Comments</h3>
-        <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[0.7rem] font-bold text-slate-500">
+    <div className="flex flex-col h-full bg-olive-50/30  rounded-xl overflow-hidden border border-olive-200 ">
+      <div className="p-4 border-b border-olive-200  flex items-center gap-2 bg-white ">
+        <MessageSquare size={16} className="text-olive-400" />
+        <h3 className="text-sm font-bold text-olive-700  uppercase tracking-wider">Comments</h3>
+        <span className="px-2 py-0.5 rounded-full bg-olive-100  text-[0.7rem] font-bold text-olive-500">
           {comments.length}
         </span>
       </div>
@@ -66,14 +66,14 @@ function CommentSection({ taskId }: CommentSectionProps): JSX.Element {
       <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-[200px]">
         {loading ? (
           <div className="flex justify-center p-8">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-olive-500"></div>
           </div>
         ) : error ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-300">
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600   ">
             {error}
           </div>
         ) : comments.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-slate-400 py-8">
+          <div className="flex flex-col items-center justify-center h-full text-olive-400 py-8">
             <MessageSquare size={32} className="opacity-10 mb-2" />
             <p className="text-xs font-medium">No comments yet. Start the conversation!</p>
           </div>
@@ -87,14 +87,14 @@ function CommentSection({ taskId }: CommentSectionProps): JSX.Element {
               />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                  <span className="text-xs font-bold text-olive-700 ">
                     {comment.user.name || comment.user.email}
                   </span>
-                  <span className="text-[0.65rem] text-slate-400 font-medium">
+                  <span className="text-[0.65rem] text-olive-400 font-medium">
                     {displayDate(comment.createdAt)}
                   </span>
                 </div>
-                <div className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed break-words bg-white dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700/50 shadow-sm">
+                <div className="text-sm text-olive-600  leading-relaxed break-words bg-white  p-3 rounded-xl border border-olive-100  shadow-sm">
                   {comment.content}
                 </div>
               </div>
@@ -103,19 +103,19 @@ function CommentSection({ taskId }: CommentSectionProps): JSX.Element {
         )}
       </div>
 
-      <form onSubmit={handleSubmit} className="p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
+      <form onSubmit={handleSubmit} className="p-4 bg-white  border-t border-olive-200 ">
         <div className="relative group">
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="Add a comment..."
-            className="w-full pl-4 pr-12 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none max-h-32"
+            className="w-full pl-4 pr-12 py-3 bg-olive-50  border border-olive-200  rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-olive-500/20 focus:border-olive-500 transition-all resize-none max-h-32"
             rows={2}
           />
           <button
             type="submit"
             disabled={!content.trim() || submitting}
-            className="absolute right-2 bottom-2 p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 disabled:opacity-40 disabled:hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/20"
+            className="absolute right-2 bottom-2 p-2 bg-olive-600 text-white rounded-lg hover:bg-olive-500 disabled:opacity-40 disabled:hover:bg-olive-600 transition-all shadow-lg shadow-olive-500/20"
           >
             <Send size={16} />
           </button>

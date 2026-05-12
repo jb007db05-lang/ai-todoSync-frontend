@@ -4,8 +4,8 @@ import { KeyRound, Smartphone } from 'lucide-react';
 
 import { useAuth } from '@/context/AuthContext';
 
-const inputCls = 'w-full bg-white/82 dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded-md text-olive-950 dark:text-slate-100 px-4 py-3.5 transition-all duration-200 focus:outline-none focus:border-olive-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-olive-500/10';
-const labelCls = 'grid gap-2 font-medium text-[0.95rem] text-olive-950 dark:text-slate-100';
+const inputCls = 'w-full bg-white/82  border border-olive-200  rounded-md text-olive-950  px-4 py-3.5 transition-all duration-200 focus:outline-none focus:border-olive-500  focus:ring-2 focus:ring-olive-500/10';
+const labelCls = 'grid gap-2 font-medium text-[0.95rem] text-olive-950';
 
 function LoginPage(): JSX.Element {
   const navigate = useNavigate();
@@ -50,15 +50,15 @@ function LoginPage(): JSX.Element {
   return (
     <main className="min-h-screen flex items-start justify-center gap-5 py-20 px-5">
       {/* Login card */}
-      <section className="bg-white dark:bg-slate-900 border border-zinc-200 dark:border-slate-700 rounded-lg shadow-sm p-8 w-full max-w-[480px] grid gap-5">
+      <section className="bg-white  border border-olive-200  rounded-lg shadow-sm p-8 w-full max-w-[480px] grid gap-5">
         <div>
-          <h1 className="text-2xl font-semibold text-olive-950 dark:text-slate-100 m-0">Login</h1>
-          <p className="text-zinc-500 dark:text-slate-400 mt-1">Sign in to access your synced tasks.</p>
+          <h1 className="text-2xl font-semibold text-olive-950  m-0">Login</h1>
+          <p className="text-olive-500  mt-1">Sign in to access your synced tasks.</p>
         </div>
 
         {/* Google OAuth */}
         <button
-          className="w-full py-3 bg-white dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded-md text-zinc-700 dark:text-slate-200 font-medium hover:bg-zinc-50 dark:hover:bg-slate-700 flex items-center justify-center gap-2.5 shadow-sm transition-colors disabled:opacity-50"
+          className="w-full py-3 bg-white  border border-olive-200  rounded-md text-olive-700  font-medium hover:bg-olive-50  flex items-center justify-center gap-2.5 shadow-sm transition-colors disabled:opacity-50"
           disabled={loading}
           onClick={startGoogleSignIn}
           type="button"
@@ -66,17 +66,17 @@ function LoginPage(): JSX.Element {
           Sign in with Google
         </button>
 
-        <p className="text-center text-zinc-400 dark:text-slate-500 text-sm m-0">or choose a login method</p>
+        <p className="text-center text-olive-400  text-sm m-0">or choose a login method</p>
 
         {/* Mode switch */}
         <div
           aria-label="Login method"
-          className="flex p-1 bg-zinc-100 dark:bg-slate-800 rounded-lg gap-1"
+          className="flex p-1 bg-olive-100  rounded-lg gap-1"
           role="tablist"
         >
           {(
             [
-              { key: 'account',   label: 'Account login',   Icon: KeyRound },
+              { key: 'account', label: 'Account login', Icon: KeyRound },
               { key: 'companion', label: 'Companion device', Icon: Smartphone }
             ] as const
           ).map(({ key, label, Icon }) => (
@@ -86,8 +86,8 @@ function LoginPage(): JSX.Element {
               className={[
                 'flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200',
                 loginMode === key
-                  ? 'bg-white dark:bg-slate-700 text-olive-950 dark:text-slate-100 shadow-sm'
-                  : 'text-zinc-500 dark:text-slate-400 hover:text-zinc-700 dark:hover:text-slate-200'
+                  ? 'bg-white  text-olive-950  shadow-sm'
+                  : 'text-olive-500  hover:text-olive-700'
               ].join(' ')}
               onClick={() => setLoginMode(key)}
               type="button"
@@ -108,10 +108,10 @@ function LoginPage(): JSX.Element {
               <span>Password</span>
               <input autoComplete="current-password" className={inputCls} name="password" onChange={(event) => setPassword(event.target.value)} required type="password" value={password} />
             </label>
-            {user != null ? <p className="text-zinc-400 dark:text-slate-500 m-0 text-sm">You already have an active session. Redirecting...</p> : null}
-            {error ? <p className="text-red-600 dark:text-red-400 m-0 text-[0.9rem]">{error}</p> : null}
+            {user != null ? <p className="text-olive-400  m-0 text-sm">You already have an active session. Redirecting...</p> : null}
+            {error ? <p className="text-red-600  m-0 text-[0.9rem]">{error}</p> : null}
             <button
-              className="bg-olive-900 dark:bg-olive-600 text-white rounded-md px-4 py-2.5 text-[0.9rem] font-medium hover:bg-olive-800 dark:hover:bg-olive-500 disabled:opacity-50 transition-colors"
+              className="bg-olive-900  text-white rounded-md px-4 py-2.5 text-[0.9rem] font-medium hover:bg-olive-800  disabled:opacity-50 transition-colors"
               disabled={loading}
               type="submit"
             >
@@ -132,12 +132,12 @@ function LoginPage(): JSX.Element {
                 value={companionKey}
               />
             </label>
-            <p className="text-zinc-500 dark:text-slate-400 m-0 text-sm">
+            <p className="text-olive-500  m-0 text-sm">
               Use the companion device ID generated from the primary device in Settings.
             </p>
-            {error ? <p className="text-red-600 dark:text-red-400 m-0 text-[0.9rem]">{error}</p> : null}
+            {error ? <p className="text-red-600  m-0 text-[0.9rem]">{error}</p> : null}
             <button
-              className="bg-olive-900 dark:bg-olive-600 text-white rounded-md px-4 py-2.5 text-[0.9rem] font-medium hover:bg-olive-800 dark:hover:bg-olive-500 disabled:opacity-50 transition-colors"
+              className="bg-olive-900  text-white rounded-md px-4 py-2.5 text-[0.9rem] font-medium hover:bg-olive-800  disabled:opacity-50 transition-colors"
               disabled={loading}
               type="submit"
             >
@@ -146,8 +146,8 @@ function LoginPage(): JSX.Element {
           </form>
         )}
 
-        <p className="text-zinc-500 dark:text-slate-400 m-0 text-sm">
-          Need an account? <Link className="text-olive-600 dark:text-blue-400 hover:underline" to="/register">Create one</Link>
+        <p className="text-olive-500  m-0 text-sm">
+          Need an account? <Link className="text-olive-600  hover:underline" to="/register">Create one</Link>
         </p>
       </section>
     </main>

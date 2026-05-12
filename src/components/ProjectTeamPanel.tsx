@@ -28,31 +28,31 @@ function ProjectTeamPanel({
   searchTerm
 }: ProjectTeamPanelProps): JSX.Element {
   return (
-    <section className="relative overflow-hidden bg-white dark:bg-slate-900 dark:bg-white dark:bg-slate-900 border border-zinc-200/80 dark:border-slate-700/80 rounded-xl grid gap-5 p-5 md:p-6 shadow-sm">
-      <div className="absolute -top-16 -right-16 w-40 h-40 rounded-full bg-blue-500/10 blur-3xl pointer-events-none" />
+    <section className="relative overflow-hidden bg-white    border border-olive-200/80  rounded-xl grid gap-5 p-5 md:p-6 shadow-sm">
+      <div className="absolute -top-16 -right-16 w-40 h-40 rounded-full bg-olive-500/10 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-20 -left-10 w-36 h-36 rounded-full bg-cyan-400/10 blur-3xl pointer-events-none" />
 
       <div className="relative flex flex-col gap-5">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <span className="inline-flex items-center gap-2 text-[0.68rem] uppercase tracking-[0.18em] font-bold text-olive-600 dark:text-blue-300">
+            <span className="inline-flex items-center gap-2 text-[0.68rem] uppercase tracking-[0.18em] font-bold text-olive-600 ">
               <Users size={13} className="text-olive-500" />
               Team Members
             </span>
-            <h3 className="m-0 mt-2 text-[1.2rem] font-bold text-olive-950 dark:text-slate-100">
+            <h3 className="m-0 mt-2 text-[1.2rem] font-bold text-olive-950 ">
               Project members
             </h3>
           </div>
 
-          <div className="px-3.5 flex items-center justify-between gap-2 py-2 rounded-lg border border-zinc-200/80 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 shadow-sm">
-            <div className="text-[0.68rem] uppercase tracking-[0.14em] font-bold text-zinc-500 dark:text-slate-400">Members</div>
-            <div className="text-[14px] font-bold text-olive-950 dark:text-slate-100">{members.length}</div>
+          <div className="px-3.5 flex items-center justify-between gap-2 py-2 rounded-lg border border-olive-200/80  bg-white/80  shadow-sm">
+            <div className="text-[0.68rem] uppercase tracking-[0.14em] font-bold text-olive-500 ">Members</div>
+            <div className="text-[14px] font-bold text-olive-950 ">{members.length}</div>
           </div>
         </div>
 
         <div className="grid gap-3">
           {members.length === 0 ? (
-            <div className="px-4 py-5 rounded-lg border border-dashed border-zinc-200 dark:border-slate-700 text-[0.84rem] text-zinc-500 dark:text-slate-400 bg-white/70 dark:bg-slate-800/50">
+            <div className="px-4 py-5 rounded-lg border border-dashed border-olive-200  text-[0.84rem] text-olive-500  bg-white/70 ">
               No project members are loaded yet.
             </div>
           ) : (
@@ -63,25 +63,25 @@ function ProjectTeamPanel({
                 return (
                   <div
                     key={member.id}
-                    className="flex items-center gap-3 px-4 py-3 rounded-lg border border-zinc-200/80 dark:border-slate-700 bg-white/88 dark:bg-slate-800/72 shadow-sm"
+                    className="flex items-center gap-3 px-4 py-3 rounded-lg border border-olive-200/80  bg-white/88  shadow-sm"
                   >
-                    <div className="flex items-center justify-center w-11 h-11 rounded-lg bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-200 text-sm font-bold shrink-0">
+                    <div className="flex items-center justify-center w-11 h-11 rounded-lg bg-olive-50 text-olive-700   text-sm font-bold shrink-0">
                       {(member.user.name || member.user.email).slice(0, 1).toUpperCase()}
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <div className="text-[0.92rem] font-semibold text-olive-950 dark:text-slate-100 truncate">
+                      <div className="text-[0.92rem] font-semibold text-olive-950  truncate">
                         {member.user.name || member.user.email}
                       </div>
-                      <div className="text-[0.78rem] text-zinc-500 dark:text-slate-400 truncate">
+                      <div className="text-[0.78rem] text-olive-500  truncate">
                         {member.user.email}
                       </div>
                     </div>
 
                     <span
                       className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[0.68rem] font-bold uppercase tracking-[0.08em] ${isAdmin
-                          ? 'bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300'
-                          : 'bg-zinc-100 text-zinc-600 dark:bg-slate-700 dark:text-slate-300'
+                          ? 'bg-olive-50 text-olive-700'
+                          : 'bg-olive-100 text-olive-600'
                         }`}
                     >
                       {isAdmin ? <Shield size={12} /> : null}
@@ -90,7 +90,7 @@ function ProjectTeamPanel({
 
                     {member.userId === currentUserId && (
                       <button
-                        className="p-2.5 rounded-xl text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50 disabled:hover:text-zinc-400 disabled:hover:bg-transparent"
+                        className="p-2.5 rounded-xl text-olive-400 hover:text-red-500 hover:bg-red-50  transition-colors disabled:opacity-50 disabled:hover:text-olive-400 disabled:hover:bg-transparent"
                         disabled={isMutating || isAdmin}
                         onClick={() => void onLeaveProject()}
                         title={isAdmin
@@ -104,7 +104,7 @@ function ProjectTeamPanel({
 
                     {canManageTeam && member.userId !== currentUserId ? (
                       <button
-                        className="p-2.5 rounded-xl text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50 disabled:hover:text-zinc-400 disabled:hover:bg-transparent"
+                        className="p-2.5 rounded-xl text-olive-400 hover:text-red-500 hover:bg-red-50  transition-colors disabled:opacity-50 disabled:hover:text-olive-400 disabled:hover:bg-transparent"
                         disabled={isMutating || isAdmin}
                         onClick={() => void onRemoveMember(member.userId)}
                         title={isAdmin
@@ -123,18 +123,18 @@ function ProjectTeamPanel({
         </div>
 
         {canManageTeam ? (
-          <div className="grid gap-3 rounded-xl border border-zinc-200/80 dark:border-slate-700 bg-white/76 dark:bg-slate-800/62 p-4 md:p-5">
+          <div className="grid gap-3 rounded-xl border border-olive-200/80  bg-white/76  p-4 md:p-5">
             <div>
-              <h4 className="m-0 text-[0.92rem] font-bold text-olive-950 dark:text-slate-100">Add registered user</h4>
-              <p className="m-0 mt-1 text-[0.78rem] text-zinc-500 dark:text-slate-400">
+              <h4 className="m-0 text-[0.92rem] font-bold text-olive-950 ">Add registered user</h4>
+              <p className="m-0 mt-1 text-[0.78rem] text-olive-500 ">
                 Search by email and add them as a project member.
               </p>
             </div>
 
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-slate-500" size={14} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-olive-400 " size={14} />
               <input
-                className="w-full h-12 rounded-lg border border-zinc-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-10 pr-4 text-sm text-olive-950 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-olive-500/20"
+                className="w-full h-12 rounded-lg border border-olive-200  bg-white  px-10 pr-4 text-sm text-olive-950  focus:outline-none focus:ring-2 focus:ring-olive-500/20"
                 onChange={(event) => onSearchChange(event.target.value)}
                 placeholder="Search registered users by email"
                 type="text"
@@ -145,7 +145,7 @@ function ProjectTeamPanel({
             {searchTerm.trim().length >= 2 ? (
               <div className="grid gap-2 max-h-[18rem] overflow-y-auto pr-1">
                 {searchResults.length === 0 ? (
-                  <div className="px-3 py-3 rounded-xl border border-dashed border-zinc-200 dark:border-slate-700 text-[0.8rem] text-zinc-500 dark:text-slate-400">
+                  <div className="px-3 py-3 rounded-xl border border-dashed border-olive-200  text-[0.8rem] text-olive-500 ">
                     No registered users match this email.
                   </div>
                 ) : (
@@ -155,19 +155,19 @@ function ProjectTeamPanel({
                     return (
                       <div
                         key={user.id}
-                        className="flex items-center justify-between gap-3 px-3 py-3 rounded-xl border border-zinc-200 dark:border-slate-700 bg-white dark:bg-slate-800/60"
+                        className="flex items-center justify-between gap-3 px-3 py-3 rounded-xl border border-olive-200  bg-white "
                       >
                         <div className="min-w-0">
-                          <div className="text-[0.84rem] font-semibold text-olive-950 dark:text-slate-100 truncate">
+                          <div className="text-[0.84rem] font-semibold text-olive-950  truncate">
                             {user.name || user.email}
                           </div>
-                          <div className="text-[0.74rem] text-zinc-500 dark:text-slate-400 truncate">
+                          <div className="text-[0.74rem] text-olive-500  truncate">
                             {user.email}
                           </div>
                         </div>
 
                         <button
-                          className="inline-flex items-center gap-2 px-3 py-2.5 rounded-xl bg-olive-900 dark:bg-olive-600 text-white text-[0.78rem] font-semibold disabled:opacity-50 shadow-sm"
+                          className="inline-flex items-center gap-2 px-3 py-2.5 rounded-xl bg-olive-900  text-white text-[0.78rem] font-semibold disabled:opacity-50 shadow-sm"
                           disabled={existingMember || isMutating}
                           onClick={() => void onAddMember(user.id)}
                           type="button"
@@ -183,7 +183,7 @@ function ProjectTeamPanel({
             ) : null}
           </div>
         ) : (
-          <div className="px-4 py-3 rounded-lg border border-zinc-200/80 dark:border-slate-700 bg-white/76 dark:bg-slate-800/62 text-[0.8rem] text-zinc-500 dark:text-slate-400">
+          <div className="px-4 py-3 rounded-lg border border-olive-200/80  bg-white/76  text-[0.8rem] text-olive-500 ">
             You can view the team here. Admins manage membership changes.
           </div>
         )}
