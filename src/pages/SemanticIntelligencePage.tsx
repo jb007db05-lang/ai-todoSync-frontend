@@ -11,13 +11,11 @@ import {
   Gauge,
   GitBranch,
   History,
-  Info,
   Loader2,
   RefreshCw,
   ShieldCheck,
   Sparkles,
   TrendingUp,
-  Users,
   Workflow
 } from 'lucide-react';
 import noDataImg from '@/assets/no_data.png';
@@ -175,103 +173,6 @@ const FactorBar = ({ label, share, color = 'var(--color-olive-700)' }: { label: 
     </div>
   </div>
 );
-
-const PropagationGraph = ({ nodes, edges }: { nodes: any[], edges: any[] }) => {
-  if (!nodes || nodes.length === 0) return null;
-
-  const factors = nodes.filter(n => n.type === 'factor');
-  const metrics = nodes.filter(n => n.type === 'metric');
-  const intermediate = nodes.filter(n => n.type !== 'factor' && n.type !== 'metric');
-
-  const heightPerNode = 80;
-  const maxInCol = Math.max(factors.length, metrics.length, intermediate.length);
-  const graphHeight = Math.max(400, maxInCol * heightPerNode + 100);
-
-  const getNodePos = (node: any) => {
-    const x = node.type === 'factor' ? 140 : node.type === 'metric' ? 660 : 400;
-    let groupIndex = 0;
-    let groupSize = 0;
-    if (node.type === 'factor') { groupIndex = factors.indexOf(node); groupSize = factors.length; }
-    else if (node.type === 'metric') { groupIndex = metrics.indexOf(node); groupSize = metrics.length; }
-    else { groupIndex = intermediate.indexOf(node); groupSize = intermediate.length; }
-
-    const groupHeight = (groupSize - 1) * heightPerNode;
-    const startY = (graphHeight - groupHeight) / 2;
-    return { x, y: startY + groupIndex * heightPerNode };
-  };
-
-  return (
-    <div className="relative h-[600px] w-full bg-olive-50/20 rounded-2xl border border-olive-100 overflow-y-auto custom-scrollbar group">
-      <svg className="w-full" style={{ height: graphHeight }} viewBox={`0 0 800 ${graphHeight}`}>
-        <defs>
-          <marker id="arrowhead" markerHeight="7" markerWidth="10" orient="auto" refX="22" refY="3.5">
-            <polygon fill="var(--color-olive-600)" points="0 0, 10 3.5, 0 7" />
-          </marker>
-          <filter id="shadow">
-            <feDropShadow dx="0" dy="1" stdDeviation="1" floodOpacity="0.1" />
-          </filter>
-        </defs>
-
-        {edges.map((edge, i) => {
-          const fromNode = nodes.find(n => n.id === edge.from);
-          const toNode = nodes.find(n => n.id === edge.to);
-          if (!fromNode || !toNode) return null;
-
-          const { x: x1, y: y1 } = getNodePos(fromNode);
-          const { x: x2, y: y2 } = getNodePos(toNode);
-
-          return (
-            <g key={i}>
-              <path
-                className="text-olive-300 transition-colors group-hover:text-olive-400"
-                d={`M ${x1} ${y1} C ${x1 + 100} ${y1}, ${x2 - 100} ${y2}, ${x2} ${y2}`}
-                fill="none"
-                markerEnd="url(#arrowhead)"
-                stroke="currentColor"
-                strokeWidth="1.5"
-              />
-              <text className="fill-olive-400 text-[10px] font-medium uppercase tracking-tight" x={(x1 + x2) / 2} y={(y1 + y2) / 2 - 12} textAnchor="middle">
-                {edge.explanation?.slice(0, 30)}
-              </text>
-            </g>
-          );
-        })}
-
-        {nodes.map((node) => {
-          const { x, y } = getNodePos(node);
-
-          return (
-            <g key={node.id} transform={`translate(${x},${y})`} className="cursor-default">
-              <circle
-                className={node.type === 'metric' ? 'fill-olive-800' : 'fill-white'}
-                r="22"
-                stroke="var(--color-olive-600)"
-                strokeWidth="2"
-                filter="url(#shadow)"
-              />
-              <text
-                className={node.type === 'metric' ? 'fill-white' : 'fill-olive-800'}
-                dy="5"
-                fontSize="12"
-                fontWeight="600"
-                textAnchor="middle"
-              >
-                {Math.round(node.value || node.weightedContribution || 0)}
-              </text>
-              <text
-                className="fill-olive-500 text-[10px] font-semibold uppercase tracking-wider"
-                dy="40"
-                textAnchor="middle"
-              >
-                {node.label}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
-    </div>
-  );
-};
 
 // ─────────────────────────────────────────────────────────────
 // CORE COMPONENT
@@ -958,7 +859,7 @@ export default function SemanticIntelligencePage({
                 ].map(opt => (
                   <button
                     key={opt.id}
-                    onClick={() => runSimulation(opt.id as any)}
+                    onClick={() => runSimulation(opt.id as OperationalSimulation['intervention']['type'])}
                     disabled={simulating}
                     className="group flex items-center justify-between h-10 px-4 rounded-lg border border-olive-100 bg-olive-50/30 hover:bg-white hover:border-olive-400 text-[10px] font-bold uppercase tracking-widest text-olive-600 transition-all active:scale-[0.99] disabled:opacity-50"
                   >
