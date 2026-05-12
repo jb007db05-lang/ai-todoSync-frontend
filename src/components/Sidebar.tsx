@@ -5,11 +5,12 @@ import {
   Plus,
   Settings,
   Activity,
+  BrainCircuit,
   LogOut,
   BookOpen
 } from 'lucide-react';
 
-export type SidebarView = 'dashboard' | 'settings' | 'event-tracking' | 'sdk-docs';
+export type SidebarView = 'dashboard' | 'settings' | 'event-tracking' | 'semantic-intelligence' | 'sdk-docs';
 
 interface SidebarProps {
   activeView: SidebarView;
@@ -31,22 +32,22 @@ const Sidebar: React.FC<SidebarProps> = ({
   onLogout
 }) => {
   return (
-    <aside className="flex flex-col w-[260px] shrink-0 bg-slate-50 dark:bg-slate-900 border-r border-zinc-200 dark:border-slate-800 h-full shadow-[4px_0_24px_rgba(0,0,0,0.02)] dark:shadow-none z-10 transition-colors duration-300">
+    <aside className="flex flex-col w-[260px] shrink-0 bg-slate-50  border-r border-zinc-200  h-full shadow-[4px_0_24px_rgba(0,0,0,0.02)]  z-10 transition-colors duration-300">
       {/* Logo */}
-      <div className="flex items-center gap-3 px-6 h-[72px] border-b border-zinc-200 dark:border-slate-800 shrink-0">
-        <Layout className="text-olive-600 dark:text-olive-500" size={24} strokeWidth={2.5} />
-        <span className="font-['Outfit'] font-extrabold text-olive-950 dark:text-white text-[1.25rem] tracking-tight">Task Manager</span>
+      <div className="flex items-center gap-3 px-6 h-[72px] border-b border-zinc-200  shrink-0">
+        <Layout className="text-olive-600 " size={24} strokeWidth={2.5} />
+        <span className="font-['Outfit'] font-extrabold text-olive-950  text-[1.25rem] tracking-tight">Task Manager</span>
       </div>
 
       {/* Project nav */}
       <div className="flex flex-col gap-1.5 p-4 flex-1 overflow-y-auto">
-        <p className="text-[0.7rem] uppercase tracking-widest text-zinc-400 dark:text-slate-500 font-bold px-3 pt-2 pb-2">Workspace</p>
+        <p className="text-[0.7rem] uppercase tracking-widest text-zinc-400  font-bold px-3 pt-2 pb-2">Workspace</p>
         <button
           className={[
             'flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-[0.95rem] font-medium transition-all duration-200 justify-start',
-            selectedProjectView === allProjectsValue && activeView !== 'settings' && activeView !== 'event-tracking' && activeView !== 'sdk-docs'
-              ? 'bg-olive-700 text-white shadow-md shadow-olive-700/20' 
-              : 'text-zinc-600 hover:text-olive-950 hover:bg-zinc-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800'
+            selectedProjectView === allProjectsValue && activeView === 'dashboard'
+              ? 'bg-olive-700 text-white shadow-md shadow-olive-700/20'
+              : 'text-zinc-600 hover:text-olive-950 hover:bg-zinc-100'
           ].join(' ')}
           onClick={() => onProjectSelect(allProjectsValue)}
           type="button"
@@ -59,9 +60,25 @@ const Sidebar: React.FC<SidebarProps> = ({
         <button
           className={[
             'flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-[0.95rem] font-medium transition-all duration-200 justify-start',
-            activeView === 'event-tracking' 
-              ? 'bg-olive-700 text-white shadow-md shadow-olive-700/20' 
-              : 'text-zinc-600 hover:text-olive-950 hover:bg-zinc-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800'
+            activeView === 'semantic-intelligence'
+              ? 'bg-olive-700 text-white shadow-md shadow-olive-700/20'
+              : 'text-zinc-600 hover:text-olive-950 hover:bg-zinc-100'
+          ].join(' ')}
+          onClick={() => onViewChange('semantic-intelligence')}
+          title="Semantic Intelligence"
+          type="button"
+        >
+          <BrainCircuit size={18} strokeWidth={2} />
+          <span>Intelligence</span>
+        </button>
+
+
+        <button
+          className={[
+            'flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-[0.95rem] font-medium transition-all duration-200 justify-start',
+            activeView === 'event-tracking'
+              ? 'bg-olive-700 text-white shadow-md shadow-olive-700/20'
+              : 'text-zinc-600 hover:text-olive-950 hover:bg-zinc-100'
           ].join(' ')}
           onClick={() => onViewChange('event-tracking')}
           title="Event Tracking"
@@ -73,7 +90,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
 
         <button
-          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-[0.95rem] font-medium text-olive-600 hover:text-olive-700 hover:bg-olive-50 dark:text-olive-500 dark:hover:bg-olive-900/40 transition-all duration-200 justify-start mt-1 border border-dashed border-olive-200 dark:border-olive-800"
+          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-[0.95rem] font-medium text-olive-600 hover:text-olive-700 hover:bg-olive-50   transition-all duration-200 justify-start mt-1 border border-dashed border-olive-200 "
           onClick={onNewProject}
           type="button"
         >
@@ -83,13 +100,13 @@ const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Footer */}
-      <div className="flex flex-col gap-1 p-4 border-t border-zinc-200 dark:border-slate-800 shrink-0">
+      <div className="flex flex-col gap-1 p-4 border-t border-zinc-200  shrink-0">
         <button
           className={[
             'flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-[0.95rem] font-medium transition-all duration-200 justify-start',
-            activeView === 'sdk-docs' 
-              ? 'bg-olive-700 text-white shadow-md shadow-olive-700/20' 
-              : 'text-zinc-600 hover:text-olive-950 hover:bg-zinc-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800'
+            activeView === 'sdk-docs'
+              ? 'bg-olive-700 text-white shadow-md shadow-olive-700/20'
+              : 'text-zinc-600 hover:text-olive-950 hover:bg-zinc-100'
           ].join(' ')}
           onClick={() => onViewChange('sdk-docs')}
           title="SDK Documentation"
@@ -102,9 +119,9 @@ const Sidebar: React.FC<SidebarProps> = ({
         <button
           className={[
             'flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-[0.95rem] font-medium transition-all duration-200 justify-start',
-            activeView === 'settings' 
-              ? 'bg-olive-700 text-white shadow-md shadow-olive-700/20' 
-              : 'text-zinc-600 hover:text-olive-950 hover:bg-zinc-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800'
+            activeView === 'settings'
+              ? 'bg-olive-700 text-white shadow-md shadow-olive-700/20'
+              : 'text-zinc-600 hover:text-olive-950 hover:bg-zinc-100'
           ].join(' ')}
           onClick={() => onViewChange('settings')}
           title="Settings"
@@ -114,11 +131,11 @@ const Sidebar: React.FC<SidebarProps> = ({
           <span>Settings</span>
         </button>
 
-        <button 
-           className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-[0.95rem] font-medium text-zinc-500 hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:text-red-400 dark:hover:bg-red-900/20 transition-all duration-200 justify-start mt-1"
-           onClick={onLogout} 
-           title="Sign out" 
-           type="button"
+        <button
+          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-[0.95rem] font-medium text-zinc-500 hover:text-red-600 hover:bg-red-50    transition-all duration-200 justify-start mt-1"
+          onClick={onLogout}
+          title="Sign out"
+          type="button"
         >
           <LogOut size={18} strokeWidth={2} />
           <span>Sign out</span>

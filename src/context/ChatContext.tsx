@@ -143,7 +143,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (notificationsEnabled && 'Notification' in window && Notification.permission === 'granted') {
             new Notification('New message', {
               body: `${message.sender?.name || message.sender?.email}: ${message.content.slice(0, 50)}`,
-              icon: '/favicon.ico',
+              icon: '/favicon.ico'
             });
           }
         }

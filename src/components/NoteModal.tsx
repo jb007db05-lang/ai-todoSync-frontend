@@ -82,16 +82,16 @@ function NoteModal({
       title={modalTitle ?? (note ? 'Edit Note' : 'Create Note')}
     >
       <form className="grid gap-5" onSubmit={(event) => void handleSubmit(event)}>
-        <p className="m-0 text-sm text-zinc-500 dark:text-slate-400">
+        <p className="m-0 text-sm text-olive-500 ">
           Capture notes for {entityLabel} with a simple form. Existing save API stays unchanged.
         </p>
 
         {showTitle ? (
           <label className="grid gap-2">
-            <span className="text-sm font-semibold text-olive-950 dark:text-slate-100">Title</span>
+            <span className="text-sm font-semibold text-olive-950 ">Title</span>
             <input
               autoFocus
-              className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-olive-950 shadow-sm transition-colors focus:border-olive-500 focus:outline-none focus:ring-2 focus:ring-olive-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-blue-400"
+              className="w-full rounded-xl border border-olive-200 bg-white px-4 py-3 text-sm text-olive-950 shadow-sm transition-colors focus:border-olive-500 focus:outline-none focus:ring-2 focus:ring-olive-500/10    "
               onChange={(event) => setTitle(event.target.value)}
               placeholder={titlePlaceholder}
               type="text"
@@ -101,9 +101,9 @@ function NoteModal({
         ) : null}
 
         <label className="grid gap-2">
-          <span className="text-sm font-semibold text-olive-950 dark:text-slate-100">Description</span>
+          <span className="text-sm font-semibold text-olive-950 ">Description</span>
           <textarea
-            className="min-h-[240px] w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm leading-6 text-olive-950 shadow-sm transition-colors focus:border-olive-500 focus:outline-none focus:ring-2 focus:ring-olive-500/10 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-blue-400"
+            className="min-h-[240px] w-full rounded-2xl border border-olive-200 bg-white px-4 py-3 text-sm leading-6 text-olive-950 shadow-sm transition-colors focus:border-olive-500 focus:outline-none focus:ring-2 focus:ring-olive-500/10    "
             onChange={(event) => setContent(event.target.value)}
             placeholder="Write note details, decisions, or follow-ups..."
             value={content}
@@ -111,14 +111,14 @@ function NoteModal({
         </label>
 
         {errorMessage ? (
-          <p className="m-0 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-300">
+          <p className="m-0 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600   ">
             {errorMessage}
           </p>
         ) : null}
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <button
-            className="inline-flex items-center rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+            className="inline-flex items-center rounded-lg border border-olive-200 bg-white px-4 py-2 text-sm text-olive-700 transition-colors hover:bg-olive-50    "
             onClick={onClose}
             type="button"
           >
@@ -128,7 +128,7 @@ function NoteModal({
           <div className="flex flex-wrap gap-3">
             {note && allowDelete && onDelete ? (
               <button
-                className="inline-flex items-center rounded-lg border border-red-200 bg-white px-4 py-2 text-sm text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50 dark:border-red-800 dark:bg-slate-800 dark:text-red-400 dark:hover:bg-red-900/20"
+                className="inline-flex items-center rounded-lg border border-red-200 bg-white px-4 py-2 text-sm text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50    "
                 disabled={submitting}
                 onClick={() => void onDelete()}
                 type="button"
@@ -139,7 +139,7 @@ function NoteModal({
 
             {note && allowAppend ? (
               <button
-                className="inline-flex items-center rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm text-zinc-700 transition-colors hover:bg-zinc-50 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                className="inline-flex items-center rounded-lg border border-olive-200 bg-white px-4 py-2 text-sm text-olive-700 transition-colors hover:bg-olive-50 disabled:opacity-50    "
                 disabled={submitting}
                 onClick={(event) => void handleSubmit(event, 'append')}
                 type="button"
@@ -149,7 +149,7 @@ function NoteModal({
             ) : null}
 
             <button
-              className="inline-flex items-center rounded-lg bg-olive-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-olive-800 disabled:opacity-50 dark:bg-olive-600 dark:hover:bg-olive-500"
+              className="inline-flex items-center rounded-lg bg-olive-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-olive-800 disabled:opacity-50  "
               disabled={submitting}
               type="submit"
             >

@@ -25,8 +25,8 @@ interface AddTaskFormProps {
   projects: Project[];
 }
 
-const inputCls = 'w-full bg-white/82 dark:bg-slate-800 border border-zinc-200 dark:border-slate-600 rounded-md text-olive-950 dark:text-slate-100 px-4 py-3.5 transition-all duration-200 focus:outline-none focus:border-olive-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-olive-500/10';
-const labelCls = 'grid gap-2 font-medium text-[0.95rem] text-olive-950 dark:text-slate-100';
+const inputCls = 'w-full bg-white/82  border border-olive-200  rounded-md text-olive-950  px-4 py-3.5 transition-all duration-200 focus:outline-none focus:border-olive-500  focus:ring-2 focus:ring-olive-500/10';
+const labelCls = 'grid gap-2 font-medium text-[0.95rem] text-olive-950';
 
 function AddTaskForm({ epics, initialProjectId = null, initialEpicId = null, onCreateTask, projects }: AddTaskFormProps): JSX.Element {
   const { user } = useAuth();
@@ -129,7 +129,7 @@ function AddTaskForm({ epics, initialProjectId = null, initialEpicId = null, onC
       </label>
 
       <label className={labelCls}>
-        <span>Description <span className="text-zinc-400 dark:text-slate-500 font-normal text-[0.82rem]">(optional)</span></span>
+        <span>Description <span className="text-olive-400  font-normal text-[0.82rem]">(optional)</span></span>
         <textarea
           className={`${inputCls} min-h-[80px] resize-y`}
           onChange={(event) => setDescription(event.target.value)}
@@ -214,7 +214,7 @@ function AddTaskForm({ epics, initialProjectId = null, initialEpicId = null, onC
       )}
 
       <button
-        className="bg-slate-900 dark:bg-blue-600 text-white rounded-md px-4 py-3 text-[0.95rem] font-bold hover:bg-slate-800 dark:hover:bg-blue-500 disabled:opacity-50 transition-colors shadow-lg shadow-blue-500/20"
+        className="bg-olive-900  text-white rounded-md px-4 py-3 text-[0.95rem] font-bold hover:bg-olive-800  disabled:opacity-50 transition-colors shadow-lg shadow-olive-500/20"
         disabled={submitting}
         type="submit"
       >
@@ -222,9 +222,9 @@ function AddTaskForm({ epics, initialProjectId = null, initialEpicId = null, onC
       </button>
 
       {errorMessage ? (
-        <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-lg">
+        <div className="flex items-center gap-2 p-3 bg-red-50  border border-red-100  rounded-lg">
           <AlertTriangle size={14} className="text-red-500" />
-          <p className="text-red-600 dark:text-red-400 m-0 text-[0.85rem] font-medium">{errorMessage}</p>
+          <p className="text-red-600  m-0 text-[0.85rem] font-medium">{errorMessage}</p>
         </div>
       ) : null}
     </form>

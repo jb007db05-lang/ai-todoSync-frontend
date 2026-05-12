@@ -177,9 +177,9 @@ function ChatPanel({ project, members, isOpen }: ChatPanelProps) {
     const el = document.getElementById(`message-${messageId}`);
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      el.classList.add('!bg-olive-100', 'dark:!bg-olive-900/50', 'transition-colors', 'duration-500');
+      el.classList.add('!bg-olive-100', 'transition-colors', 'duration-500');
       setTimeout(() => {
-        el.classList.remove('!bg-olive-100', 'dark:!bg-olive-900/50');
+        el.classList.remove('!bg-olive-100');
       }, 2000);
     }
   }, []);
@@ -193,26 +193,26 @@ function ChatPanel({ project, members, isOpen }: ChatPanelProps) {
   }, [typingUsers]);
 
   return (
-    <div className="flex flex-col h-full w-full bg-slate-50 dark:bg-slate-900 overflow-hidden relative border-none">
+    <div className="flex flex-col h-full w-full bg-olive-50  overflow-hidden relative border-none">
       {/* Professional Clean Header */}
-      <div className="shrink-0 px-8 py-5 h-[72px] bg-white dark:bg-slate-900 flex items-center justify-between z-20 border-b border-zinc-200 dark:border-slate-800">
+      <div className="shrink-0 px-8 py-5 h-[72px] bg-white  flex items-center justify-between z-20 border-b border-olive-200 ">
         <div className="flex items-center gap-4">
           <div className="relative">
-            <div className="p-2.5 bg-olive-50 dark:bg-olive-900/30 rounded-xl border border-olive-100 dark:border-olive-800/50 text-olive-600 dark:text-olive-500">
+            <div className="p-2.5 bg-olive-50  rounded-xl border border-olive-100  text-olive-600 ">
               <MessageSquare className="w-[18px] h-[18px]" strokeWidth={2.5} />
             </div>
             {isConnected && (
-              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white dark:border-slate-900 rounded-full"></span>
+              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white  rounded-full"></span>
             )}
           </div>
           <div className="flex flex-col">
-            <h3 className="text-olive-950 dark:text-white font-bold text-[1.1rem] tracking-tight leading-tight">{project.name}</h3>
-            <div className="flex items-center gap-2 text-zinc-500 dark:text-slate-400 text-[0.7rem] font-semibold mt-0.5">
+            <h3 className="text-olive-950  font-bold text-[1.1rem] tracking-tight leading-tight">{project.name}</h3>
+            <div className="flex items-center gap-2 text-olive-500  text-[0.7rem] font-semibold mt-0.5">
               <span className="flex items-center gap-1.5">
                 <Users className="w-3 h-3" />
                 {members.length} Members
               </span>
-              <span className="w-1 h-1 rounded-full bg-zinc-300 dark:bg-slate-600" />
+              <span className="w-1 h-1 rounded-full bg-olive-300 " />
             </div>
           </div>
         </div>
@@ -224,7 +224,7 @@ function ChatPanel({ project, members, isOpen }: ChatPanelProps) {
               'p-2 rounded-xl transition-all duration-200',
               showSearch
                 ? 'bg-olive-50 text-olive-600 shadow-inner scale-95'
-                : 'text-zinc-600 hover:bg-zinc-100 dark:text-slate-400 dark:hover:bg-slate-800 active:scale-90',
+                : 'text-olive-600 hover:bg-olive-100   active:scale-90'
             ].join(' ')}
             title="Search messages"
           >
@@ -233,7 +233,7 @@ function ChatPanel({ project, members, isOpen }: ChatPanelProps) {
 
           <button
             onClick={() => setNotificationsEnabled(!notificationsEnabled)}
-            className="p-2 rounded-xl text-zinc-600 hover:bg-zinc-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-all active:scale-90"
+            className="p-2 rounded-xl text-olive-600 hover:bg-olive-100   transition-all active:scale-90"
             title={notificationsEnabled ? 'Mute' : 'Unmute'}
           >
             {notificationsEnabled ? (
@@ -247,18 +247,18 @@ function ChatPanel({ project, members, isOpen }: ChatPanelProps) {
 
       {/* Search area (conditionally rendered below header) */}
       {showSearch && (
-        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 animate-in slide-in-from-top duration-300">
+        <div className="px-6 py-4 bg-olive-50  border-b border-olive-200  animate-in slide-in-from-top duration-300">
           <div className="relative group">
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search in conversation..."
-              className="w-full px-4 py-2.5 pl-11 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-900 dark:text-slate-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-olive-500/30 transition-all group-hover:border-slate-300 dark:group-hover:border-slate-600"
+              className="w-full px-4 py-2.5 pl-11 text-sm bg-white  border border-olive-200  rounded-2xl text-olive-950  shadow-sm focus:outline-none focus:ring-2 focus:ring-olive-500/30 transition-all group-hover:border-olive-300 "
             />
-            <Search className="absolute left-4 top-3 w-4 h-4 text-slate-400 group-focus-within:text-olive-500 transition-colors" />
+            <Search className="absolute left-4 top-3 w-4 h-4 text-olive-400 group-focus-within:text-olive-500 transition-colors" />
             {isSearching && (
-              <Loader2 className="absolute right-4 top-3 w-4 h-4 text-slate-400 animate-spin" />
+              <Loader2 className="absolute right-4 top-3 w-4 h-4 text-olive-400 animate-spin" />
             )}
           </div>
         </div>
@@ -267,14 +267,14 @@ function ChatPanel({ project, members, isOpen }: ChatPanelProps) {
       {/* Messages */}
       <div
         ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto p-6 space-y-1.5 custom-scrollbar bg-slate-50/50 dark:bg-slate-950/20"
+        className="flex-1 overflow-y-auto p-6 space-y-1.5 custom-scrollbar bg-olive-50/50 "
       >
         {isLoading && messages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
-            <Loader2 className="w-6 h-6 text-slate-400 animate-spin" />
+            <Loader2 className="w-6 h-6 text-olive-400 animate-spin" />
           </div>
         ) : messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-slate-400 dark:text-slate-500">
+          <div className="flex flex-col items-center justify-center h-full text-olive-400 ">
             <MessageSquare className="w-12 h-12 mb-3 opacity-50" />
             <p className="text-sm">No messages yet</p>
             <p className="text-xs mt-1">Start the conversation!</p>
@@ -286,7 +286,7 @@ function ChatPanel({ project, members, isOpen }: ChatPanelProps) {
               <button
                 onClick={loadMoreMessages}
                 disabled={isLoading}
-                className="w-full py-2 text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                className="w-full py-2 text-xs text-olive-500 hover:text-olive-700  "
               >
                 {isLoading ? (
                   <Loader2 className="w-4 h-4 mx-auto animate-spin" />
@@ -313,8 +313,8 @@ function ChatPanel({ project, members, isOpen }: ChatPanelProps) {
                 return date.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
               };
 
-              const filteredMessages = (showSearch && searchQuery) 
-                ? searchResults 
+              const filteredMessages = (showSearch && searchQuery)
+                ? searchResults
                 : messages.filter(m => !m.replyToId);
 
               return filteredMessages.map((message) => {
@@ -326,11 +326,11 @@ function ChatPanel({ project, members, isOpen }: ChatPanelProps) {
                   <div key={message.id}>
                     {showSeparator && (
                       <div className="flex items-center gap-4 py-4 px-6">
-                        <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700/60" />
-                        <span className="text-[0.68rem] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 select-none whitespace-nowrap">
+                        <div className="flex-1 h-px bg-olive-200 " />
+                        <span className="text-[0.68rem] font-bold uppercase tracking-[0.2em] text-olive-400  select-none whitespace-nowrap">
                           {dateLabel}
                         </span>
-                        <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700/60" />
+                        <div className="flex-1 h-px bg-olive-200 " />
                       </div>
                     )}
                     <ChatMessage
@@ -352,7 +352,7 @@ function ChatPanel({ project, members, isOpen }: ChatPanelProps) {
             })()}
 
             {showSearch && searchQuery && searchResults.length === 0 && (
-              <div className="text-center py-8 text-slate-400 dark:text-slate-500">
+              <div className="text-center py-8 text-olive-400 ">
                 No messages found matching "{searchQuery}"
               </div>
             )}
@@ -363,10 +363,10 @@ function ChatPanel({ project, members, isOpen }: ChatPanelProps) {
       </div>
 
       {/* Footer Area */}
-      <div className="border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+      <div className="border-t border-olive-200  bg-white ">
         {/* Typing indicator */}
         {typingText && (
-          <div className="px-4 py-1.5 text-xs text-slate-500 dark:text-slate-400 italic">
+          <div className="px-4 py-1.5 text-xs text-olive-500  italic">
             {typingText}
           </div>
         )}

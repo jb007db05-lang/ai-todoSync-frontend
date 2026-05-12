@@ -5,10 +5,10 @@ interface SourceBadgeProps {
 }
 
 const sourceClasses: Record<string, string> = {
-  manual:  'bg-blue-50    text-blue-700  border border-blue-200 dark:bg-blue-900/30   dark:text-blue-200  dark:border-blue-800',
-  chatgpt: 'bg-indigo-50  text-indigo-700 border border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-200 dark:border-indigo-800',
-  claude:  'bg-purple-50  text-purple-700 border border-purple-200 dark:bg-purple-900/30 dark:text-purple-200 dark:border-purple-800',
-  gemini:  'bg-cyan-50    text-cyan-700   border border-cyan-200   dark:bg-cyan-900/30   dark:text-cyan-200   dark:border-cyan-800',
+  manual:  'bg-olive-50    text-olive-700  border border-olive-200',
+  chatgpt: 'bg-olive-50  text-olive-700 border border-olive-200',
+  claude:  'bg-purple-50  text-purple-700 border border-purple-200',
+  gemini:  'bg-cyan-50    text-cyan-700   border border-cyan-200'
 };
 
 function SourceBadge({ source = 'manual' }: SourceBadgeProps): JSX.Element {
