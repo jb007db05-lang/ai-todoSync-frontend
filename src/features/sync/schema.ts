@@ -74,7 +74,7 @@ ERROR HANDLING:
   - \`code: string\`
 `;
 
-export const SYNC_CHATGPT_ACTION_SCHEMA = String.raw`openapi: 3.0.0
+export const SYNC_CHATGPT_ACTION_SCHEMA = String.raw`openapi: 3.1.1
 info:
   title: Todo Sync API
   version: 2.0.0
@@ -670,7 +670,7 @@ components:
 `;
 
 const REQUIRED_SCHEMA_TOKENS = [
-  'openapi: 3.0.0',
+  'openapi: 3.1.1',
   '/api/sync/projects:',
   '/api/sync/epics:',
   '/api/sync/tasks:',
