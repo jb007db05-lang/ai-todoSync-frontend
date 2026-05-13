@@ -9,8 +9,8 @@ HIERARCHY:
 - Never invent IDs. Reuse IDs returned by API.
 
 CORE RULES:
-- Use \`x-sync-api-key\` authentication on every call
-- Keep titles short and actionable
+- MANDATORY: Always send the `x-sync-api-key` in the header.
+- ENDPOINTS: Always use plural paths: /api/sync/projects, /api/sync/tasks, etc.
 - Validate parent-child relationships before creating nested records
 - For notes, always send both \`parentType\` and \`parentId\`
 - For list endpoints, respect pagination fields: \`page\`, \`limit\`
@@ -74,12 +74,14 @@ ERROR HANDLING:
   - \`code: string\`
 `;
 
-export const SYNC_CHATGPT_ACTION_SCHEMA = String.raw`openapi: 3.1.1
+export const SYNC_CHATGPT_ACTION_SCHEMA = String.raw`openapi: 3.1.0
 info:
   title: Todo Sync API
   version: 2.0.0
 servers:
   - url: https://ai-todosync-backend.onrender.com
+security:
+  - SyncApiKey: []
 paths:
   /api/sync/projects:
     get:
