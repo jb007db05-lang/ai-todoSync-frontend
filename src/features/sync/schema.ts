@@ -9,7 +9,7 @@ HIERARCHY:
 - Never invent IDs. Reuse IDs returned by API.
 
 CORE RULES:
-- MANDATORY: Always send the `x-sync-api-key` in the header.
+- MANDATORY: Always send the 'x-sync-api-key' in the header.
 - ENDPOINTS: Always use plural paths: /api/sync/projects, /api/sync/tasks, etc.
 - Validate parent-child relationships before creating nested records
 - For notes, always send both \`parentType\` and \`parentId\`
