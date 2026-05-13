@@ -291,16 +291,24 @@ function DashboardPage(): JSX.Element {
         getProjects({ page: projectPage, limit: 10, search: debouncedProjectSearchTerm.trim() })
       ]);
       const projectList = projectData.projects;
-      const epicGroups = await Promise.all(projectList.map((project: Project) => getEpics(project.id)));
+
+      // Use allSettled so one failed project doesn't kill the whole dashboard
+      const epicResults = await Promise.allSettled(
+        projectList.map((project: Project) => getEpics(project.id))
+      );
+
+      const epicGroups = epicResults
+        .filter((result): result is PromiseFulfilledResult<Epic[]> => result.status === 'fulfilled')
+        .map((result) => result.value);
+
       setTasks(taskList);
       setProjects(projectList);
       setEpics(epicGroups.flat());
       setProjectTotalPages(projectData.totalPages);
-    } catch {
-      setError('Unable to load tasks for the selected day.');
-      setTasks([]);
-      setProjects([]);
-      setEpics([]);
+    } catch (err) {
+      console.error('Dashboard load error:', err);
+      setError('Unable to load some data. Please check your connection.');
+      // Only wipe if critical (tasks or projects list failed)
     } finally {
       setLoading(false);
     }
