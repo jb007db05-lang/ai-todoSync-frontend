@@ -15,6 +15,7 @@ CORE RULES:
 - For notes, always send both \`parentType\` and \`parentId\`
 - For list endpoints, respect pagination fields: \`page\`, \`limit\`
 - If user names a project or epic instead of giving an ID, list first, then use returned ID
+- **Activity Logging**: All your actions (create, update, delete) are recorded in the project's Activity History feed for transparency.
 
 PROJECT WORKFLOW:
 - List projects: \`GET /api/sync/projects\`
@@ -73,7 +74,7 @@ ERROR HANDLING:
   - \`code: string\`
 `;
 
-export const SYNC_CHATGPT_ACTION_SCHEMA = String.raw`openapi: 3.1.0
+export const SYNC_CHATGPT_ACTION_SCHEMA = String.raw`openapi: 3.0.0
 info:
   title: Todo Sync API
   version: 2.0.0
@@ -89,10 +90,15 @@ paths:
       parameters:
         - in: query
           name: page
-          schema: { type: integer, minimum: 1 }
+          schema:
+            type: integer
+            minimum: 1
         - in: query
           name: limit
-          schema: { type: integer, minimum: 1, maximum: 100 }
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
       responses:
         '200':
           description: Paginated project list
@@ -107,12 +113,16 @@ paths:
           application/json:
             schema:
               type: object
-              required: [name]
+              required:
+                - name
               properties:
-                name: { type: string }
-                description: { type: string }
+                name:
+                  type: string
+                description:
+                  type: string
       responses:
-        '201': { description: Project created }
+        '201':
+          description: Project created
   /api/sync/projects/{id}:
     get:
       operationId: getProject
@@ -123,9 +133,11 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        '200': { description: Project fetched }
+        '200':
+          description: Project fetched
     put:
       operationId: updateProject
       summary: Update project
@@ -135,7 +147,8 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       requestBody:
         required: true
         content:
@@ -143,10 +156,13 @@ paths:
             schema:
               type: object
               properties:
-                name: { type: string }
-                description: { type: string }
+                name:
+                  type: string
+                description:
+                  type: string
       responses:
-        '200': { description: Project updated }
+        '200':
+          description: Project updated
     delete:
       operationId: deleteProject
       summary: Delete project
@@ -156,9 +172,11 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        '200': { description: Project deleted }
+        '200':
+          description: Project deleted
   /api/sync/epics:
     get:
       operationId: listEpics
@@ -168,15 +186,22 @@ paths:
       parameters:
         - in: query
           name: page
-          schema: { type: integer, minimum: 1 }
+          schema:
+            type: integer
+            minimum: 1
         - in: query
           name: limit
-          schema: { type: integer, minimum: 1, maximum: 100 }
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
         - in: query
           name: projectId
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        '200': { description: Paginated epic list }
+        '200':
+          description: Paginated epic list
     post:
       operationId: createEpic
       summary: Create epic
@@ -188,16 +213,26 @@ paths:
           application/json:
             schema:
               type: object
-              required: [projectId, name]
+              required:
+                - projectId
+                - name
               properties:
-                projectId: { type: string }
-                name: { type: string }
-                description: { type: string }
+                projectId:
+                  type: string
+                name:
+                  type: string
+                description:
+                  type: string
                 status:
                   type: string
-                  enum: [planned, active, completed, archived]
+                  enum:
+                    - planned
+                    - active
+                    - completed
+                    - archived
       responses:
-        '201': { description: Epic created }
+        '201':
+          description: Epic created
   /api/sync/epics/{id}:
     get:
       operationId: getEpic
@@ -208,9 +243,11 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        '200': { description: Epic fetched }
+        '200':
+          description: Epic fetched
     put:
       operationId: updateEpic
       summary: Update epic
@@ -220,7 +257,8 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       requestBody:
         required: true
         content:
@@ -228,13 +266,20 @@ paths:
             schema:
               type: object
               properties:
-                name: { type: string }
-                description: { type: string }
+                name:
+                  type: string
+                description:
+                  type: string
                 status:
                   type: string
-                  enum: [planned, active, completed, archived]
+                  enum:
+                    - planned
+                    - active
+                    - completed
+                    - archived
       responses:
-        '200': { description: Epic updated }
+        '200':
+          description: Epic updated
     delete:
       operationId: deleteEpic
       summary: Delete epic
@@ -244,9 +289,11 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        '200': { description: Epic deleted }
+        '200':
+          description: Epic deleted
   /api/sync/tasks:
     get:
       operationId: listTasks
@@ -256,21 +303,31 @@ paths:
       parameters:
         - in: query
           name: page
-          schema: { type: integer, minimum: 1 }
+          schema:
+            type: integer
+            minimum: 1
         - in: query
           name: limit
-          schema: { type: integer, minimum: 1, maximum: 100 }
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
         - in: query
           name: date
-          schema: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+          schema:
+            type: string
+            pattern: "^\\d{4}-\\d{2}-\\d{2}$"
         - in: query
           name: projectId
-          schema: { type: string }
+          schema:
+            type: string
         - in: query
           name: epicId
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        '200': { description: Paginated task list }
+        '200':
+          description: Paginated task list
     post:
       operationId: createTask
       summary: Create task
@@ -282,23 +339,46 @@ paths:
           application/json:
             schema:
               type: object
-              required: [title, date]
+              required:
+                - title
+                - date
               properties:
-                title: { type: string }
-                description: { type: string }
-                note: { type: string }
-                date: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+                title:
+                  type: string
+                description:
+                  type: string
+                note:
+                  type: string
+                date:
+                  type: string
+                  pattern: "^\\d{4}-\\d{2}-\\d{2}$"
                 status:
                   type: string
-                  enum: [BACKLOG, TODO, IN_PROGRESS, IN_REVIEW, BLOCKED, DONE, rolled_over]
+                  enum:
+                    - BACKLOG
+                    - TODO
+                    - IN_PROGRESS
+                    - IN_REVIEW
+                    - BLOCKED
+                    - DONE
+                    - rolled_over
                 priority:
                   type: string
-                  enum: [LOW, MEDIUM, HIGH]
-                source: { type: string }
-                projectId: { type: string, nullable: true }
-                epicId: { type: string, nullable: true }
+                  enum:
+                    - LOW
+                    - MEDIUM
+                    - HIGH
+                source:
+                  type: string
+                projectId:
+                  type: string
+                  nullable: true
+                epicId:
+                  type: string
+                  nullable: true
       responses:
-        '201': { description: Task created }
+        '201':
+          description: Task created
   /api/sync/tasks/{id}:
     get:
       operationId: getTask
@@ -309,9 +389,11 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        '200': { description: Task fetched }
+        '200':
+          description: Task fetched
     put:
       operationId: updateTask
       summary: Update task
@@ -321,7 +403,8 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       requestBody:
         required: true
         content:
@@ -329,20 +412,40 @@ paths:
             schema:
               type: object
               properties:
-                title: { type: string }
-                description: { type: string }
-                note: { type: string }
-                date: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+                title:
+                  type: string
+                description:
+                  type: string
+                note:
+                  type: string
+                date:
+                  type: string
+                  pattern: "^\\d{4}-\\d{2}-\\d{2}$"
                 status:
                   type: string
-                  enum: [BACKLOG, TODO, IN_PROGRESS, IN_REVIEW, BLOCKED, DONE, rolled_over]
+                  enum:
+                    - BACKLOG
+                    - TODO
+                    - IN_PROGRESS
+                    - IN_REVIEW
+                    - BLOCKED
+                    - DONE
+                    - rolled_over
                 priority:
                   type: string
-                  enum: [LOW, MEDIUM, HIGH]
-                projectId: { type: string, nullable: true }
-                epicId: { type: string, nullable: true }
+                  enum:
+                    - LOW
+                    - MEDIUM
+                    - HIGH
+                projectId:
+                  type: string
+                  nullable: true
+                epicId:
+                  type: string
+                  nullable: true
       responses:
-        '200': { description: Task updated }
+        '200':
+          description: Task updated
     delete:
       operationId: deleteTask
       summary: Delete task
@@ -352,9 +455,11 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        '200': { description: Task deleted }
+        '200':
+          description: Task deleted
   /api/sync/notes:
     get:
       operationId: listNotes
@@ -364,23 +469,35 @@ paths:
       parameters:
         - in: query
           name: page
-          schema: { type: integer, minimum: 1 }
+          schema:
+            type: integer
+            minimum: 1
         - in: query
           name: limit
-          schema: { type: integer, minimum: 1, maximum: 100 }
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
         - in: query
           name: projectId
-          schema: { type: string }
+          schema:
+            type: string
         - in: query
           name: parentType
           schema:
             type: string
-            enum: [project, epic, task, subtask]
+            enum:
+              - project
+              - epic
+              - task
+              - subtask
         - in: query
           name: parentId
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        '200': { description: Paginated note list }
+        '200':
+          description: Paginated note list
     post:
       operationId: createNote
       summary: Create note
@@ -392,16 +509,27 @@ paths:
           application/json:
             schema:
               type: object
-              required: [title, parentType, parentId]
+              required:
+                - title
+                - parentType
+                - parentId
               properties:
-                title: { type: string }
-                content: { type: string }
+                title:
+                  type: string
+                content:
+                  type: string
                 parentType:
                   type: string
-                  enum: [project, epic, task, subtask]
-                parentId: { type: string }
+                  enum:
+                    - project
+                    - epic
+                    - task
+                    - subtask
+                parentId:
+                  type: string
       responses:
-        '201': { description: Note created }
+        '201':
+          description: Note created
   /api/sync/notes/{id}:
     get:
       operationId: getNote
@@ -412,9 +540,11 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        '200': { description: Note fetched }
+        '200':
+          description: Note fetched
     put:
       operationId: updateNote
       summary: Update note
@@ -424,7 +554,8 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       requestBody:
         required: true
         content:
@@ -432,11 +563,15 @@ paths:
             schema:
               type: object
               properties:
-                title: { type: string }
-                content: { type: string }
-                appendContent: { type: boolean }
+                title:
+                  type: string
+                content:
+                  type: string
+                appendContent:
+                  type: boolean
       responses:
-        '200': { description: Note updated }
+        '200':
+          description: Note updated
     delete:
       operationId: deleteNote
       summary: Delete note
@@ -446,9 +581,11 @@ paths:
         - in: path
           name: id
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        '200': { description: Note deleted }
+        '200':
+          description: Note deleted
   /api/sync/summary:
     get:
       operationId: fetchTaskSummary
@@ -458,9 +595,12 @@ paths:
       parameters:
         - in: query
           name: date
-          schema: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+          schema:
+            type: string
+            pattern: "^\\d{4}-\\d{2}-\\d{2}$"
       responses:
-        '200': { description: Task summary fetched }
+        '200':
+          description: Task summary fetched
   /api/sync/single:
     post:
       operationId: syncSingleTask
@@ -473,12 +613,19 @@ paths:
           application/json:
             schema:
               type: object
-              required: [title]
+              required:
+                - title
               properties:
-                title: { type: string }
-                date: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+                title:
+                  type: string
+                date:
+                  type: string
+                  pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+                source:
+                  type: string
       responses:
-        '201': { description: Task synced }
+        '201':
+          description: Task synced
   /api/sync:
     post:
       operationId: syncTasks
@@ -491,7 +638,8 @@ paths:
           application/json:
             schema:
               type: object
-              required: [tasks]
+              required:
+                - tasks
               properties:
                 tasks:
                   type: array
@@ -499,12 +647,21 @@ paths:
                   maxItems: 100
                   items:
                     type: object
-                    required: [title]
+                    required:
+                      - title
                     properties:
-                      title: { type: string }
+                      title:
+                        type: string
+                date:
+                  type: string
+                  pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+                source:
+                  type: string
       responses:
-        '201': { description: Tasks synced }
+        '201':
+          description: Tasks synced
 components:
+  schemas: {}
   securitySchemes:
     SyncApiKey:
       type: apiKey
@@ -513,7 +670,7 @@ components:
 `;
 
 const REQUIRED_SCHEMA_TOKENS = [
-  'openapi: 3.1.0',
+  'openapi: 3.0.0',
   '/api/sync/projects:',
   '/api/sync/epics:',
   '/api/sync/tasks:',
