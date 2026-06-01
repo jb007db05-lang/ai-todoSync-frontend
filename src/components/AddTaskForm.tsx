@@ -150,6 +150,7 @@ function AddTaskForm({ epics, initialProjectId = null, initialEpicId = null, onC
             <option value="LOW">Low</option>
             <option value="MEDIUM">Medium</option>
             <option value="HIGH">High</option>
+            <option value="CRITICAL">Critical</option>
           </select>
         </label>
 

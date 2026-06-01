@@ -1,4 +1,4 @@
-import { AlertCircle, FilePenLine, Rows3, Trash2, ArrowUpCircle, ArrowDownCircle, MinusCircle, MessageSquare } from 'lucide-react';
+import { AlertCircle, FilePenLine, Rows3, Trash2, ArrowUpCircle, ArrowDownCircle, MinusCircle, MessageSquare, Siren } from 'lucide-react';
 
 import type { Epic } from '@/types/epic';
 import type { Project } from '@/types/project';
@@ -9,6 +9,7 @@ import {
   type TaskPriority
 } from '@/types/task';
 import UserAvatar from './UserAvatar';
+import SlaIndicator from './SlaIndicator';
 
 interface TaskCardProps {
   actionTaskId?: string | null;
@@ -47,6 +48,7 @@ const statusPillClasses: Record<string, string> = {
 };
 
 const priorityIcons: Record<TaskPriority, JSX.Element> = {
+  CRITICAL: <Siren size={12} className="text-red-600" />,
   HIGH: <ArrowUpCircle size={12} className="text-red-500" />,
   MEDIUM: <MinusCircle size={12} className="text-amber-500" />,
   LOW: <ArrowDownCircle size={12} className="text-olive-400" />,
@@ -76,6 +78,7 @@ function TaskCard({
         'group relative flex flex-col gap-4 p-4 transition-all duration-300',
         'bg-white',
         'border rounded-xl font-["Inter"] shadow-sm',
+        task.responseBreached || task.resolutionBreached ? 'ring-1 ring-red-300 bg-red-50/30' : '',
         isSelected
           ? 'border-olive-400/70  shadow-sm bg-olive-50/60'
           : 'border-olive-200/80  hover:border-olive-300  hover:-translate-y-[2px]',
@@ -134,6 +137,18 @@ function TaskCard({
           <p className="mt-1.5 text-olive-500  text-[0.75rem] leading-relaxed line-clamp-2 font-medium">
             {task.description || 'No description provided.'}
           </p>
+
+          <div className="mt-3">
+            <SlaIndicator task={task} />
+          </div>
+
+          {task.dynamicPriorityScore > 0 && (
+            <div className="mt-2 flex items-center gap-2 text-[0.66rem] font-bold text-olive-500">
+              <span>Dynamic score {task.dynamicPriorityScore}</span>
+              <span className="h-1 w-1 rounded-full bg-olive-300" />
+              <span>{task.dependencyWeight} downstream</span>
+            </div>
+          )}
 
           {(projectName || epicName || task.subtasks.length > 0) && (
             <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-olive-100/90  text-olive-400 ">

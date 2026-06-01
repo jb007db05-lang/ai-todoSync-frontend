@@ -150,6 +150,7 @@ function EditTaskForm({ epics, allTasks, onSubmit, projects, task }: EditTaskFor
             <option value="LOW">Low</option>
             <option value="MEDIUM">Medium</option>
             <option value="HIGH">High</option>
+            <option value="CRITICAL">Critical</option>
           </select>
         </label>
 

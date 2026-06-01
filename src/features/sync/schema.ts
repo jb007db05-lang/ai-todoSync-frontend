@@ -370,6 +370,7 @@ paths:
                     - LOW
                     - MEDIUM
                     - HIGH
+                    - CRITICAL
                 source:
                   type: string
                 projectId:
@@ -439,6 +440,7 @@ paths:
                     - LOW
                     - MEDIUM
                     - HIGH
+                    - CRITICAL
                 projectId:
                   type: string
                   nullable: true

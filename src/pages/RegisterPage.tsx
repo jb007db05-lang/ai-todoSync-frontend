@@ -3,8 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/context/AuthContext';
 
-const inputCls = 'w-full bg-white/82 dark:bg-olive-800 border border-olive-200 dark:border-olive-600 rounded-md text-olive-950 dark:text-olive-100 px-4 py-3.5 transition-all duration-200 focus:outline-none focus:border-olive-500 dark:focus:border-olive-400 focus:ring-2 focus:ring-olive-500/10';
-const labelCls = 'grid gap-2 font-medium text-[0.95rem] text-olive-950 dark:text-olive-100';
+const inputCls = 'w-full bg-white/82 border border-olive-200 dark:border-olive-600 rounded-md text-olive-950 px-4 py-3.5 transition-all duration-200 focus:outline-none focus:border-olive-500 dark:focus:border-olive-400 focus:ring-2 focus:ring-olive-500/10';
+const labelCls = 'grid gap-2 font-medium text-[0.95rem] text-olive-950';
 
 function RegisterPage(): JSX.Element {
   const navigate = useNavigate();
