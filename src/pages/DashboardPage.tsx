@@ -17,9 +17,11 @@ import SettingsPanel from '@/components/SettingsPanel';
 import SubtaskForm from '@/components/SubtaskForm';
 import ChatPanel from '@/components/ChatPanel';
 import ActivityHistoryPanel from '@/components/ActivityHistoryPanel';
+import ApprovalSection from '@/components/ApprovalSection';
 import SdkDocsPanel from '@/components/SdkDocsPanel';
 import EventTrackingPage from '@/pages/EventTrackingPage';
 import SemanticIntelligencePage from '@/pages/SemanticIntelligencePage';
+import EngagementPage from '@/pages/EngagementPage';
 import Sidebar, { SidebarView } from '@/components/Sidebar';
 import Topbar from '@/components/Topbar';
 import { useChat } from '@/context/ChatContext';
@@ -31,6 +33,8 @@ import TaskFilterBar, { TaskFilters } from '@/components/TaskFilterBar';
 import SourceBadge from '@/components/SourceBadge';
 import UserAvatar from '@/components/UserAvatar';
 import AssigneeSelector from '@/components/AssigneeSelector';
+import SlaDashboard from '@/components/SlaDashboard';
+import SlaIndicator from '@/components/SlaIndicator';
 import {
   Calendar,
   CheckCircle,
@@ -49,8 +53,11 @@ import {
   Trash2,
   History,
   RefreshCw,
-  X
+  X,
+  Calculator,
+  Zap
 } from 'lucide-react';
+import { recalculateDynamicPriorities, evaluateTaskPriority, type PriorityEvaluation } from '@/services/priorityEngine';
 import { createEpic, deleteEpic, getEpics, updateEpic } from '@/services/epics';
 import { createEpicNote, createNote, deleteNote, getEpicNotes, getNote, getProjectNotes, updateNote } from '@/services/notes';
 import {
@@ -245,6 +252,11 @@ function DashboardPage(): JSX.Element {
   const [activeNoteEditor, setActiveNoteEditor] = useState<ActiveNoteEditor | null>(null);
   const [isChatPanelOpen, setIsChatPanelOpen] = useState(false);
   const [isActivityHistoryOpen, setIsActivityHistoryOpen] = useState(false);
+  
+  const [priorityEvaluationModalOpen, setPriorityEvaluationModalOpen] = useState(false);
+  const [priorityEvaluationResult, setPriorityEvaluationResult] = useState<PriorityEvaluation | null>(null);
+  const [isRecalculatingPriorities, setIsRecalculatingPriorities] = useState(false);
+  const [isEvaluatingPriority, setIsEvaluatingPriority] = useState(false);
   const { lastMessage, clearLastMessage, setActiveProject } = useChat();
   
   // Sync state with URL
@@ -255,6 +267,8 @@ function DashboardPage(): JSX.Element {
       setActiveView('semantic-intelligence');
     } else if (path === '/event-tracking') {
       setActiveView('event-tracking');
+    } else if (path === '/engagement') {
+      setActiveView('engagement');
     } else if (path === '/sdk-docs') {
       setActiveView('sdk-docs');
     } else if (path === '/settings') {
@@ -479,8 +493,12 @@ function DashboardPage(): JSX.Element {
     note?: string;
     date: string;
     status: TaskWorkflowStatus;
+    priority?: TaskPriority;
+    isBlocked?: boolean;
+    blockedByTaskId?: string | null;
     projectId: string | null;
     epicId: string | null;
+    assignedTo?: string;
   }): Promise<void> => {
     if (editingTask == null) return;
 
@@ -495,8 +513,12 @@ function DashboardPage(): JSX.Element {
         note: payload.note?.trim(),
         date: payload.date,
         status: payload.status,
+        priority: payload.priority,
+        isBlocked: payload.isBlocked,
+        blockedByTaskId: payload.blockedByTaskId,
         projectId: payload.projectId,
         epicId: payload.epicId,
+        assignedTo: payload.assignedTo,
       });
       await loadDashboard();
       setTaskMutationSuccess('Task updated.');
@@ -975,6 +997,32 @@ function DashboardPage(): JSX.Element {
       setTaskMutationError('Unable to update the subtask.');
       console.error('Subtask update failed:', err);
     }
+  };
+
+  const handleRecalculatePriorities = async () => {
+    setIsRecalculatingPriorities(true);
+    setTaskMutationError(null);
+    try {
+      const result = await recalculateDynamicPriorities();
+      setTaskMutationSuccess(`Recalculated priorities for ${result.count} tasks`);
+      await loadDashboard();
+    } catch (err) {
+      setTaskMutationError('Failed to recalculate priorities');
+    }
+    setIsRecalculatingPriorities(false);
+  };
+
+  const handleEvaluatePriority = async (taskId: string) => {
+    setIsEvaluatingPriority(true);
+    setTaskMutationError(null);
+    try {
+      const evaluation = await evaluateTaskPriority(taskId);
+      setPriorityEvaluationResult(evaluation);
+      setPriorityEvaluationModalOpen(true);
+    } catch (err) {
+      setTaskMutationError('Failed to evaluate priority');
+    }
+    setIsEvaluatingPriority(false);
   };
 
   const handleToggleBlocked = async (task: Task): Promise<void> => {
@@ -1695,6 +1743,7 @@ function DashboardPage(): JSX.Element {
           if (view === 'dashboard') navigate('/dashboard');
           else if (view === 'semantic-intelligence') navigate('/intelligence');
           else if (view === 'event-tracking') navigate('/event-tracking');
+          else if (view === 'engagement') navigate('/engagement');
           else if (view === 'sdk-docs') navigate('/sdk-docs');
           else if (view === 'settings') navigate('/settings');
         }}
@@ -1712,9 +1761,11 @@ function DashboardPage(): JSX.Element {
               ? 'SDK Documentation'
               : activeView === 'event-tracking'
                 ? 'Event Tracking'
-                : activeView === 'semantic-intelligence'
-                  ? 'Semantic Intelligence'
-                  : (activeProject ? activeProject.name : 'All Projects')}
+                : activeView === 'engagement'
+                  ? 'Engagement'
+                  : activeView === 'semantic-intelligence'
+                    ? 'Semantic Intelligence'
+                    : (activeProject ? activeProject.name : 'All Projects')}
           user={{ name: user?.name || null, email: user?.email || '' }}
           notifications={notifications}
           isNotificationsOpen={isNotificationsOpen}
@@ -1741,6 +1792,8 @@ function DashboardPage(): JSX.Element {
                 <span className="text-olive-600 ">SDK Documentation</span>
               ) : activeView === 'event-tracking' ? (
                 <span className="text-olive-600 ">Event Tracking</span>
+              ) : activeView === 'engagement' ? (
+                <span className="text-olive-600 ">Engagement</span>
               ) : activeView === 'semantic-intelligence' ? (
                 <span className="text-olive-600 ">Semantic Intelligence</span>
               ) : activeProject ? (
@@ -1784,6 +1837,10 @@ function DashboardPage(): JSX.Element {
           ) : activeView === 'event-tracking' ? (
             <div className="h-full overflow-y-auto">
               <EventTrackingPage onOpenDocs={() => navigate('/sdk-docs')} />
+            </div>
+          ) : activeView === 'engagement' ? (
+            <div className="h-full overflow-y-auto">
+              <EngagementPage />
             </div>
           ) : activeView === 'semantic-intelligence' ? (
             <div className="h-full overflow-y-auto">
@@ -1899,9 +1956,17 @@ function DashboardPage(): JSX.Element {
                       History
                     </button>
                     <button
-                      className="flex items-center gap-2 px-3.5 py-2.5 bg-white  border border-olive-200  rounded-lg text-sm font-medium text-olive-600  hover:bg-olive-50  shadow-sm transition-colors group"
-                      onClick={() => loadDashboard()}
-                      title="Refresh all data"
+                      className="group flex items-center gap-2 px-3.5 py-2.5 bg-white border border-olive-200 rounded-lg text-sm font-medium text-olive-600 hover:bg-olive-50 shadow-sm transition-colors disabled:opacity-50"
+                      disabled={isRecalculatingPriorities}
+                      onClick={() => void handleRecalculatePriorities()}
+                      type="button"
+                    >
+                      <Calculator size={16} className={isRecalculatingPriorities ? "animate-pulse text-olive-800" : ""} />
+                      {isRecalculatingPriorities ? 'Recalculating...' : 'Recalculate Priority'}
+                    </button>
+                    <button
+                      className="group flex items-center gap-2 px-3.5 py-2.5 bg-white  border border-olive-200  rounded-lg text-sm font-medium text-olive-600  hover:bg-olive-50  shadow-sm transition-colors disabled:opacity-50"
+                      onClick={() => void loadDashboard()}
                       type="button"
                     >
                       <RefreshCw size={16} className="group-hover:rotate-180 transition-transform duration-500" />
@@ -2055,6 +2120,9 @@ function DashboardPage(): JSX.Element {
                     </div>
 
                     <div className="px-6 py-2 border-b border-olive-50 ">
+                      <div className="mb-3">
+                        <SlaDashboard />
+                      </div>
                       <TaskFilterBar
                         filters={taskFilters}
                         onFilterChange={setTaskFilters}
@@ -2319,6 +2387,7 @@ function DashboardPage(): JSX.Element {
                             {activeTask.status.replace('_', ' ')}
                           </div>
                           <SourceBadge source={activeTask.source} />
+                          <SlaIndicator task={activeTask} compact />
 
                           <button
                             type="button"
@@ -2335,6 +2404,55 @@ function DashboardPage(): JSX.Element {
                           </button>
                         </div>
 
+                        <div className="grid gap-3 mb-8 p-4 rounded-xl bg-olive-50 border border-olive-200">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-bold text-olive-700">Response due</span>
+                            <span className="text-olive-600">{activeTask.slaResponseDueAt ? new Date(activeTask.slaResponseDueAt).toLocaleString() : 'Not set'}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-bold text-olive-700">Resolution due</span>
+                            <span className="text-olive-600">{activeTask.slaResolutionDueAt ? new Date(activeTask.slaResolutionDueAt).toLocaleString() : 'Not set'}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-bold text-olive-700">First response</span>
+                            <span className="text-olive-600">{activeTask.firstResponseAt ? new Date(activeTask.firstResponseAt).toLocaleString() : 'Pending'}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-bold text-olive-700">Completed</span>
+                            <span className="text-olive-600">{activeTask.completedAt ? new Date(activeTask.completedAt).toLocaleString() : 'Pending'}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-bold text-olive-700">Paused</span>
+                            <span className="text-olive-600">{activeTask.slaPausedAt ? new Date(activeTask.slaPausedAt).toLocaleString() : 'No'}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-bold text-olive-700">Dynamic priority</span>
+                            <span className="text-olive-600">{activeTask.dynamicPriority} / {activeTask.dynamicPriorityScore}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-bold text-olive-700">Impact</span>
+                            <span className="text-olive-600">{activeTask.impactScore} impact, {activeTask.dependencyWeight} downstream</span>
+                          </div>
+                          {activeTask.priorityEscalationReason && (
+                            <div className="text-sm">
+                              <span className="font-bold text-olive-700">Escalation reason</span>
+                              <p className="m-0 mt-1 text-olive-600">{activeTask.priorityEscalationReason}</p>
+                            </div>
+                          )}
+
+                          <div className="pt-2">
+                            <button
+                              type="button"
+                              onClick={() => void handleEvaluatePriority(activeTask.id)}
+                              disabled={isEvaluatingPriority}
+                              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white border border-olive-200 text-olive-700 rounded-lg text-sm font-bold hover:bg-olive-50 transition-colors disabled:opacity-50"
+                            >
+                              <Zap className="w-4 h-4 text-amber-500" />
+                              {isEvaluatingPriority ? 'Evaluating...' : 'Evaluate Dynamic Priority'}
+                            </button>
+                          </div>
+                        </div>
+
                         <button
                           className="w-full group/btn relative flex items-center justify-center gap-3 px-6 py-4 bg-olive-900  text-white  rounded-xl font-bold text-[0.95rem] shadow-sm shadow-olive-900/20  hover:scale-[1.01] active:scale-[0.98] transition-all duration-300 overflow-hidden"
                           onClick={() => handleOpenTaskNote(activeTask)}
@@ -2346,6 +2464,12 @@ function DashboardPage(): JSX.Element {
                           {/* Inner Glow Effect */}
                           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -tranolive-x-full group-hover/btn:tranolive-x-full transition-transform duration-1000" />
                         </button>
+
+                        <ApprovalSection
+                          projectId={activeTask.projectId || ''}
+                          taskId={activeTask.id}
+                          members={activeProjectMembers}
+                        />
                       </div>
                     </div>
                   </div>
@@ -2598,6 +2722,46 @@ function DashboardPage(): JSX.Element {
       />
     ) : null
   }
+  {priorityEvaluationModalOpen && priorityEvaluationResult && (
+    <Modal onClose={() => setPriorityEvaluationModalOpen(false)} title="Priority Evaluation">
+      <div className="grid gap-4">
+        <div className="grid gap-2 text-sm">
+          <div className="flex justify-between items-center py-2 border-b border-olive-100">
+            <span className="font-bold text-olive-700">Base Priority</span>
+            <span className="text-olive-900 font-medium">{priorityEvaluationResult.basePriority}</span>
+          </div>
+          <div className="flex justify-between items-center py-2 border-b border-olive-100">
+            <span className="font-bold text-olive-700">Dynamic Priority</span>
+            <span className="text-olive-900 font-bold px-2 py-0.5 bg-olive-100 rounded">{priorityEvaluationResult.dynamicPriority}</span>
+          </div>
+          <div className="flex justify-between items-center py-2 border-b border-olive-100">
+            <span className="font-bold text-olive-700">Dynamic Score</span>
+            <span className="text-olive-900">{priorityEvaluationResult.dynamicPriorityScore}</span>
+          </div>
+          <div className="flex justify-between items-center py-2 border-b border-olive-100">
+            <span className="font-bold text-olive-700">Urgency / Impact</span>
+            <span className="text-olive-900">{priorityEvaluationResult.urgencyScore} / {priorityEvaluationResult.impactScore}</span>
+          </div>
+          <div className="flex justify-between items-center py-2 border-b border-olive-100">
+            <span className="font-bold text-olive-700">Downstream Impact</span>
+            <span className="text-olive-900">{priorityEvaluationResult.downstreamTaskCount} tasks ({priorityEvaluationResult.dependencyWeight} weight)</span>
+          </div>
+        </div>
+        <div className="bg-olive-50 p-3 rounded-lg border border-olive-200">
+          <h4 className="text-xs font-bold text-olive-800 uppercase tracking-wider mb-1">Reasoning</h4>
+          <p className="text-sm text-olive-600 m-0">{priorityEvaluationResult.reason}</p>
+        </div>
+        <div className="flex justify-end pt-2">
+          <button
+            className="px-4 py-2 bg-olive-900 text-white rounded-lg text-sm font-bold hover:bg-olive-800"
+            onClick={() => setPriorityEvaluationModalOpen(false)}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </Modal>
+  )}
 
     </div >
   );

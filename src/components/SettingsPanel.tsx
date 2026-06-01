@@ -8,7 +8,8 @@ import {
   Smartphone,
   Sparkles,
   Settings2,
-  UserCircle
+  UserCircle,
+  TimerReset
 } from 'lucide-react';
 
 import ManageDevicesModal from '@/components/ManageDevicesModal';
@@ -18,6 +19,8 @@ import { useAuth } from '@/context/AuthContext';
 import { useConfirm } from '@/context/ConfirmationContext';
 import { useToast } from '@/context/ToastContext';
 import api from '@/services/api';
+import { getSlaConfigs, updateSlaConfig } from '@/services/sla';
+import type { SlaConfig, TaskPriority } from '@/types/task';
 import {
   SYNC_CHATGPT_ACTION_SCHEMA,
   SYNC_CHATGPT_INSTRUCTION_TEXT
@@ -148,6 +151,8 @@ function SettingsPanel(): JSX.Element {
   const [lastName, setLastName] = useState(user?.lastName || '');
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [profileSuccess, setProfileSuccess] = useState(false);
+  const [slaConfigs, setSlaConfigs] = useState<SlaConfig[]>([]);
+  const [slaSavingPriority, setSlaSavingPriority] = useState<TaskPriority | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -201,6 +206,43 @@ function SettingsPanel(): JSX.Element {
       void loadDevices();
     }
   }, [canManagePrimarySecurity]);
+
+  useEffect(() => {
+    getSlaConfigs()
+      .then(setSlaConfigs)
+      .catch(() => setErrorMessage('Unable to load SLA settings.'));
+  }, []);
+
+  const handleSlaFieldChange = (
+    priority: TaskPriority,
+    field: 'responseTimeHours' | 'resolutionTimeHours',
+    value: string
+  ): void => {
+    const numeric = Number(value);
+    setSlaConfigs((current) =>
+      current.map((config) =>
+        config.priority === priority ? { ...config, [field]: numeric } : config
+      )
+    );
+  };
+
+  const handleSaveSlaConfig = async (config: SlaConfig): Promise<void> => {
+    setSlaSavingPriority(config.priority);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    try {
+      const updated = await updateSlaConfig(config);
+      setSlaConfigs((current) =>
+        current.map((entry) => (entry.priority === updated.priority ? updated : entry))
+      );
+      setSuccessMessage('SLA configuration updated.');
+    } catch {
+      setErrorMessage('Unable to update SLA configuration.');
+    } finally {
+      setSlaSavingPriority(null);
+    }
+  };
 
   const handleRegenerateKey = async (): Promise<void> => {
     const isConfirmed = await confirm({
@@ -338,6 +380,57 @@ function SettingsPanel(): JSX.Element {
               {isUpdatingProfile ? 'Saving...' : profileSuccess ? 'Saved' : 'Save Changes'}
             </button>
           </div>
+        </div>
+      </SectionCard>
+
+      <SectionCard>
+        <div className="flex items-start justify-between gap-4 mb-6">
+          <div>
+            <span className="text-olive-600  text-[0.72rem] tracking-[0.12em] uppercase font-semibold">Operations</span>
+            <h2 className="mt-1 mb-1 text-olive-950 ">SLA Configuration</h2>
+            <p className="text-olive-500  m-0 text-sm">Set response and resolution targets by task priority.</p>
+          </div>
+          <span className="flex items-center justify-center w-10 h-10 bg-olive-600/8  rounded-xl text-olive-600  shrink-0">
+            <TimerReset size={18} />
+          </span>
+        </div>
+
+        <div className="grid gap-3">
+          {slaConfigs.map((config) => (
+            <div key={config.priority} className="grid grid-cols-[120px_1fr_1fr_auto] gap-3 items-end p-3 border border-olive-200 rounded-xl bg-olive-50/60">
+              <strong className="text-sm text-olive-900 pb-2">{config.priority}</strong>
+              <label className="grid gap-1 text-xs font-bold text-olive-600 uppercase tracking-wider">
+                Response hours
+                <input
+                  className="bg-white border border-olive-200 rounded-lg px-3 py-2 text-sm text-olive-950 focus:outline-none focus:border-olive-500"
+                  min="0.01"
+                  step="0.25"
+                  type="number"
+                  value={config.responseTimeHours}
+                  onChange={(event) => handleSlaFieldChange(config.priority, 'responseTimeHours', event.target.value)}
+                />
+              </label>
+              <label className="grid gap-1 text-xs font-bold text-olive-600 uppercase tracking-wider">
+                Resolution hours
+                <input
+                  className="bg-white border border-olive-200 rounded-lg px-3 py-2 text-sm text-olive-950 focus:outline-none focus:border-olive-500"
+                  min="0.01"
+                  step="0.25"
+                  type="number"
+                  value={config.resolutionTimeHours}
+                  onChange={(event) => handleSlaFieldChange(config.priority, 'resolutionTimeHours', event.target.value)}
+                />
+              </label>
+              <button
+                className={primaryBtn}
+                disabled={slaSavingPriority === config.priority}
+                onClick={() => void handleSaveSlaConfig(config)}
+                type="button"
+              >
+                {slaSavingPriority === config.priority ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          ))}
         </div>
       </SectionCard>
 

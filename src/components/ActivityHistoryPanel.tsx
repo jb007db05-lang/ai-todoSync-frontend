@@ -11,8 +11,15 @@ import {
   Filter,
   ChevronLeft,
   ChevronRight,
+  ShieldCheck,
+  ShieldAlert,
+  Scale,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
-import { getProjectActivities, type ActivityLog } from '@/services/activity';
+import { getProjectActivities, verifyProjectAuditChain, getRetentionPolicy, updateRetentionPolicy, type ActivityLog, type RetentionPolicy } from '@/services/activity';
+import Modal from '@/components/Modal';
+import { useToast } from '@/context/ToastContext';
 
 interface ActivityHistoryPanelProps {
   projectId: string;
@@ -43,6 +50,9 @@ const ACTION_ICONS: Record<string, typeof Plus> = {
   status_changed: ArrowRightLeft,
   member_added: UserPlus,
   member_removed: UserMinus,
+  approved: ShieldCheck,
+  rejected: ShieldAlert,
+  escalated: ShieldAlert,
 };
 
 const ACTION_COLORS: Record<string, string> = {
@@ -52,7 +62,10 @@ const ACTION_COLORS: Record<string, string> = {
   assigned: 'text-purple-600 bg-purple-50',
   status_changed: 'text-amber-600 bg-amber-50',
   member_added: 'text-teal-600 bg-teal-50',
-  member_removed: 'text-rose-600 bg-rose-50'
+  member_removed: 'text-rose-600 bg-rose-50',
+  approved: 'text-emerald-600 bg-emerald-50',
+  rejected: 'text-red-600 bg-red-50',
+  escalated: 'text-red-600 bg-red-50'
 };
 
 const FILTER_OPTIONS = [
@@ -98,6 +111,58 @@ export default function ActivityHistoryPanel({
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [entityFilter, setEntityFilter] = useState('');
+  
+  const { showToast } = useToast();
+  const [verifying, setVerifying] = useState(false);
+  
+  // Retention Modal State
+  const [retentionModalOpen, setRetentionModalOpen] = useState(false);
+  const [retentionPolicy, setRetentionPolicy] = useState<RetentionPolicy | null>(null);
+  const [retentionDaysInput, setRetentionDaysInput] = useState<string>('');
+  const [legalHoldInput, setLegalHoldInput] = useState(false);
+  const [savingRetention, setSavingRetention] = useState(false);
+
+  const handleVerifyChain = async () => {
+    setVerifying(true);
+    try {
+      const result = await verifyProjectAuditChain(projectId);
+      if (result.valid) {
+        showToast({ message: `Audit chain verified successfully. Checked ${result.checked} records.`, variant: 'success' });
+      } else {
+        showToast({ message: `Audit chain verification failed at sequence ${result.failedSequence}. Data may be tampered.`, variant: 'error' });
+      }
+    } catch (err) {
+      showToast({ message: 'Failed to verify audit chain', variant: 'error' });
+    }
+    setVerifying(false);
+  };
+
+  const openRetentionModal = async () => {
+    setRetentionModalOpen(true);
+    try {
+      const policy = await getRetentionPolicy(projectId);
+      setRetentionPolicy(policy);
+      setRetentionDaysInput(policy.retentionDays !== null ? policy.retentionDays.toString() : '');
+      setLegalHoldInput(policy.legalHold);
+    } catch (err) {
+      showToast({ message: 'Failed to fetch retention policy', variant: 'error' });
+    }
+  };
+
+  const saveRetentionPolicy = async () => {
+    setSavingRetention(true);
+    try {
+      const days = retentionDaysInput.trim() === '' ? null : parseInt(retentionDaysInput, 10);
+      const updated = await updateRetentionPolicy(projectId, { retentionDays: days, legalHold: legalHoldInput });
+      setRetentionPolicy(updated);
+      showToast({ message: 'Retention policy updated successfully', variant: 'success' });
+      setRetentionModalOpen(false);
+    } catch (err) {
+      showToast({ message: 'Failed to update retention policy', variant: 'error' });
+    }
+    setSavingRetention(false);
+  };
+
 
   const fetchActivities = useCallback(async () => {
     setLoading(true);
@@ -149,25 +214,48 @@ export default function ActivityHistoryPanel({
           </div>
         </div>
 
-        {/* Entity type filter */}
-        <div className="flex items-center gap-2">
-          <Filter className="w-3.5 h-3.5 text-olive-400" />
-          <select
-            value={entityFilter}
-            onChange={(e) => {
-              setEntityFilter(e.target.value);
-              setPage(1);
-            }}
-            className="text-xs font-semibold bg-olive-100  border border-olive-200  rounded-lg px-3 py-1.5 text-olive-700  focus:outline-none focus:ring-2 focus:ring-olive-500/30"
+        {/* Right controls */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleVerifyChain}
+            disabled={verifying}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-olive-50 hover:bg-olive-100 text-olive-700 text-xs font-bold rounded-lg transition-colors disabled:opacity-50"
           >
-            {FILTER_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+            {verifying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+            Verify Chain
+          </button>
+          
+          <button
+            onClick={openRetentionModal}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-olive-50 hover:bg-olive-100 text-olive-700 text-xs font-bold rounded-lg transition-colors"
+          >
+            <Scale className="w-3.5 h-3.5" />
+            Retention Policy
+          </button>
+
+          <div className="w-px h-5 bg-olive-200 mx-1"></div>
+
+          {/* Entity type filter */}
+          <div className="flex items-center gap-2">
+            <Filter className="w-3.5 h-3.5 text-olive-400" />
+            <select
+              value={entityFilter}
+              onChange={(e) => {
+                setEntityFilter(e.target.value);
+                setPage(1);
+              }}
+              className="text-xs font-semibold bg-olive-100  border border-olive-200  rounded-lg px-3 py-1.5 text-olive-700  focus:outline-none focus:ring-2 focus:ring-olive-500/30"
+            >
+              {FILTER_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
+
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-6 py-4 custom-scrollbar">
@@ -227,6 +315,10 @@ export default function ActivityHistoryPanel({
                             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[0.62rem] font-bold uppercase tracking-wider text-white ${entityColor}`}>
                               {ENTITY_LABELS[activity.entityType]}
                             </span>
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[0.62rem] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-100">
+                              <ShieldCheck size={10} />
+                              #{activity.sequence}
+                            </span>
                             {activity.entityName && (
                               <span className="text-[0.72rem] text-olive-500  truncate max-w-[200px]">
                                 {activity.entityName}
@@ -270,6 +362,11 @@ export default function ActivityHistoryPanel({
                               )}
                             </div>
                           )}
+                          <div className="mt-2 flex flex-wrap items-center gap-2 text-[0.62rem] text-olive-400">
+                            <span className="font-mono">hash {(activity.immutableHash || 'pending-migration').slice(0, 16)}</span>
+                            {activity.legalHold && <span className="text-red-500 font-bold">legal hold</span>}
+                            {activity.retentionUntil && <span>retains until {new Date(activity.retentionUntil).toLocaleDateString()}</span>}
+                          </div>
                         </div>
                       </div>
                     );
@@ -304,6 +401,61 @@ export default function ActivityHistoryPanel({
             <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </div>
+      )}
+
+      {/* Retention Policy Modal */}
+      {retentionModalOpen && (
+        <Modal onClose={() => setRetentionModalOpen(false)} title="Legal Retention Policy">
+          <div className="grid gap-5">
+            <p className="text-sm text-olive-500 m-0">
+              Configure how long activity logs are retained for compliance. Enabling legal hold prevents deletion regardless of retention days.
+            </p>
+            
+            <div className="grid gap-2">
+              <label className="text-sm font-semibold text-olive-900">Retention Days</label>
+              <input
+                type="number"
+                min="0"
+                value={retentionDaysInput}
+                onChange={(e) => setRetentionDaysInput(e.target.value)}
+                placeholder="e.g. 2555 for 7 years (leave empty for infinite)"
+                className="w-full px-3 py-2 bg-white border border-olive-200 rounded-lg focus:outline-none focus:border-olive-500 text-sm"
+              />
+            </div>
+            
+            <div className="flex items-center gap-3 p-3 bg-olive-50 border border-olive-200 rounded-lg">
+              <input
+                type="checkbox"
+                id="legalHold"
+                checked={legalHoldInput}
+                onChange={(e) => setLegalHoldInput(e.target.checked)}
+                className="w-4 h-4 text-olive-600 bg-white border-olive-300 rounded focus:ring-olive-500"
+              />
+              <label htmlFor="legalHold" className="text-sm font-bold text-red-600 cursor-pointer">
+                Enable Legal Hold
+              </label>
+            </div>
+
+            <div className="flex gap-3 justify-end pt-2">
+              <button
+                type="button"
+                className="px-4 py-2 text-sm font-medium text-olive-600 hover:bg-olive-50 border border-olive-200 rounded-lg transition-colors"
+                onClick={() => setRetentionModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="px-4 py-2 text-sm font-bold text-white bg-olive-900 hover:bg-olive-800 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+                onClick={saveRetentionPolicy}
+                disabled={savingRetention}
+              >
+                {savingRetention ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+                {savingRetention ? 'Saving...' : 'Save Policy'}
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

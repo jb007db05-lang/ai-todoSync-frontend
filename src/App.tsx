@@ -7,10 +7,12 @@ import { ConfirmationProvider } from '@/context/ConfirmationContext';
 import PrivateRoute from '@/routes/PrivateRoute';
 import PublicRoute from '@/routes/PublicRoute';
 import Loader from '@/components/Loader';
+import { GuideRuntimeProvider } from '@/lib/guide-runtime/GuideRuntimeProvider';
 
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
 const LoginPage = lazy(() => import('@/pages/LoginPage'));
 const RegisterPage = lazy(() => import('@/pages/RegisterPage'));
+const LandingPage = lazy(() => import('@/pages/LandingPage'));
 
 import { LoadingProvider } from '@/context/LoadingContext';
 import GlobalLoadingSpinner from '@/components/GlobalLoadingSpinner';
@@ -24,35 +26,38 @@ function App(): JSX.Element {
           <ChatProvider>
             <ConfirmationProvider>
               <BrowserRouter>
-                <Suspense fallback={<Loader center />}>
-                  <Routes>
-                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                    <Route
-                      path="/login"
-                      element={
-                        <PublicRoute>
-                          <LoginPage />
-                        </PublicRoute>
-                      }
-                    />
-                    <Route
-                      path="/register"
-                      element={
-                        <PublicRoute>
-                          <RegisterPage />
-                        </PublicRoute>
-                      }
-                    />
-                    <Route path="/dashboard" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
-                    <Route path="/intelligence" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
-                    <Route path="/event-tracking" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
-                    <Route path="/sdk-docs" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
-                    <Route path="/settings" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
-                    <Route path="/projects/:projectId" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
-                    <Route path="/projects/:projectId/epics/:epicId" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
-                    <Route path="*" element={<Navigate to="/dashboard" replace />} />
-                  </Routes>
-                </Suspense>
+                <GuideRuntimeProvider>
+                  <Suspense fallback={<Loader center />}>
+                    <Routes>
+                      <Route path="/" element={<LandingPage />} />
+                      <Route
+                        path="/login"
+                        element={
+                          <PublicRoute redirectTo="/dashboard">
+                            <LoginPage />
+                          </PublicRoute>
+                        }
+                      />
+                      <Route
+                        path="/register"
+                        element={
+                          <PublicRoute redirectTo="/dashboard">
+                            <RegisterPage />
+                          </PublicRoute>
+                        }
+                      />
+                      <Route path="/dashboard" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
+                      <Route path="/intelligence" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
+                      <Route path="/event-tracking" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
+                      <Route path="/engagement" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
+                      <Route path="/sdk-docs" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
+                      <Route path="/settings" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
+                      <Route path="/projects/:projectId" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
+                      <Route path="/projects/:projectId/epics/:epicId" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
+                      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                    </Routes>
+                  </Suspense>
+                </GuideRuntimeProvider>
               </BrowserRouter>
               <GlobalLoadingSpinner />
             </ConfirmationProvider>

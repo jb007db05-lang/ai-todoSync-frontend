@@ -7,10 +7,11 @@ import {
   Activity,
   BrainCircuit,
   LogOut,
-  BookOpen
+  BookOpen,
+  Target
 } from 'lucide-react';
 
-export type SidebarView = 'dashboard' | 'settings' | 'event-tracking' | 'semantic-intelligence' | 'sdk-docs';
+export type SidebarView = 'dashboard' | 'settings' | 'event-tracking' | 'semantic-intelligence' | 'sdk-docs' | 'engagement';
 
 interface SidebarProps {
   activeView: SidebarView;
@@ -86,6 +87,21 @@ const Sidebar: React.FC<SidebarProps> = ({
         >
           <Activity size={18} strokeWidth={2} />
           <span>Event Tracking</span>
+        </button>
+
+        <button
+          className={[
+            'flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-[0.95rem] font-medium transition-all duration-200 justify-start',
+            activeView === 'engagement'
+              ? 'bg-olive-700 text-white shadow-md shadow-olive-700/20'
+              : 'text-zinc-600 hover:text-olive-950 hover:bg-zinc-100'
+          ].join(' ')}
+          onClick={() => onViewChange('engagement')}
+          title="Guides and Surveys"
+          type="button"
+        >
+          <Target size={18} strokeWidth={2} />
+          <span>Engagement</span>
         </button>
 
 
