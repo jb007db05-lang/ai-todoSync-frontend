@@ -1006,7 +1006,7 @@ function DashboardPage(): JSX.Element {
       const result = await recalculateDynamicPriorities();
       setTaskMutationSuccess(`Recalculated priorities for ${result.count} tasks`);
       await loadDashboard();
-    } catch (err) {
+    } catch {
       setTaskMutationError('Failed to recalculate priorities');
     }
     setIsRecalculatingPriorities(false);
@@ -1019,7 +1019,7 @@ function DashboardPage(): JSX.Element {
       const evaluation = await evaluateTaskPriority(taskId);
       setPriorityEvaluationResult(evaluation);
       setPriorityEvaluationModalOpen(true);
-    } catch (err) {
+    } catch {
       setTaskMutationError('Failed to evaluate priority');
     }
     setIsEvaluatingPriority(false);

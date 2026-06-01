@@ -14,8 +14,6 @@ import {
   ShieldCheck,
   ShieldAlert,
   Scale,
-  CheckCircle2,
-  XCircle,
 } from 'lucide-react';
 import { getProjectActivities, verifyProjectAuditChain, getRetentionPolicy, updateRetentionPolicy, type ActivityLog, type RetentionPolicy } from '@/services/activity';
 import Modal from '@/components/Modal';
@@ -117,7 +115,7 @@ export default function ActivityHistoryPanel({
   
   // Retention Modal State
   const [retentionModalOpen, setRetentionModalOpen] = useState(false);
-  const [retentionPolicy, setRetentionPolicy] = useState<RetentionPolicy | null>(null);
+  const [, setRetentionPolicy] = useState<RetentionPolicy | null>(null);
   const [retentionDaysInput, setRetentionDaysInput] = useState<string>('');
   const [legalHoldInput, setLegalHoldInput] = useState(false);
   const [savingRetention, setSavingRetention] = useState(false);
@@ -131,7 +129,7 @@ export default function ActivityHistoryPanel({
       } else {
         showToast({ message: `Audit chain verification failed at sequence ${result.failedSequence}. Data may be tampered.`, variant: 'error' });
       }
-    } catch (err) {
+    } catch {
       showToast({ message: 'Failed to verify audit chain', variant: 'error' });
     }
     setVerifying(false);
@@ -144,7 +142,7 @@ export default function ActivityHistoryPanel({
       setRetentionPolicy(policy);
       setRetentionDaysInput(policy.retentionDays !== null ? policy.retentionDays.toString() : '');
       setLegalHoldInput(policy.legalHold);
-    } catch (err) {
+    } catch {
       showToast({ message: 'Failed to fetch retention policy', variant: 'error' });
     }
   };
@@ -157,7 +155,7 @@ export default function ActivityHistoryPanel({
       setRetentionPolicy(updated);
       showToast({ message: 'Retention policy updated successfully', variant: 'success' });
       setRetentionModalOpen(false);
-    } catch (err) {
+    } catch {
       showToast({ message: 'Failed to update retention policy', variant: 'error' });
     }
     setSavingRetention(false);

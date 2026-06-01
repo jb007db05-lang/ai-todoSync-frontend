@@ -37,7 +37,7 @@ export default function ApprovalSection({ projectId, taskId, members }: Approval
       const allApprovals = await listApprovals(projectId);
       const taskApprovals = allApprovals.filter(a => a.taskId === taskId);
       setApprovals(taskApprovals);
-    } catch (err) {
+    } catch {
       showToast({ message: 'Failed to load approvals', variant: 'error' });
     }
     setLoading(false);
@@ -67,7 +67,7 @@ export default function ApprovalSection({ projectId, taskId, members }: Approval
       setReason('');
       setSelectedApprovers([]);
       void fetchApprovals();
-    } catch (err) {
+    } catch {
       showToast({ message: 'Failed to request approval', variant: 'error' });
     }
     setSubmittingRequest(false);
@@ -78,7 +78,7 @@ export default function ApprovalSection({ projectId, taskId, members }: Approval
       await decideApproval(approvalId, { decision });
       showToast({ message: `Successfully ${decision.toLowerCase()} approval`, variant: 'success' });
       void fetchApprovals();
-    } catch (err) {
+    } catch {
       showToast({ message: `Failed to ${decision.toLowerCase()} approval`, variant: 'error' });
     }
   };
