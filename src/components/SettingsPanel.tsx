@@ -141,6 +141,7 @@ interface SettingsPanelProps {
   onAiConfigChange?: (enabled: boolean, provider: string) => void;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function SettingsPanel({ activeProject, onAiConfigChange }: SettingsPanelProps): JSX.Element {
   const { refreshUser, session, user, updateProfile } = useAuth();
   const [isRegenerating, setIsRegenerating] = useState<boolean>(false);

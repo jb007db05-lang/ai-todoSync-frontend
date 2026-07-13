@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { CheckCircle, FileText, Loader2, Plus, Send, Sparkles, XCircle, Bot, Shield, Settings } from 'lucide-react';
+import { CheckCircle, FileText, Loader2, Plus, Send, Sparkles, XCircle, Bot, Shield } from 'lucide-react';
 
 import type { Project } from '@/types/project';
 import type { AiPlanningContext, AiPlanningDraft, AiPlanningWorkspace, ProjectAiConfig } from '@/types/aiPlanning';
@@ -249,7 +249,7 @@ function AiPlanningWorkspacePanel({ project, onArtifactsCreated, onGoToSettings 
                     className="rounded border border-olive-200 bg-white px-2 py-1 text-xs font-semibold text-olive-900 focus:outline-none focus:ring-1 focus:ring-olive-500/35 cursor-pointer disabled:opacity-50"
                     value={aiConfig.provider}
                     disabled={updatingModel}
-                    onChange={(e) => void handleConfigChange({ provider: e.target.value as any })}
+                    onChange={(e) => void handleConfigChange({ provider: e.target.value as ProjectAiConfig['provider'] })}
                   >
                     <option value="gemini">Google Gemini</option>
                     <option value="openai">OpenAI</option>

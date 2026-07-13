@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
-  AlertCircle, CheckCircle2, Clock, Copy, Eye, EyeOff, Globe,
-  KeyRound, Loader2, MonitorSmartphone, Plus, RefreshCw, Server,
+  AlertCircle, CheckCircle2, Clock, Copy, EyeOff, Globe,
+  KeyRound, Loader2, Plus, RefreshCw, Server,
   Shield, Trash2, WifiOff, Zap, ChevronDown, ChevronRight, Code2
 } from 'lucide-react';
 import type { SdkIntegration, SdkEnvironment } from '@/lib/sdk-integrations/api';
@@ -350,7 +350,6 @@ export default function SdkIntegrationsPage() {
         <CreateModal
           onClose={() => setShowCreate(false)}
           onCreated={(key) => {
-            const pending = integrations[0]; // newly created will be first after reload
             setShowCreate(false);
             void load().then(() => {
               // get name from latest integrations
