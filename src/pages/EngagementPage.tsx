@@ -6,12 +6,14 @@ import {
   CheckSquare,
   GripVertical,
   Layers3,
+  Link,
   Megaphone,
   Plus,
   Radio,
   Save,
   Target,
-  Trash2
+  Trash2,
+  X
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -57,15 +59,80 @@ const defaultFrequency: FrequencyRules = {
 const conditionTypes: TargetingConditionType[] = [
   'URL_CONTAINS',
   'URL_EQUALS',
+  'URL_REGEX',
+  'REFERRER_EQUALS',
+  'REFERRER_CONTAINS',
   'ROLE_EQUALS',
   'PLAN_EQUALS',
+  'ACCOUNT_AGE',
+  'TENANT_EQUALS',
   'EVENT_TRIGGERED',
   'EVENT_NOT_TRIGGERED',
+  'RAGE_CLICK_COUNT',
   'VISITED_PAGE',
+  'COMPLETED_WORKFLOW',
+  'ABANDONED_FORM',
   'SESSION_DURATION',
+  'SESSION_COUNT',
   'ENGAGEMENT_SCORE',
-  'COOLDOWN'
+  'SHOW_ONCE',
+  'SHOW_EVERY_X_DAYS',
+  'COOLDOWN',
+  'TIME_WINDOW',
+  'EXIT_INTENT',
+  'IDLE_TIMEOUT'
 ];
+
+const conditionLabels: Record<TargetingConditionType, string> = {
+  URL_CONTAINS: 'URL contains',
+  URL_EQUALS: 'URL equals',
+  URL_REGEX: 'URL matches regex',
+  REFERRER_EQUALS: 'Referrer equals',
+  REFERRER_CONTAINS: 'Referrer contains',
+  ROLE_EQUALS: 'Role equals',
+  PLAN_EQUALS: 'Plan equals',
+  ACCOUNT_AGE: 'Account age (days) ≥',
+  TENANT_EQUALS: 'Tenant ID equals',
+  EVENT_TRIGGERED: 'Event triggered',
+  EVENT_NOT_TRIGGERED: 'Event NOT triggered',
+  RAGE_CLICK_COUNT: 'Rage click count ≥',
+  VISITED_PAGE: 'Visited page',
+  COMPLETED_WORKFLOW: 'Completed workflow',
+  ABANDONED_FORM: 'Abandoned form selector',
+  SESSION_DURATION: 'Session duration (s) ≥',
+  SESSION_COUNT: 'Session count ≥',
+  ENGAGEMENT_SCORE: 'Engagement score ≥',
+  SHOW_ONCE: 'Show once ever',
+  SHOW_EVERY_X_DAYS: 'Show every X days',
+  COOLDOWN: 'Cooldown (hours)',
+  TIME_WINDOW: 'Time window',
+  EXIT_INTENT: 'Exit intent',
+  IDLE_TIMEOUT: 'Idle timeout'
+};
+
+const conditionPlaceholders: Partial<Record<TargetingConditionType, string>> = {
+  URL_CONTAINS: 'e.g. /dashboard',
+  URL_EQUALS: 'e.g. https://app.example.com/home',
+  URL_REGEX: 'e.g. /projects/[0-9]+',
+  REFERRER_EQUALS: 'e.g. https://google.com',
+  REFERRER_CONTAINS: 'e.g. google.com',
+  ROLE_EQUALS: 'e.g. ADMIN',
+  PLAN_EQUALS: 'e.g. pro',
+  ACCOUNT_AGE: 'e.g. 7',
+  TENANT_EQUALS: 'e.g. tenant-id',
+  EVENT_TRIGGERED: 'e.g. project_created',
+  EVENT_NOT_TRIGGERED: 'e.g. onboarding_complete',
+  RAGE_CLICK_COUNT: 'e.g. 3',
+  VISITED_PAGE: 'e.g. /pricing',
+  COMPLETED_WORKFLOW: 'e.g. onboarding',
+  ABANDONED_FORM: 'e.g. #signup-form',
+  SESSION_DURATION: 'e.g. 30',
+  SESSION_COUNT: 'e.g. 3',
+  ENGAGEMENT_SCORE: 'e.g. 50',
+  SHOW_EVERY_X_DAYS: 'e.g. 7',
+  COOLDOWN: 'e.g. 24',
+  TIME_WINDOW: 'e.g. 09:00-17:00'
+};
 
 const guideTypes: GuideType[] = ['MODAL', 'TOUR', 'SMART_TIP', 'HOTSPOT', 'BANNER'];
 const priorities: GuidePriority[] = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
@@ -223,6 +290,7 @@ function GuideBuilder({
         <SelectInput label="Priority" value={priority} values={priorities} onChange={(value) => setPriority(value as GuidePriority)} />
       </div>
       <StepEditor steps={steps} onChange={setSteps} mode="guide" />
+      <UrlTargeting rules={rules} onChange={setRules} />
       <RuleBuilder rules={rules} onChange={setRules} />
       <button className="mt-5 flex items-center gap-2 rounded-md bg-olive-700 px-4 py-2.5 text-sm font-bold text-white" onClick={() => onCreate({ title, description, type, priority, targetingRules: rules, frequencyRules: defaultFrequency, steps })} type="button">
         <Save size={16} />
@@ -261,6 +329,7 @@ function SurveyBuilder({
         <TextInput label="Description" value={description} onChange={setDescription} />
       </div>
       <StepEditor steps={questions} onChange={setQuestions} mode="survey" />
+      <UrlTargeting rules={rules} onChange={setRules} />
       <RuleBuilder rules={rules} onChange={setRules} />
       <button className="mt-5 flex items-center gap-2 rounded-md bg-olive-700 px-4 py-2.5 text-sm font-bold text-white" onClick={() => onCreate({ title, description, priority, questions, targetingRules: rules, frequencyRules: defaultFrequency })} type="button">
         <Save size={16} />
@@ -297,6 +366,7 @@ function ChecklistBuilder({
         <TextInput label="Description" value={description} onChange={setDescription} />
       </div>
       <StepEditor steps={items} onChange={setItems} mode="checklist" />
+      <UrlTargeting rules={rules} onChange={setRules} />
       <RuleBuilder rules={rules} onChange={setRules} />
       <button className="mt-5 flex items-center gap-2 rounded-md bg-olive-700 px-4 py-2.5 text-sm font-bold text-white" onClick={() => onCreate({ title, description, items, targetingRules: rules, frequencyRules: defaultFrequency })} type="button">
         <Save size={16} />
@@ -394,7 +464,7 @@ function StepEditor({ steps, onChange, mode }: { steps: GuideStep[]; onChange: (
               <GripVertical className="mt-2 text-olive-400" size={18} />
               <TextInput label="Title" value={step.title} onChange={(value) => update(index, { title: value })} />
               {mode === 'survey' ? (
-                <SelectInput label="Type" value={step.type ?? 'TEXT'} values={['NPS', 'TEXT', 'TEXTAREA', 'SINGLE_CHOICE', 'MULTI_CHOICE', 'RATING_SCALE', 'DROPDOWN', 'YES_NO']} onChange={(value) => update(index, { type: value as GuideStep['type'] })} />
+                <SelectInput label="Type" value={step.type ?? 'TEXT'} values={['NPS', 'TEXT', 'TEXTAREA', 'SINGLE_CHOICE', 'MULTI_CHOICE', 'RATING_SCALE', 'DROPDOWN', 'YES_NO', 'CSAT', 'CES', 'EMOJI', 'OPINION_SCALE', 'FILE_UPLOAD', 'CONTACT']} onChange={(value) => update(index, { type: value as GuideStep['type'] })} />
               ) : mode === 'checklist' ? (
                 <TextInput label="Event" value={step.linkedEvent ?? ''} onChange={(value) => update(index, { linkedEvent: value })} />
               ) : (
@@ -419,52 +489,131 @@ function StepEditor({ steps, onChange, mode }: { steps: GuideStep[]; onChange: (
   );
 }
 
-function RuleBuilder({ rules, onChange }: { rules: TargetingRuleGroup; onChange: (rules: TargetingRuleGroup) => void }): JSX.Element {
-  const addCondition = () => {
-    const condition: TargetingCondition = {
-      id: crypto.randomUUID(),
-      type: 'URL_CONTAINS',
-      value: '/dashboard'
-    };
+/** Quick-entry component for URL-based page targeting */
+function UrlTargeting({ rules, onChange }: { rules: TargetingRuleGroup; onChange: (rules: TargetingRuleGroup) => void }): JSX.Element {
+  const urlConditions = (rules.conditions ?? []).filter((c) => c.type === 'URL_CONTAINS' || c.type === 'URL_EQUALS');
+
+  const addUrl = () => {
+    const condition: TargetingCondition = { id: crypto.randomUUID(), type: 'URL_CONTAINS', value: '' };
     onChange({ ...rules, conditions: [...(rules.conditions ?? []), condition] });
   };
-  const updateCondition = (id: string, patch: Partial<TargetingCondition>) => {
-    onChange({
-      ...rules,
-      conditions: (rules.conditions ?? []).map((condition) => (condition.id === id ? { ...condition, ...patch } : condition))
-    });
+
+  const updateUrl = (id: string, value: string) => {
+    onChange({ ...rules, conditions: (rules.conditions ?? []).map((c) => (c.id === id ? { ...c, value, eventName: value } : c)) });
   };
-  const removeCondition = (id: string) => {
-    onChange({ ...rules, conditions: (rules.conditions ?? []).filter((condition) => condition.id !== id) });
+
+  const updateMatchType = (id: string, type: TargetingConditionType) => {
+    onChange({ ...rules, conditions: (rules.conditions ?? []).map((c) => (c.id === id ? { ...c, type } : c)) });
+  };
+
+  const removeUrl = (id: string) => {
+    onChange({ ...rules, conditions: (rules.conditions ?? []).filter((c) => c.id !== id) });
   };
 
   return (
     <div className="mt-6 rounded-lg border border-olive-200 p-4">
       <div className="mb-3 flex items-center justify-between">
-        <SectionTitle icon={Target} title="Targeting" />
+        <SectionTitle icon={Link} title="Show on Pages" />
+        <button className="flex items-center gap-1.5 rounded-md border border-olive-200 px-3 py-1.5 text-xs font-bold text-olive-700 hover:bg-olive-50" onClick={addUrl} type="button">
+          <Plus size={13} />
+          Add URL
+        </button>
+      </div>
+      {urlConditions.length === 0 && (
+        <p className="m-0 text-sm text-olive-400 italic">No page filter — shown on every page. Add a URL to restrict where this appears.</p>
+      )}
+      <div className="grid gap-2">
+        {urlConditions.map((condition) => (
+          <div className="flex items-center gap-2" key={condition.id}>
+            <select
+              className="shrink-0 rounded-md border border-olive-200 px-2 py-2 text-xs font-semibold text-olive-700"
+              value={condition.type}
+              onChange={(e) => updateMatchType(condition.id, e.target.value as TargetingConditionType)}
+            >
+              <option value="URL_CONTAINS">contains</option>
+              <option value="URL_EQUALS">equals</option>
+            </select>
+            <input
+              className="flex-1 rounded-md border border-olive-200 px-3 py-2 text-sm font-medium text-olive-900 placeholder-olive-300 focus:border-olive-500 focus:outline-none"
+              placeholder="e.g. /dashboard or https://app.example.com/settings"
+              value={String(condition.value ?? '')}
+              onChange={(e) => updateUrl(condition.id, e.target.value)}
+            />
+            <button className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-olive-400 hover:bg-red-50 hover:text-red-500" onClick={() => removeUrl(condition.id)} type="button">
+              <X size={15} />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RuleBuilder({ rules, onChange }: { rules: TargetingRuleGroup; onChange: (rules: TargetingRuleGroup) => void }): JSX.Element {
+  // Exclude URL conditions — those are managed by UrlTargeting above
+  const nonUrlConditions = (rules.conditions ?? []).filter((c) => c.type !== 'URL_CONTAINS' && c.type !== 'URL_EQUALS');
+  const noValueTypes: TargetingConditionType[] = ['EXIT_INTENT', 'IDLE_TIMEOUT'];
+
+  const addCondition = () => {
+    const condition: TargetingCondition = { id: crypto.randomUUID(), type: 'ROLE_EQUALS', value: 'ADMIN' };
+    onChange({ ...rules, conditions: [...(rules.conditions ?? []), condition] });
+  };
+
+  const updateCondition = (id: string, patch: Partial<TargetingCondition>) => {
+    onChange({
+      ...rules,
+      conditions: (rules.conditions ?? []).map((c) => (c.id === id ? { ...c, ...patch } : c))
+    });
+  };
+
+  const removeCondition = (id: string) => {
+    onChange({ ...rules, conditions: (rules.conditions ?? []).filter((c) => c.id !== id) });
+  };
+
+  return (
+    <div className="mt-3 rounded-lg border border-olive-200 p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <SectionTitle icon={Target} title="Audience Rules" />
         <div className="flex items-center gap-2">
           <select className="rounded-md border border-olive-200 px-2 py-1.5 text-xs font-bold" onChange={(event) => onChange({ ...rules, operator: event.target.value as 'AND' | 'OR' })} value={rules.operator}>
-            <option value="AND">AND</option>
-            <option value="OR">OR</option>
+            <option value="AND">Match ALL</option>
+            <option value="OR">Match ANY</option>
           </select>
-          <button className="rounded-md border border-olive-200 px-3 py-1.5 text-xs font-bold text-olive-700" onClick={addCondition} type="button">
-            Add Condition
+          <button className="flex items-center gap-1.5 rounded-md border border-olive-200 px-3 py-1.5 text-xs font-bold text-olive-700 hover:bg-olive-50" onClick={addCondition} type="button">
+            <Plus size={13} />
+            Add Rule
           </button>
         </div>
       </div>
       <div className="grid gap-2">
-        {(rules.conditions ?? []).map((condition) => (
-          <div className="grid grid-cols-[180px_1fr_32px] gap-2" key={condition.id}>
-            <select className="rounded-md border border-olive-200 px-2 py-2 text-sm" onChange={(event) => updateCondition(condition.id, { type: event.target.value as TargetingConditionType })} value={condition.type}>
-              {conditionTypes.map((type) => <option key={type} value={type}>{type}</option>)}
+        {nonUrlConditions.map((condition) => (
+          <div className="flex items-center gap-2" key={condition.id}>
+            <select
+              className="shrink-0 rounded-md border border-olive-200 px-2 py-2 text-sm"
+              value={condition.type}
+              onChange={(e) => updateCondition(condition.id, { type: e.target.value as TargetingConditionType })}
+            >
+              {conditionTypes
+                .filter((t) => t !== 'URL_CONTAINS' && t !== 'URL_EQUALS')
+                .map((t) => <option key={t} value={t}>{conditionLabels[t]}</option>)}
             </select>
-            <input className="rounded-md border border-olive-200 px-3 py-2 text-sm" onChange={(event) => updateCondition(condition.id, { value: event.target.value, eventName: event.target.value })} value={String(condition.value ?? condition.eventName ?? '')} />
-            <button className="rounded-md text-red-500 hover:bg-red-50" onClick={() => removeCondition(condition.id)} type="button">
-              <Trash2 size={15} />
+            {!noValueTypes.includes(condition.type) && (
+              <input
+                className="flex-1 rounded-md border border-olive-200 px-3 py-2 text-sm text-olive-900 placeholder-olive-300 focus:border-olive-500 focus:outline-none"
+                placeholder={conditionPlaceholders[condition.type] ?? ''}
+                value={String(condition.value ?? condition.eventName ?? '')}
+                onChange={(e) => updateCondition(condition.id, { value: e.target.value, eventName: e.target.value })}
+              />
+            )}
+            {noValueTypes.includes(condition.type) && (
+              <span className="flex-1 rounded-md border border-dashed border-olive-200 px-3 py-2 text-sm italic text-olive-400">Triggered automatically — no value needed</span>
+            )}
+            <button className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-olive-400 hover:bg-red-50 hover:text-red-500" onClick={() => removeCondition(condition.id)} type="button">
+              <X size={15} />
             </button>
           </div>
         ))}
-        {(rules.conditions ?? []).length === 0 && <p className="m-0 text-sm text-olive-500">No conditions means all authenticated users are eligible.</p>}
+        {nonUrlConditions.length === 0 && <p className="m-0 text-sm italic text-olive-400">No audience rules — visible to all authenticated users.</p>}
       </div>
     </div>
   );

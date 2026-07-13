@@ -18,10 +18,13 @@ import SubtaskForm from '@/components/SubtaskForm';
 import ChatPanel from '@/components/ChatPanel';
 import ActivityHistoryPanel from '@/components/ActivityHistoryPanel';
 import ApprovalSection from '@/components/ApprovalSection';
+import AiPlanningWorkspace from '@/components/AiPlanningWorkspace';
+import { getProjectAiConfig } from '@/services/aiPlanning';
 import SdkDocsPanel from '@/components/SdkDocsPanel';
 import EventTrackingPage from '@/pages/EventTrackingPage';
 import SemanticIntelligencePage from '@/pages/SemanticIntelligencePage';
 import EngagementPage from '@/pages/EngagementPage';
+import SdkIntegrationsPage from '@/pages/SdkIntegrationsPage';
 import Sidebar, { SidebarView } from '@/components/Sidebar';
 import Topbar from '@/components/Topbar';
 import { useChat } from '@/context/ChatContext';
@@ -55,7 +58,8 @@ import {
   RefreshCw,
   X,
   Calculator,
-  Zap
+  Zap,
+  Bot
 } from 'lucide-react';
 import { recalculateDynamicPriorities, evaluateTaskPriority, type PriorityEvaluation } from '@/services/priorityEngine';
 import { createEpic, deleteEpic, getEpics, updateEpic } from '@/services/epics';
@@ -204,6 +208,8 @@ function DashboardPage(): JSX.Element {
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [isEpicCreateModalOpen, setIsEpicCreateModalOpen] = useState(false);
   const [editingEpic, setEditingEpic] = useState<Epic | null>(null);
+  const [activeProjectAiEnabled, setActiveProjectAiEnabled] = useState(false);
+  const [activeProjectAiProvider, setActiveProjectAiProvider] = useState<string | null>(null);
 
   const [taskFilters, setTaskFilters] = useState<TaskFilters>({
     search: '',
@@ -252,6 +258,7 @@ function DashboardPage(): JSX.Element {
   const [activeNoteEditor, setActiveNoteEditor] = useState<ActiveNoteEditor | null>(null);
   const [isChatPanelOpen, setIsChatPanelOpen] = useState(false);
   const [isActivityHistoryOpen, setIsActivityHistoryOpen] = useState(false);
+  const [isAiPlanningWorkspaceOpen, setIsAiPlanningWorkspaceOpen] = useState(false);
   
   const [priorityEvaluationModalOpen, setPriorityEvaluationModalOpen] = useState(false);
   const [priorityEvaluationResult, setPriorityEvaluationResult] = useState<PriorityEvaluation | null>(null);
@@ -269,6 +276,8 @@ function DashboardPage(): JSX.Element {
       setActiveView('event-tracking');
     } else if (path === '/engagement') {
       setActiveView('engagement');
+    } else if (path === '/sdk-integrations') {
+      setActiveView('sdk-integrations');
     } else if (path === '/sdk-docs') {
       setActiveView('sdk-docs');
     } else if (path === '/settings') {
@@ -1600,6 +1609,8 @@ function DashboardPage(): JSX.Element {
       setMemberSearchResults([]);
       setMemberSearchTerm('');
       setActiveProject(null);
+      setActiveProjectAiEnabled(false);
+      setActiveProjectAiProvider(null);
       return;
     }
 
@@ -1608,6 +1619,18 @@ function DashboardPage(): JSX.Element {
     if (projectMembersByProject[activeProject.id] == null) {
       void loadProjectTeam(activeProject.id);
     }
+
+    const loadAiConfigStatus = async () => {
+      try {
+        const config = await getProjectAiConfig(activeProject.id);
+        setActiveProjectAiEnabled(config.enabled);
+        setActiveProjectAiProvider(config.provider);
+      } catch {
+        setActiveProjectAiEnabled(false);
+        setActiveProjectAiProvider(null);
+      }
+    };
+    void loadAiConfigStatus();
   }, [activeProject, loadProjectTeam, projectMembersByProject, setActiveProject]);
 
   useEffect(() => {
@@ -1744,6 +1767,7 @@ function DashboardPage(): JSX.Element {
           else if (view === 'semantic-intelligence') navigate('/intelligence');
           else if (view === 'event-tracking') navigate('/event-tracking');
           else if (view === 'engagement') navigate('/engagement');
+          else if (view === 'sdk-integrations') navigate('/sdk-integrations');
           else if (view === 'sdk-docs') navigate('/sdk-docs');
           else if (view === 'settings') navigate('/settings');
         }}
@@ -1763,7 +1787,9 @@ function DashboardPage(): JSX.Element {
                 ? 'Event Tracking'
                 : activeView === 'engagement'
                   ? 'Engagement'
-                  : activeView === 'semantic-intelligence'
+                  : activeView === 'sdk-integrations'
+                    ? 'SDK Integrations'
+                    : activeView === 'semantic-intelligence'
                     ? 'Semantic Intelligence'
                     : (activeProject ? activeProject.name : 'All Projects')}
           user={{ name: user?.name || null, email: user?.email || '' }}
@@ -1794,6 +1820,8 @@ function DashboardPage(): JSX.Element {
                 <span className="text-olive-600 ">Event Tracking</span>
               ) : activeView === 'engagement' ? (
                 <span className="text-olive-600 ">Engagement</span>
+              ) : activeView === 'sdk-integrations' ? (
+                <span className="text-olive-600 ">SDK Integrations</span>
               ) : activeView === 'semantic-intelligence' ? (
                 <span className="text-olive-600 ">Semantic Intelligence</span>
               ) : activeProject ? (
@@ -1807,6 +1835,16 @@ function DashboardPage(): JSX.Element {
                   </button>
                   <span className="text-olive-300 ">/</span>
                   <span className="text-olive-600 ">{activeProject.name}</span>
+                  {activeProjectAiEnabled ? (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-green-50 text-green-700 border border-green-200/50 uppercase tracking-wider font-bold text-[9px] select-none ml-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                      AI ({activeProjectAiProvider ? activeProjectAiProvider.toUpperCase() : ''})
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-zinc-100 text-zinc-500 border border-zinc-200/50 uppercase tracking-wider font-bold text-[9px] select-none ml-1.5">
+                      AI (FALLBACK)
+                    </span>
+                  )}
                 </>
               ) : (
                 <span className="text-olive-600 ">All Projects</span>
@@ -1831,7 +1869,13 @@ function DashboardPage(): JSX.Element {
                 <p className="text-olive-500  m-0 text-sm mt-0.5">Account &amp; Preferences</p>
               </div>
               <div className="p-8">
-                <SettingsPanel />
+                <SettingsPanel
+                  activeProject={activeProject}
+                  onAiConfigChange={(enabled, provider) => {
+                    setActiveProjectAiEnabled(enabled);
+                    setActiveProjectAiProvider(provider);
+                  }}
+                />
               </div>
             </div>
           ) : activeView === 'event-tracking' ? (
@@ -1841,6 +1885,10 @@ function DashboardPage(): JSX.Element {
           ) : activeView === 'engagement' ? (
             <div className="h-full overflow-y-auto">
               <EngagementPage />
+            </div>
+          ) : activeView === 'sdk-integrations' ? (
+            <div className="h-full overflow-y-auto">
+              <SdkIntegrationsPage />
             </div>
           ) : activeView === 'semantic-intelligence' ? (
             <div className="h-full overflow-y-auto">
@@ -1918,6 +1966,22 @@ function DashboardPage(): JSX.Element {
                     </div>
                   </div>
                   <div className="flex items-center gap-2.5">
+                    <button
+                      className="flex items-center gap-2 px-3.5 py-2.5 bg-olive-700 border border-olive-700 rounded-lg text-sm font-semibold text-white hover:bg-olive-800 shadow-sm transition-colors"
+                      onClick={() => setIsAiPlanningWorkspaceOpen(true)}
+                      type="button"
+                    >
+                      <Zap size={16} />
+                      AI Planner
+                    </button>
+                    <button
+                      className="flex items-center gap-2 px-3.5 py-2.5 bg-white border border-olive-200 rounded-lg text-sm font-medium text-olive-600 hover:bg-olive-50 shadow-sm transition-colors"
+                      onClick={() => setActiveView('settings')}
+                      type="button"
+                    >
+                      <Bot size={16} />
+                      AI Settings
+                    </button>
                     <button
                       className="flex items-center gap-2 px-3.5 py-2.5 bg-white  border border-olive-200  rounded-lg text-sm font-medium text-olive-600  hover:bg-olive-50  shadow-sm transition-colors"
                       onClick={() => handleOpenProjectNotesPanel(activeProject)}
@@ -2490,6 +2554,25 @@ function DashboardPage(): JSX.Element {
     ) : null
   }
   {
+    isAiPlanningWorkspaceOpen && activeProject ? (
+      <Modal
+        bodyClassName="p-6"
+        maxWidth="max-w-[1100px]"
+        onClose={() => setIsAiPlanningWorkspaceOpen(false)}
+        title={`AI Planning Workspace - ${activeProject.name}`}
+      >
+        <AiPlanningWorkspace
+          onArtifactsCreated={() => void loadDashboard()}
+          project={activeProject}
+          onGoToSettings={() => {
+            setIsAiPlanningWorkspaceOpen(false);
+            setActiveView('settings');
+          }}
+        />
+      </Modal>
+    ) : null
+  }
+  {
     isChatPanelOpen && activeProject ? (
       <>
         {/* Chat Drawer Backdrop */}
@@ -2587,6 +2670,7 @@ function DashboardPage(): JSX.Element {
       </Modal>
     ) : null
   }
+
   {
     isProjectNotesModalOpen && activeProjectForNotes ? (
       <Modal onClose={() => setIsProjectNotesModalOpen(false)} title={activeProjectNotesModalTitle}>

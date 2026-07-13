@@ -1,7 +1,7 @@
 export type TaskWorkflowStatus = 'BACKLOG' | 'TODO' | 'IN_PROGRESS' | 'IN_REVIEW' | 'BLOCKED' | 'DONE';
 export type TaskStatus = TaskWorkflowStatus | 'rolled_over';
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-export type TaskSource = 'claude' | 'chatgpt' | 'gemini' | 'manual';
+export type TaskSource = 'claude' | 'chatgpt' | 'gemini' | 'manual' | 'ai-planning';
 export type TaskSlaState = 'HEALTHY' | 'NEAR_BREACH' | 'BREACHED' | 'PAUSED' | 'COMPLETED';
 
 export const TASK_WORKFLOW_STATUS_OPTIONS: Array<{ value: TaskWorkflowStatus; label: string }> = [

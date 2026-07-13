@@ -15,6 +15,8 @@ const QUICK_START_SNIPPET = "import { initTracker } from '@jamesbond007db05/even
 
 const ERROR_HANDLING_SNIPPET = "import {\n  initTracker,\n  normalizeSdkError,\n  SDKValidationError\n} from '@jamesbond007db05/events-sdk';\n\ntry {\n  const tracker = initTracker({ apiKey: 'your_api_key_here' });\n  await tracker.track('checkout_completed', { amount: 199 });\n} catch (error) {\n  const normalized = normalizeSdkError(error);\n  console.error(normalized.code, normalized.message);\n\n  if (error instanceof SDKValidationError) {\n    // show friendly validation feedback\n  }\n}";
 
+const ENGAGEMENT_SNIPPET = "import { Engagement } from '@jamesbond007db05/events-sdk';\n\n// Initialize the Engagement Runtime\nEngagement.init({\n  tenantId: 'your_tenant_id_here',\n  apiKey: 'your_api_key_here',\n  userId: 'user_123',\n  debug: false\n});\n\n// Trigger a custom event (evaluated immediately for checklist/tour triggers)\nawait Engagement.track('user_onboarded_step1');\n\n// Fetch/refresh eligible flows manually (usually handled automatically on SPA routes)\nawait Engagement.refresh();";
+
 function SdkDocsPanel(): JSX.Element {
   const { showToast } = useToast();
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -73,7 +75,7 @@ function SdkDocsPanel(): JSX.Element {
             <div className="rounded-2xl border border-olive-200 bg-olive-50 p-4  ">
               <h3 className="m-0 text-base font-bold text-olive-950 ">3. Initialize once</h3>
               <p className="mb-0 mt-2 text-sm leading-6 text-olive-600 ">
-                Call initTracker() once at app bootstrap. Base URL is hardcoded internally.
+                Call initTracker() or Engagement.init() once at app bootstrap.
               </p>
             </div>
           </div>
@@ -89,6 +91,18 @@ function SdkDocsPanel(): JSX.Element {
         </div>
         <CodePanel copiedId={copiedId} id="quick-start-code" onCopy={handleCopy} title="Quick Start Example">
           {QUICK_START_SNIPPET}
+        </CodePanel>
+      </SectionCard>
+
+      <SectionCard className="grid gap-6" id="engagement-runtime">
+        <div className="grid gap-2">
+          <h2 className="m-0 text-xl font-bold text-olive-950 ">In-App Engagement Engine</h2>
+          <p className="m-0 text-sm leading-6 text-olive-600 ">
+            Automatically deliver Modals, Banners, NPS Surveys, Checklist onboarding widgets and Tours directly to targeted users.
+          </p>
+        </div>
+        <CodePanel copiedId={copiedId} id="engagement-code" onCopy={handleCopy} title="Engagement Runtime Example">
+          {ENGAGEMENT_SNIPPET}
         </CodePanel>
       </SectionCard>
 

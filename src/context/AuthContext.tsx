@@ -11,6 +11,9 @@ interface AuthProfile {
   firstName: string | null;
   lastName: string | null;
   authProvider: 'local' | 'google';
+  openaiApiKeyConfigured?: boolean;
+  anthropicApiKeyConfigured?: boolean;
+  geminiApiKeyConfigured?: boolean;
 }
 
 interface AuthSession {
@@ -34,7 +37,13 @@ interface AuthContextValue {
   register: (payload: { email: string; password: string; firstName: string; lastName: string }) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
-  updateProfile: (data: { firstName?: string; lastName?: string }) => Promise<void>;
+  updateProfile: (data: {
+    firstName?: string;
+    lastName?: string;
+    openaiApiKey?: string;
+    anthropicApiKey?: string;
+    geminiApiKey?: string;
+  }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -166,7 +175,13 @@ function AuthProvider({ children }: AuthProviderProps): JSX.Element {
     }
   };
 
-  const updateProfile = async (data: { firstName?: string; lastName?: string }): Promise<void> => {
+  const updateProfile = async (data: {
+    firstName?: string;
+    lastName?: string;
+    openaiApiKey?: string;
+    anthropicApiKey?: string;
+    geminiApiKey?: string;
+  }): Promise<void> => {
     setLoading(true);
     setError(null);
 

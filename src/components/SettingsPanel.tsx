@@ -9,7 +9,9 @@ import {
   Sparkles,
   Settings2,
   UserCircle,
-  TimerReset
+  TimerReset,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 import ManageDevicesModal from '@/components/ManageDevicesModal';
@@ -21,6 +23,7 @@ import { useToast } from '@/context/ToastContext';
 import api from '@/services/api';
 import { getSlaConfigs, updateSlaConfig } from '@/services/sla';
 import type { SlaConfig, TaskPriority } from '@/types/task';
+import type { Project } from '@/types/project';
 import {
   SYNC_CHATGPT_ACTION_SCHEMA,
   SYNC_CHATGPT_INSTRUCTION_TEXT
@@ -133,11 +136,17 @@ const chatGptIntegrationSteps = [
   }
 ];
 
-function SettingsPanel(): JSX.Element {
+interface SettingsPanelProps {
+  activeProject?: Project | null;
+  onAiConfigChange?: (enabled: boolean, provider: string) => void;
+}
+
+function SettingsPanel({ activeProject, onAiConfigChange }: SettingsPanelProps): JSX.Element {
   const { refreshUser, session, user, updateProfile } = useAuth();
   const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
   const [openStepIndex, setOpenStepIndex] = useState<number | null>(0);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [devices, setDevices] = useState<CompanionDevice[]>([]);
@@ -151,8 +160,30 @@ function SettingsPanel(): JSX.Element {
   const [lastName, setLastName] = useState(user?.lastName || '');
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [profileSuccess, setProfileSuccess] = useState(false);
+
+  // Global AI Credentials state
+  const [openaiKey, setOpenaiKey] = useState(user?.openaiApiKeyConfigured ? '••••••••' : '');
+  const [anthropicKey, setAnthropicKey] = useState(user?.anthropicApiKeyConfigured ? '••••••••' : '');
+  const [geminiKey, setGeminiKey] = useState(user?.geminiApiKeyConfigured ? '••••••••' : '');
+  const [isSavingGlobalKeys, setIsSavingGlobalKeys] = useState(false);
+  const [globalKeysSuccess, setGlobalKeysSuccess] = useState(false);
+  const [globalKeysError, setGlobalKeysError] = useState<string | null>(null);
+  const [showOpenaiKey, setShowOpenaiKey] = useState(false);
+  const [showAnthropicKey, setShowAnthropicKey] = useState(false);
+  const [showGeminiKey, setShowGeminiKey] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setOpenaiKey(user.openaiApiKeyConfigured ? '••••••••' : '');
+      setAnthropicKey(user.anthropicApiKeyConfigured ? '••••••••' : '');
+      setGeminiKey(user.geminiApiKeyConfigured ? '••••••••' : '');
+    }
+  }, [user]);
+
   const [slaConfigs, setSlaConfigs] = useState<SlaConfig[]>([]);
   const [slaSavingPriority, setSlaSavingPriority] = useState<TaskPriority | null>(null);
+
+
 
   useEffect(() => {
     if (user) {
@@ -175,6 +206,27 @@ function SettingsPanel(): JSX.Element {
       setErrorMessage('Failed to update profile.');
     } finally {
       setIsUpdatingProfile(false);
+    }
+  };
+
+  const handleSaveGlobalKeys = async (): Promise<void> => {
+    setIsSavingGlobalKeys(true);
+    setGlobalKeysSuccess(false);
+    setGlobalKeysError(null);
+    try {
+      await updateProfile({
+        openaiApiKey: openaiKey,
+        anthropicApiKey: anthropicKey,
+        geminiApiKey: geminiKey,
+      });
+      setGlobalKeysSuccess(true);
+      setTimeout(() => setGlobalKeysSuccess(false), 3000);
+      showToast({ message: 'Global AI API keys updated successfully.', variant: 'success' });
+    } catch {
+      setGlobalKeysError('Failed to update AI keys.');
+      showToast({ message: 'Failed to update AI keys.', variant: 'error' });
+    } finally {
+      setIsSavingGlobalKeys(false);
     }
   };
   const [generatedCompanionKey, setGeneratedCompanionKey] = useState<{
@@ -382,6 +434,104 @@ function SettingsPanel(): JSX.Element {
           </div>
         </div>
       </SectionCard>
+
+      {/* Global AI API Keys Card */}
+      <SectionCard>
+        <div className="flex items-start justify-between gap-4 mb-6">
+          <div>
+            <span className="text-olive-600 text-[0.72rem] tracking-[0.12em] uppercase font-semibold">Account Security</span>
+            <h2 className="mt-1 mb-1 text-olive-950">Global AI Credentials</h2>
+            <p className="text-olive-500 m-0 text-sm">Configure API keys for your AI providers. These are encrypted and shared across all your projects.</p>
+          </div>
+          <span className="flex items-center justify-center w-10 h-10 bg-olive-600/8 rounded-xl text-olive-600 shrink-0">
+            <KeyRound size={18} />
+          </span>
+        </div>
+
+        <div className="grid gap-6">
+          {/* OpenAI API Key */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-semibold text-olive-900">OpenAI API Key</label>
+            <div className="relative">
+              <input
+                type={showOpenaiKey ? 'text' : 'password'}
+                className="w-full px-4 py-2.5 bg-white border border-olive-200 rounded-xl text-sm text-olive-950 focus:outline-none focus:ring-2 focus:ring-olive-500/20 transition-all"
+                placeholder={user?.openaiApiKeyConfigured ? '••••••••' : 'Enter OpenAI API key'}
+                value={openaiKey}
+                onChange={(e) => setOpenaiKey(e.target.value)}
+              />
+              <button
+                type="button"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-olive-400 hover:text-olive-600"
+                onClick={() => setShowOpenaiKey(!showOpenaiKey)}
+              >
+                {showOpenaiKey ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          </div>
+
+          {/* Anthropic API Key */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-semibold text-olive-900">Anthropic Claude API Key</label>
+            <div className="relative">
+              <input
+                type={showAnthropicKey ? 'text' : 'password'}
+                className="w-full px-4 py-2.5 bg-white border border-olive-200 rounded-xl text-sm text-olive-950 focus:outline-none focus:ring-2 focus:ring-olive-500/20 transition-all"
+                placeholder={user?.anthropicApiKeyConfigured ? '••••••••' : 'Enter Anthropic API key'}
+                value={anthropicKey}
+                onChange={(e) => setAnthropicKey(e.target.value)}
+              />
+              <button
+                type="button"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-olive-400 hover:text-olive-600"
+                onClick={() => setShowAnthropicKey(!showAnthropicKey)}
+              >
+                {showAnthropicKey ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          </div>
+
+          {/* Gemini API Key */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-semibold text-olive-900">Google Gemini API Key</label>
+            <div className="relative">
+              <input
+                type={showGeminiKey ? 'text' : 'password'}
+                className="w-full px-4 py-2.5 bg-white border border-olive-200 rounded-xl text-sm text-olive-950 focus:outline-none focus:ring-2 focus:ring-olive-500/20 transition-all"
+                placeholder={user?.geminiApiKeyConfigured ? '••••••••' : 'Enter Google Gemini API key'}
+                value={geminiKey}
+                onChange={(e) => setGeminiKey(e.target.value)}
+              />
+              <button
+                type="button"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-olive-400 hover:text-olive-600"
+                onClick={() => setShowGeminiKey(!showGeminiKey)}
+              >
+                {showGeminiKey ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <button
+              onClick={handleSaveGlobalKeys}
+              disabled={isSavingGlobalKeys || (openaiKey === (user?.openaiApiKeyConfigured ? '••••••••' : '') && anthropicKey === (user?.anthropicApiKeyConfigured ? '••••••••' : '') && geminiKey === (user?.geminiApiKeyConfigured ? '••••••••' : ''))}
+              className="flex items-center gap-2 px-6 py-2.5 bg-olive-900 text-white rounded-xl font-bold text-sm hover:bg-olive-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            >
+              {isSavingGlobalKeys ? (
+                 <RefreshCcw className="w-4 h-4 animate-spin" />
+              ) : globalKeysSuccess ? (
+                <Check className="w-4 h-4" />
+              ) : null}
+              {isSavingGlobalKeys ? 'Saving...' : globalKeysSuccess ? 'Saved' : 'Save AI Credentials'}
+            </button>
+          </div>
+
+          {globalKeysError && <p className="text-red-600 text-sm m-0 mt-2 font-medium">{globalKeysError}</p>}
+        </div>
+      </SectionCard>
+
+
 
       <SectionCard>
         <div className="flex items-start justify-between gap-4 mb-6">

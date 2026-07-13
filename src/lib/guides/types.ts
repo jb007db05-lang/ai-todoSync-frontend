@@ -25,7 +25,9 @@ export type TargetingConditionType =
   | 'SHOW_ONCE'
   | 'SHOW_EVERY_X_DAYS'
   | 'COOLDOWN'
-  | 'TIME_WINDOW';
+  | 'TIME_WINDOW'
+  | 'EXIT_INTENT'
+  | 'IDLE_TIMEOUT';
 
 export interface TargetingCondition {
   id: string;
@@ -89,7 +91,13 @@ export type SurveyQuestionType =
   | 'MULTI_CHOICE'
   | 'RATING_SCALE'
   | 'DROPDOWN'
-  | 'YES_NO';
+  | 'YES_NO'
+  | 'CSAT'
+  | 'CES'
+  | 'EMOJI'
+  | 'OPINION_SCALE'
+  | 'FILE_UPLOAD'
+  | 'CONTACT';
 
 export interface Guide {
   _id?: string;
