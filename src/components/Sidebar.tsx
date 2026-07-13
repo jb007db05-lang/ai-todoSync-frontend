@@ -8,10 +8,11 @@ import {
   BrainCircuit,
   LogOut,
   BookOpen,
-  Target
+  Target,
+  Plug
 } from 'lucide-react';
 
-export type SidebarView = 'dashboard' | 'settings' | 'event-tracking' | 'semantic-intelligence' | 'sdk-docs' | 'engagement';
+export type SidebarView = 'dashboard' | 'settings' | 'event-tracking' | 'semantic-intelligence' | 'sdk-docs' | 'engagement' | 'sdk-integrations';
 
 interface SidebarProps {
   activeView: SidebarView;
@@ -104,6 +105,21 @@ const Sidebar: React.FC<SidebarProps> = ({
           <span>Engagement</span>
         </button>
 
+
+        <button
+          className={[
+            'flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-[0.95rem] font-medium transition-all duration-200 justify-start',
+            activeView === 'sdk-integrations'
+              ? 'bg-olive-700 text-white shadow-md shadow-olive-700/20'
+              : 'text-zinc-600 hover:text-olive-950 hover:bg-zinc-100'
+          ].join(' ')}
+          onClick={() => onViewChange('sdk-integrations')}
+          title="SDK Integrations"
+          type="button"
+        >
+          <Plug size={18} strokeWidth={2} />
+          <span>SDK Integrations</span>
+        </button>
 
         <button
           className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-[0.95rem] font-medium text-olive-600 hover:text-olive-700 hover:bg-olive-50   transition-all duration-200 justify-start mt-1 border border-dashed border-olive-200 "
