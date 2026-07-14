@@ -1,5 +1,5 @@
 import { FormEvent, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff, Sparkles } from 'lucide-react';
 
 import { useAuth } from '@/context/AuthContext';
@@ -11,8 +11,12 @@ const labelCls = 'grid gap-1.5 font-bold text-xs uppercase tracking-widest text-
 
 function RegisterPage(): JSX.Element {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const emailParam = searchParams.get('email') || '';
+  const tokenParam = searchParams.get('token') || '';
+
   const { register, loading, error, user } = useAuth();
-  const [email, setEmail] = useState<string>('');
+  const [email, setEmail] = useState<string>(emailParam);
   const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [firstName, setFirstName] = useState<string>('');
@@ -26,7 +30,11 @@ function RegisterPage(): JSX.Element {
     event.preventDefault();
     try {
       await register({ email, password, firstName, lastName });
-      navigate('/', { replace: true });
+      if (tokenParam) {
+        navigate(`/accept-invitation?token=${tokenParam}`, { replace: true });
+      } else {
+        navigate('/', { replace: true });
+      }
     } catch {
       // Handled by AuthContext
     }
@@ -164,11 +172,12 @@ function RegisterPage(): JSX.Element {
               <span>Email</span>
               <input
                 autoComplete="email"
-                className={inputCls}
+                className={`${inputCls} ${emailParam ? 'bg-olive-50/50 cursor-not-allowed opacity-80' : ''}`}
                 name="email"
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="you@example.com"
                 required
+                readOnly={!!emailParam}
                 type="email"
                 value={email}
               />
@@ -217,7 +226,14 @@ function RegisterPage(): JSX.Element {
 
           <p className="text-olive-500 m-0 text-xs text-center">
             Already registered?{' '}
-            <Link className="text-olive-800 font-bold hover:underline" to="/login">
+            <Link
+              className="text-olive-800 font-bold hover:underline"
+              to={
+                tokenParam
+                  ? `/login?token=${tokenParam}&email=${encodeURIComponent(emailParam)}`
+                  : '/login'
+              }
+            >
               Login
             </Link>
           </p>

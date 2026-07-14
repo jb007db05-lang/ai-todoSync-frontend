@@ -1,5 +1,5 @@
 import { FormEvent, useMemo, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Eye, EyeOff, Shield, Smartphone, Sparkles } from 'lucide-react';
 
 import { useAuth } from '@/context/AuthContext';
@@ -13,6 +13,10 @@ const labelCls = 'grid gap-1.5 font-bold text-xs uppercase tracking-widest text-
 function LoginPage(): JSX.Element {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const emailParam = searchParams.get('email') || '';
+  const tokenParam = searchParams.get('token') || '';
+
   const {
     login,
     loginWithCompanionKey,
@@ -26,7 +30,7 @@ function LoginPage(): JSX.Element {
   } = useAuth();
 
   const [loginMode, setLoginMode] = useState<'account' | 'companion'>('account');
-  const [email, setEmail] = useState<string>('');
+  const [email, setEmail] = useState<string>(emailParam);
   const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [rememberMe, setRememberMe] = useState<boolean>(false);
@@ -47,7 +51,9 @@ function LoginPage(): JSX.Element {
   const [resetErrorMessage, setResetErrorMessage] = useState<string | null>(null);
   const [resetLoading, setResetLoading] = useState<boolean>(false);
 
-  const nextPath = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname ?? '/';
+  const nextPath = tokenParam
+    ? `/accept-invitation?token=${tokenParam}`
+    : ((location.state as { from?: { pathname?: string } } | null)?.from?.pathname ?? '/');
 
   const apiBase = useMemo(
     () => (import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api').replace(/\/$/, ''),
@@ -539,7 +545,14 @@ function LoginPage(): JSX.Element {
 
               <p className="text-olive-500 m-0 text-xs text-center">
                 New to Pristine?{' '}
-                <Link className="text-olive-800 font-bold hover:underline" to="/register">
+                <Link
+                  className="text-olive-800 font-bold hover:underline"
+                  to={
+                    tokenParam
+                      ? `/register?token=${tokenParam}&email=${encodeURIComponent(emailParam)}`
+                      : '/register'
+                  }
+                >
                   Create an account
                 </Link>
               </p>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 
+import api from '@/services/api';
 import AddTaskForm from '@/components/AddTaskForm';
 import DateNavigator from '@/components/DateNavigator';
 import EditTaskForm from '@/components/EditTaskForm';
@@ -27,6 +28,7 @@ import EngagementPage from '@/pages/EngagementPage';
 import SdkIntegrationsPage from '@/pages/SdkIntegrationsPage';
 import Sidebar, { SidebarView } from '@/components/Sidebar';
 import Topbar from '@/components/Topbar';
+import InvitationNotificationPanel from '@/components/InvitationNotificationPanel';
 import { useChat } from '@/context/ChatContext';
 import { Notification } from '@/components/NotificationBox';
 import TaskList from '@/components/TaskList';
@@ -65,7 +67,6 @@ import { recalculateDynamicPriorities, evaluateTaskPriority, type PriorityEvalua
 import { createEpic, deleteEpic, getEpics, updateEpic } from '@/services/epics';
 import { createEpicNote, createNote, deleteNote, getEpicNotes, getNote, getProjectNotes, updateNote } from '@/services/notes';
 import {
-  addProjectMember,
   createProject,
   deleteProject,
   deleteProjects,
@@ -76,13 +77,12 @@ import {
   updateProject
 } from '@/services/projects';
 import { bulkAssignTasks, createTask, deleteTask, getTasks, updateTask } from '@/services/tasks';
-import { searchUsersByEmail } from '@/services/users';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useAuth } from '@/context/AuthContext';
 import socketService, { SocketEvents } from '@/services/socket';
 import type { Epic, EpicStatus } from '@/types/epic';
 import type { Note } from '@/types/note';
-import type { Project, ProjectMember, UserSearchResult } from '@/types/project';
+import type { Project, ProjectMember } from '@/types/project';
 import type { Task, TaskWorkflowStatus, TaskPriority } from '@/types/task';
 import { findProjectByName } from '@/utils/projectTree';
 import { useConfirm } from '@/context/ConfirmationContext';
@@ -245,12 +245,7 @@ function DashboardPage(): JSX.Element {
   const [projectSearchTerm, setProjectSearchTerm] = useState<string>('');
   const debouncedProjectSearchTerm = useDebounce(projectSearchTerm, 300);
 
-  const [memberSearchTerm, setMemberSearchTerm] = useState<string>('');
-  const debouncedMemberSearchTerm = useDebounce(memberSearchTerm, 300);
-
   const debouncedTaskSearchTerm = useDebounce(taskFilters.search, 300);
-
-  const [memberSearchResults, setMemberSearchResults] = useState<UserSearchResult[]>([]);
   const [teamMutationLoading, setTeamMutationLoading] = useState<boolean>(false);
   const [activeView, setActiveView] = useState<SidebarView>('dashboard');
   const [activeProjectForNotes, setActiveProjectForNotes] = useState<Project | null>(null);
@@ -259,13 +254,13 @@ function DashboardPage(): JSX.Element {
   const [isChatPanelOpen, setIsChatPanelOpen] = useState(false);
   const [isActivityHistoryOpen, setIsActivityHistoryOpen] = useState(false);
   const [isAiPlanningWorkspaceOpen, setIsAiPlanningWorkspaceOpen] = useState(false);
-  
+
   const [priorityEvaluationModalOpen, setPriorityEvaluationModalOpen] = useState(false);
   const [priorityEvaluationResult, setPriorityEvaluationResult] = useState<PriorityEvaluation | null>(null);
   const [isRecalculatingPriorities, setIsRecalculatingPriorities] = useState(false);
   const [isEvaluatingPriority, setIsEvaluatingPriority] = useState(false);
   const { lastMessage, clearLastMessage, setActiveProject } = useChat();
-  
+
   // Sync state with URL
   useEffect(() => {
     const path = location.pathname;
@@ -341,24 +336,7 @@ function DashboardPage(): JSX.Element {
     void loadDashboard();
   }, [loadDashboard]);
 
-  useEffect(() => {
-    const searchMembers = async () => {
-      const term = debouncedMemberSearchTerm.trim();
-      if (term.length < 2) {
-        setMemberSearchResults([]);
-        return;
-      }
 
-      try {
-        const results = await searchUsersByEmail(term);
-        setMemberSearchResults(results);
-      } catch {
-        setMemberSearchResults([]);
-      }
-    };
-
-    void searchMembers();
-  }, [debouncedMemberSearchTerm]);
 
   useEffect(() => {
     const handleTaskAssigned = () => {
@@ -670,11 +648,9 @@ function DashboardPage(): JSX.Element {
     }
   };
 
-  const handleProjectMemberSearch = (term: string): void => {
-    setMemberSearchTerm(term);
-  };
 
-  const handleAddProjectMember = async (userId: string): Promise<void> => {
+
+  const handleInviteProjectMember = async (email: string, role: 'ADMIN' | 'MEMBER'): Promise<void> => {
     if (activeProject == null) {
       return;
     }
@@ -684,13 +660,13 @@ function DashboardPage(): JSX.Element {
     setProjectMutationSuccess(null);
 
     try {
-      await addProjectMember(activeProject.id, userId);
+      await api.post(`/invitations/projects/${activeProject.id}`, { email, role });
       await Promise.all([loadDashboard(), loadProjectTeam(activeProject.id)]);
-      setMemberSearchResults([]);
-      setMemberSearchTerm('');
-      setProjectMutationSuccess('Project member added.');
-    } catch {
-      setProjectMutationError('Unable to add the project member.');
+      setProjectMutationSuccess('Member successfully added or invited.');
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { error?: string } } };
+      const msg = errorObj.response?.data?.error || 'Failed to process request.';
+      setProjectMutationError(msg);
     } finally {
       setTeamMutationLoading(false);
     }
@@ -1606,8 +1582,6 @@ function DashboardPage(): JSX.Element {
 
   useEffect(() => {
     if (activeProject == null) {
-      setMemberSearchResults([]);
-      setMemberSearchTerm('');
       setActiveProject(null);
       setActiveProjectAiEnabled(false);
       setActiveProjectAiProvider(null);
@@ -1790,8 +1764,8 @@ function DashboardPage(): JSX.Element {
                   : activeView === 'sdk-integrations'
                     ? 'SDK Integrations'
                     : activeView === 'semantic-intelligence'
-                    ? 'Semantic Intelligence'
-                    : (activeProject ? activeProject.name : 'All Projects')}
+                      ? 'Semantic Intelligence'
+                      : (activeProject ? activeProject.name : 'All Projects')}
           user={{ name: user?.name || null, email: user?.email || '' }}
           notifications={notifications}
           isNotificationsOpen={isNotificationsOpen}
@@ -1852,11 +1826,14 @@ function DashboardPage(): JSX.Element {
             </>
           }
           rightContent={
-            activeView !== 'settings' && (
-              <div className="mr-2">
-                <DateNavigator date={selectedDate} disabled={loading} onChange={setSelectedDate} />
-              </div>
-            )
+            <div className="flex items-center gap-3">
+              <InvitationNotificationPanel />
+              {activeView !== 'settings' && (
+                <div className="mr-2">
+                  <DateNavigator date={selectedDate} disabled={loading} onChange={setSelectedDate} />
+                </div>
+              )}
+            </div>
           }
         />
 
@@ -2041,7 +2018,7 @@ function DashboardPage(): JSX.Element {
               </div>
               <div className="flex flex-1 min-h-0 overflow-hidden gap-4 p-4 bg-olive-50 ">
                 {/* Column 1 — Epics (Sidebar) */}
-                <div className={`flex flex-col shrink-0 h-full rounded-2xl border border-olive-200/60  bg-white/70  backdrop-blur-xl shadow-sm overflow-hidden transition-all duration-500 ease-in-out ${isSidebarCollapsed ? 'w-14' : 'w-[300px]'}`}>
+                <div className={`flex flex-col shrink-0 h-full rounded-md border border-olive-200/60  bg-white/70  backdrop-blur-xl shadow-sm overflow-hidden transition-all duration-500 ease-in-out ${isSidebarCollapsed ? 'w-14' : 'w-[300px]'}`}>
                   <div className={`flex items-center justify-between px-5 py-6 border-b border-olive-100  bg-linear-to-b from-white/50 to-transparent  ${isSidebarCollapsed ? 'flex-col gap-4' : ''}`}>
                     {!isSidebarCollapsed && (
                       <div className="animate-in fade-in duration-500">
@@ -2091,761 +2068,757 @@ function DashboardPage(): JSX.Element {
                               <span className={`shrink-0 text-[0.55rem] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border ${statusPillCls[epic.status] ?? 'bg-olive-100 text-olive-600 border-olive-200'}`}>
                                 {epic.status}
                               </span>
-                          </div>
-
-                            {/* Action Toolbar — Contextual */ }
-                        <div className="flex items-center gap-1 mt-1 opacity-60 hover:opacity-100 transition-opacity">
-                          <button
-                            className="p-1 rounded hover:bg-olive-100  text-olive-400 hover:text-olive-600 transition-colors"
-                            onClick={(e) => { e.stopPropagation(); handleOpenEpicNotesPanel(epic); }}
-                            title="Notes"
-                          >
-                            <FileText size={12} />
-                          </button>
-                          <button
-                            className="p-1 rounded hover:bg-olive-100  text-olive-400 hover:text-olive-600 transition-colors disabled:opacity-40"
-                            disabled={!canManageActiveProject}
-                            onClick={(e) => { e.stopPropagation(); setEditingEpic(epic); }}
-                            title="Edit"
-                          >
-                            <Edit3 size={12} />
-                          </button>
-                          <div className="flex-1" />
-                          <button
-                            className="p-1 rounded hover:bg-red-50  text-olive-400 hover:text-red-500 transition-colors disabled:opacity-40"
-                            disabled={actionEpicId === epic.id || activeProject?.currentUserRole !== 'ADMIN'}
-                            onClick={(e) => { e.stopPropagation(); handleDeleteEpic(epic.id); }}
-                            title="Delete"
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-                          </div>
-                  );
-                      })}
-                  {activeProjectEpics.length === 0 && (
-                    <div className="py-10 text-center opacity-40">
-                      <EmptyState description="Create an epic to group your tasks." icon={List} title="No epics" />
-                    </div>
-                  )}
-                </div>
-                  )}
-              </div>
-
-              {/* Column 2 — Main Workspace (Tasks) */}
-              <div className={`flex flex-col flex-1 min-w-0 h-full rounded-2xl border border-olive-200/60  bg-white/50  backdrop-blur-xl shadow-md overflow-hidden transition-[opacity,filter,background-color] duration-500 ${!selectedEpicId ? 'opacity-40 grayscale-[0.5]' : ''}`}>
-                {selectedEpicId ? (
-                  <>
-                    <div className="flex items-center justify-between px-6 py-6 border-b border-olive-100  bg-linear-to-b from-white/50 to-transparent ">
-                      <div>
-                        <span className="text-[0.6rem] uppercase tracking-[0.2em] font-black text-olive-600  opacity-80">Execution</span>
-                        <h3 className="text-[1.1rem] font-bold font-sans text-olive-950  m-0 mt-1 tracking-tight">{tasksHeading}</h3>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-olive-500  text-[0.78rem] truncate max-w-[200px]">
-                            {epics.find(e => e.id === selectedEpicId)?.name}
-                          </span>
-                          <div className="w-1 h-1 rounded-full bg-olive-300 " />
-                          <span className="text-[0.7rem] font-bold text-olive-600 ">
-                            {activeEpicTasks.length} {activeEpicTasks.length === 1 ? 'Task' : 'Tasks'}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="flex bg-olive-100  p-1 rounded-lg border border-olive-200/50 ">
-                          <button
-                            onClick={() => setViewMode('list')}
-                            className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white  shadow-sm text-olive-600' : 'text-olive-400 hover:text-olive-600'}`}
-                            title="List View"
-                          >
-                            <List size={18} />
-                          </button>
-                          <button
-                            onClick={() => setViewMode('kanban')}
-                            className={`p-1.5 rounded-md transition-all ${viewMode === 'kanban' ? 'bg-white  shadow-sm text-olive-600' : 'text-olive-400 hover:text-olive-600'}`}
-                            title="Kanban Board"
-                          >
-                            <Layout size={18} />
-                          </button>
-                        </div>
-                        <button
-                          className="flex items-center justify-center w-10 h-10 bg-olive-900  hover:bg-olive-800  text-white rounded-lg shadow-sm transition-all duration-300 hover:scale-[1.03] active:scale-95 disabled:opacity-40"
-                          disabled={!canManageActiveProject}
-                          onClick={() => {
-                            const activeEpic = epics.find(e => e.id === selectedEpicId);
-                            setTaskModalProjectId(activeEpic?.projectId ?? activeProject?.id ?? null);
-                            setIsTaskCreateModalOpen(true);
-                          }}
-                          title="New Task"
-                          type="button"
-                        >
-                          <Plus size={20} />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="px-6 py-2 border-b border-olive-50 ">
-                      <div className="mb-3">
-                        <SlaDashboard />
-                      </div>
-                      <TaskFilterBar
-                        filters={taskFilters}
-                        onFilterChange={setTaskFilters}
-                        members={activeProjectMembers}
-                        onClear={handleClearFilters}
-                      />
-                    </div>
-
-                    {selectedTaskIds.length > 0 && (
-                      <div className="mx-6 my-2 p-3 bg-olive-50/50  border border-olive-100  rounded-xl flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold text-olive-900 ">
-                            {selectedTaskIds.length} tasks selected
-                          </span>
-                          <button
-                            onClick={() => setSelectedTaskIds([])}
-                            className="text-xs text-olive-600 hover:text-red-500 font-medium transition-colors underline decoration-dotted"
-                          >
-                            Deselect all
-                          </button>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs font-bold text-olive-500 uppercase tracking-widest">Assign to:</span>
-                          <AssigneeSelector
-                            projectId={activeProject?.id ?? null}
-                            selectedUserId=""
-                            onSelect={handleBulkAssign}
-                            className="w-48"
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="flex-1 overflow-auto custom-scrollbar">
-                      {viewMode === 'list' ? (
-                        <div className="p-6">
-                          <TaskList
-                            actionTaskId={actionTaskId}
-                            epics={epics}
-                            onDelete={(taskId) => {
-                              const task = tasks.find(t => t.id === taskId);
-                              void handleDeleteTask(taskId, task?.title ?? 'this task');
-                            }}
-                            onEditTask={(task) => setEditingTask(task)}
-                            onUpdateStatus={(task, status) => void handleUpdateTaskStatus(task, status)}
-                            onUpdateEpic={(task, epicId) => void handleUpdateTaskEpic(task, epicId)}
-                            projects={projects}
-                            tasks={activeEpicTasks}
-                            onSelectTask={(task) => setSelectedTaskId(task.id)}
-                            onCommentTask={handleOpenTaskComments}
-                            onToggleBlocked={handleToggleBlocked}
-                            selectedTaskId={selectedTaskId}
-                            selectedTaskIds={selectedTaskIds}
-                            onToggleSelection={handleToggleTaskSelection}
-                            loading={loading && tasks.length === 0}
-                          />
-                          {!loading && activeEpicTasks.length === 0 && (
-                            <div className="py-20 flex flex-col items-center opacity-30">
-                              <EmptyState description="No tasks scheduled for this epic." icon={Calendar} title="Empty Workspace" />
                             </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="h-full">
-                          <KanbanBoard
-                            tasks={activeEpicTasks}
-                            onUpdateStatus={async (taskId, status) => {
-                              const task = tasks.find(t => t.id === taskId);
-                              if (task) await handleUpdateTaskStatus(task, status, true);
-                            }}
-                            onSelectTask={(task) => setSelectedTaskId(task.id)}
-                            onCommentTask={handleOpenTaskComments}
-                            onToggleBlocked={handleToggleBlocked}
-                            onDeleteTask={(taskId) => {
-                              const task = tasks.find(t => t.id === taskId);
-                              void handleDeleteTask(taskId, task?.title ?? 'this task');
-                            }}
-                            onEditTask={(task) => setEditingTask(task)}
-                            loading={loading && tasks.length === 0}
-                          />
+
+                            {/* Action Toolbar — Contextual */}
+                            <div className="flex items-center gap-1 mt-1 opacity-60 hover:opacity-100 transition-opacity">
+                              <button
+                                className="p-1 rounded hover:bg-olive-100  text-olive-400 hover:text-olive-600 transition-colors"
+                                onClick={(e) => { e.stopPropagation(); handleOpenEpicNotesPanel(epic); }}
+                                title="Notes"
+                              >
+                                <FileText size={12} />
+                              </button>
+                              <button
+                                className="p-1 rounded hover:bg-olive-100  text-olive-400 hover:text-olive-600 transition-colors disabled:opacity-40"
+                                disabled={!canManageActiveProject}
+                                onClick={(e) => { e.stopPropagation(); setEditingEpic(epic); }}
+                                title="Edit"
+                              >
+                                <Edit3 size={12} />
+                              </button>
+                              <div className="flex-1" />
+                              <button
+                                className="p-1 rounded hover:bg-red-50  text-olive-400 hover:text-red-500 transition-colors disabled:opacity-40"
+                                disabled={actionEpicId === epic.id || activeProject?.currentUserRole !== 'ADMIN'}
+                                onClick={(e) => { e.stopPropagation(); handleDeleteEpic(epic.id); }}
+                                title="Delete"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {activeProjectEpics.length === 0 && (
+                        <div className="py-10 text-center opacity-40">
+                          <EmptyState description="Create an epic to group your tasks." icon={List} title="No epics" />
                         </div>
                       )}
                     </div>
-                  </>
-                ) : (
-                  <div className="flex-1 flex flex-col items-center justify-center p-10 text-center opacity-40">
-                    <div className="p-6 rounded-full bg-olive-100  mb-4">
-                      <Folder size={48} className="text-olive-400" />
-                    </div>
-                    <h4 className="text-lg font-bold text-olive-950 ">Select an Epic</h4>
-                    <p className="text-sm text-olive-500 max-w-xs mt-2">Choose an epic from the sidebar to view its execution plan and tasks.</p>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
 
-              {/* Column 3 — Task Inspector (Details) */}
-              {selectedTaskId && activeTask && (
-                <div className="flex flex-col w-[420px] shrink-0 h-full rounded-2xl border border-olive-200/60  bg-white/70  backdrop-blur-3xl shadow-2xl overflow-hidden animate-slideInRight duration-500 z-10">
-                  <div className="flex items-center justify-between px-6 pt-6 bg-linear-to-b from-white to-olive-50/30   border-b border-olive-100 ">
-                    <div>
-                      <span className="text-[0.6rem] uppercase tracking-[0.2em] font-black text-olive-600  opacity-80">Task Focus</span>
-                      <h3 className="text-[1.1rem] font-bold font-sans text-olive-950  m-0 mt-1 tracking-tight truncate max-w-[240px]">
-                        {activeTask.title}
-                      </h3>
-                    </div>
-                    <button
-                      onClick={() => setSelectedTaskId(null)}
-                      className="p-2 text-olive-400 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50 "
-                      title="Close details"
-                    >
-                      <X size={20} />
-                    </button>
-                  </div>
-                  <div className="flex gap-6 mt-6 px-6 border-b border-olive-100 ">
-                    <button
-                      onClick={() => setSidePanelTab('subtasks')}
-                      className={`pb-3 text-xs font-bold uppercase tracking-widest transition-all relative ${sidePanelTab === 'subtasks' ? 'text-olive-600' : 'text-olive-400 hover:text-olive-600'}`}
-                    >
-                      Subtasks
-                      {sidePanelTab === 'subtasks' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-olive-600 rounded-full" />}
-                    </button>
-                    <button
-                      onClick={() => setSidePanelTab('comments')}
-                      className={`pb-3 text-xs font-bold uppercase tracking-widest transition-all relative ${sidePanelTab === 'comments' ? 'text-olive-600' : 'text-olive-400 hover:text-olive-600'}`}
-                    >
-                      Comments
-                      {sidePanelTab === 'comments' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-olive-600 rounded-full" />}
-                    </button>
-                  </div>
-
-                  <div className="flex-1 overflow-y-auto bg-white  p-6 flex flex-col min-h-0">
-                    {sidePanelTab === 'subtasks' ? (
-                      <div className="flex flex-col gap-5">
-                        <div className="flex items-center justify-between">
-                          <h4 className="text-sm font-bold text-olive-500 uppercase tracking-widest">Subtasks</h4>
+                {/* Column 2 — Main Workspace (Tasks) */}
+                <div className={`flex flex-col flex-1 min-w-0 h-full rounded-md border border-olive-200/60  bg-white/50  backdrop-blur-xl shadow-md overflow-hidden transition-[opacity,filter,background-color] duration-500 ${!selectedEpicId ? 'opacity-40 grayscale-[0.5]' : ''}`}>
+                  {selectedEpicId ? (
+                    <>
+                      <div className="flex items-center justify-between px-6 py-6 border-b border-olive-100  bg-linear-to-b from-white/50 to-transparent ">
+                        <div>
+                          <span className="text-[0.6rem] uppercase tracking-[0.2em] font-black text-olive-600  opacity-80">Execution</span>
+                          <h3 className="text-[1.1rem] font-bold font-sans text-olive-950  m-0 mt-1 tracking-tight">{tasksHeading}</h3>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-olive-500  text-[0.78rem] truncate max-w-[200px]">
+                              {epics.find(e => e.id === selectedEpicId)?.name}
+                            </span>
+                            <div className="w-1 h-1 rounded-full bg-olive-300 " />
+                            <span className="text-[0.7rem] font-bold text-olive-600 ">
+                              {activeEpicTasks.length} {activeEpicTasks.length === 1 ? 'Task' : 'Tasks'}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="flex bg-olive-100  p-1 rounded-lg border border-olive-200/50 ">
+                            <button
+                              onClick={() => setViewMode('list')}
+                              className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white  shadow-sm text-olive-600' : 'text-olive-400 hover:text-olive-600'}`}
+                              title="List View"
+                            >
+                              <List size={18} />
+                            </button>
+                            <button
+                              onClick={() => setViewMode('kanban')}
+                              className={`p-1.5 rounded-md transition-all ${viewMode === 'kanban' ? 'bg-white  shadow-sm text-olive-600' : 'text-olive-400 hover:text-olive-600'}`}
+                              title="Kanban Board"
+                            >
+                              <Layout size={18} />
+                            </button>
+                          </div>
                           <button
-                            className="flex items-center justify-center w-8 h-8 bg-olive-600 hover:bg-olive-500 text-white rounded-lg shadow-sm transition-all transform active:scale-95 disabled:opacity-40"
-                            disabled={!activeTask.permissions.canUpdate}
-                            onClick={() => setSubtaskModalTask(activeTask)}
-                            title="New Subtask"
+                            className="flex items-center justify-center w-10 h-10 bg-olive-900  hover:bg-olive-800  text-white rounded-lg shadow-sm transition-all duration-300 hover:scale-[1.03] active:scale-95 disabled:opacity-40"
+                            disabled={!canManageActiveProject}
+                            onClick={() => {
+                              const activeEpic = epics.find(e => e.id === selectedEpicId);
+                              setTaskModalProjectId(activeEpic?.projectId ?? activeProject?.id ?? null);
+                              setIsTaskCreateModalOpen(true);
+                            }}
+                            title="New Task"
                             type="button"
                           >
-                            <Plus size={16} />
+                            <Plus size={20} />
                           </button>
                         </div>
-                        {activeTask.subtasks.map(subtask => {
-                          const isEditingThisSubtask = editingSubtask?.task.id === activeTask.id && editingSubtask?.subtask.id === subtask.id;
-                          return (
-                            <div key={subtask.id} className="group relative bg-white  border border-olive-200/70  rounded-xl p-5 transition-all duration-300 shadow-sm hover:-tranolive-y-[2px] hover:border-olive-300 ">
-                              <div className="flex items-start justify-between gap-6">
-                                <div className="flex items-start gap-4.5 flex-1 min-w-0">
-                                  <div className="mt-1 relative flex items-center justify-center">
-                                    <input
-                                      checked={subtask.status === 'DONE'}
-                                      className="peer w-6 h-6 accent-olive-600 cursor-pointer rounded-lg border-olive-300  transition-all shadow-sm"
-                                      disabled={!activeTask.permissions.canUpdate}
-                                      onChange={() => void handleUpdateSubtaskStatus(activeTask, subtask, subtask.status === 'DONE' ? 'TODO' : 'DONE')}
-                                      type="checkbox"
-                                    />
-                                  </div>
-                                  <div className="flex flex-col gap-1.5 min-w-0">
-                                    <div className="flex items-center gap-3 min-w-0">
-                                      <span className={`text-[1rem] transition-all duration-300 ${subtask.status === 'DONE'
-                                        ? 'text-olive-400  line-through'
-                                        : 'text-olive-900  font-semibold tracking-tight'
-                                        }`}>
-                                        {subtask.title}
-                                      </span>
-                                      {subtask.assignedToUser && (
-                                        <UserAvatar
-                                          name={subtask.assignedToUser.name}
-                                          email={subtask.assignedToUser.email}
-                                          size="sm"
-                                        />
-                                      )}
-                                    </div>
-                                    {!isEditingThisSubtask && subtask.description && (
-                                      <p className="text-olive-400  text-[0.82rem] leading-relaxed line-clamp-2 opacity-80">{subtask.description}</p>
-                                    )}
-                                    {!isEditingThisSubtask && subtask.note && (
-                                      <div className="flex items-center gap-2 mt-2 px-3 py-1.5 bg-olive-50  rounded-xl text-olive-500  text-[0.78rem] font-medium italic border border-olive-100 ">
-                                        <MessageSquare size={14} className="shrink-0 text-olive-400" />
-                                        <span className="truncate">{subtask.note}</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-
-                                <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-300 tranolive-x-2 group-hover:tranolive-x-0">
-                                  <button
-                                    className="p-2 rounded-xl hover:bg-olive-50  text-olive-400 hover:text-olive-600  transition-all disabled:opacity-40"
-                                    disabled={!activeTask.permissions.canUpdate}
-                                    onClick={() => setEditingSubtask(isEditingThisSubtask ? null : { task: activeTask, subtask })}
-                                    title={isEditingThisSubtask ? 'Cancel' : 'Edit Subtask'}
-                                    type="button"
-                                  >
-                                    <Edit3 size={16} />
-                                  </button>
-                                  <button
-                                    className="p-2 rounded-xl hover:bg-olive-50  text-olive-400 hover:text-olive-600  transition-all"
-                                    onClick={() => handleOpenSubtaskNote(activeTask, subtask)}
-                                    title="Subtask Note"
-                                    type="button"
-                                  >
-                                    <FileText size={16} />
-                                  </button>
-                                  <button
-                                    className="p-2 rounded-xl hover:bg-red-50  text-olive-400 hover:text-red-500  transition-all disabled:opacity-40"
-                                    disabled={!activeTask.permissions.canUpdate}
-                                    onClick={() => void handleDeleteSubtask(activeTask, subtask.id)}
-                                    title="Delete Subtask"
-                                    type="button"
-                                  >
-                                    <Trash2 size={16} />
-                                  </button>
-                                </div>
-                              </div>
-
-                              {/* Inline subtask edit form */}
-                              {isEditingThisSubtask && (
-                                <div className="mt-5 pt-5 border-t border-olive-100 ">
-                                  <SubtaskInlineEdit
-                                    subtask={subtask}
-                                    onSave={(patch) => void handleUpdateSubtask(activeTask, subtask, patch)}
-                                    onCancel={() => setEditingSubtask(null)}
-                                    isSaving={actionTaskId === activeTask.id}
-                                    members={activeProjectMembers}
-                                  />
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
                       </div>
-                    ) : (
-                      <div className="flex-1 min-h-0 flex flex-col">
-                        <CommentSection taskId={activeTask.id} />
-                      </div>
-                    )}
-                    {/* Task detail footer */}
-                    <div className="mt-8 mb-4">
-                      <div className="bg-white  border border-olive-200/70  rounded-xl p-8 shadow-sm relative overflow-hidden group/detail">
-                        {/* Decorative Glow */}
-                        <div className="absolute -top-24 -right-24 w-48 h-48 bg-olive-500/5 rounded-full blur-3xl group-hover/detail:bg-olive-500/10 transition-all duration-700" />
 
-                        <h4 className="text-[1.05rem] font-bold font-sans text-olive-900  m-0 mb-6 flex items-center gap-3">
-                          <div className="p-2.5 bg-olive-50  rounded-lg">
-                            <Layout size={20} className="text-olive-600 " />
+                      <div className="px-6 py-2 border-b border-olive-50 ">
+                        <div className="mb-3">
+                          <SlaDashboard />
+                        </div>
+                        <TaskFilterBar
+                          filters={taskFilters}
+                          onFilterChange={setTaskFilters}
+                          members={activeProjectMembers}
+                          onClear={handleClearFilters}
+                        />
+                      </div>
+
+                      {selectedTaskIds.length > 0 && (
+                        <div className="mx-6 my-2 p-3 bg-olive-50/50  border border-olive-100  rounded-xl flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-olive-900 ">
+                              {selectedTaskIds.length} tasks selected
+                            </span>
+                            <button
+                              onClick={() => setSelectedTaskIds([])}
+                              className="text-xs text-olive-600 hover:text-red-500 font-medium transition-colors underline decoration-dotted"
+                            >
+                              Deselect all
+                            </button>
                           </div>
-                          Task Properties
-                        </h4>
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs font-bold text-olive-500 uppercase tracking-widest">Assign to:</span>
+                            <AssigneeSelector
+                              projectId={activeProject?.id ?? null}
+                              selectedUserId=""
+                              onSelect={handleBulkAssign}
+                              className="w-48"
+                            />
+                          </div>
+                        </div>
+                      )}
 
-                        {activeTask.description && (
-                          <div className="relative">
-                            <p className="text-olive-600  text-[0.92rem] leading-relaxed mb-8 pl-4 border-l-2 border-olive-100  italic">{activeTask.description}</p>
+                      <div className="flex-1 overflow-auto custom-scrollbar">
+                        {viewMode === 'list' ? (
+                          <div className="p-6">
+                            <TaskList
+                              actionTaskId={actionTaskId}
+                              epics={epics}
+                              onDelete={(taskId) => {
+                                const task = tasks.find(t => t.id === taskId);
+                                void handleDeleteTask(taskId, task?.title ?? 'this task');
+                              }}
+                              onEditTask={(task) => setEditingTask(task)}
+                              onUpdateStatus={(task, status) => void handleUpdateTaskStatus(task, status)}
+                              onUpdateEpic={(task, epicId) => void handleUpdateTaskEpic(task, epicId)}
+                              projects={projects}
+                              tasks={activeEpicTasks}
+                              onSelectTask={(task) => setSelectedTaskId(task.id)}
+                              onCommentTask={handleOpenTaskComments}
+                              onToggleBlocked={handleToggleBlocked}
+                              selectedTaskId={selectedTaskId}
+                              selectedTaskIds={selectedTaskIds}
+                              onToggleSelection={handleToggleTaskSelection}
+                              loading={loading && tasks.length === 0}
+                            />
+                            {!loading && activeEpicTasks.length === 0 && (
+                              <div className="py-20 flex flex-col items-center opacity-30">
+                                <EmptyState description="No tasks scheduled for this epic." icon={Calendar} title="Empty Workspace" />
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="h-full">
+                            <KanbanBoard
+                              tasks={activeEpicTasks}
+                              onUpdateStatus={async (taskId, status) => {
+                                const task = tasks.find(t => t.id === taskId);
+                                if (task) await handleUpdateTaskStatus(task, status, true);
+                              }}
+                              onSelectTask={(task) => setSelectedTaskId(task.id)}
+                              onCommentTask={handleOpenTaskComments}
+                              onToggleBlocked={handleToggleBlocked}
+                              onDeleteTask={(taskId) => {
+                                const task = tasks.find(t => t.id === taskId);
+                                void handleDeleteTask(taskId, task?.title ?? 'this task');
+                              }}
+                              onEditTask={(task) => setEditingTask(task)}
+                              loading={loading && tasks.length === 0}
+                            />
                           </div>
                         )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center p-10 text-center opacity-40">
+                      <div className="p-6 rounded-full bg-olive-100  mb-4">
+                        <Folder size={48} className="text-olive-400" />
+                      </div>
+                      <h4 className="text-lg font-bold text-olive-950 ">Select an Epic</h4>
+                      <p className="text-sm text-olive-500 max-w-xs mt-2">Choose an epic from the sidebar to view its execution plan and tasks.</p>
+                    </div>
+                  )}
+                </div>
 
-                        <div className="flex flex-wrap items-center gap-4 mb-10">
-                          <div className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-[0.72rem] font-black uppercase tracking-wider transition-all duration-500 shadow-sm ${statusPillCls[activeTask.status] ?? 'bg-olive-100 text-olive-600 border-olive-200'}`}>
-                            <CheckCircle size={12} />
-                            {activeTask.status.replace('_', ' ')}
+                {/* Column 3 — Task Inspector (Details) */}
+                {selectedTaskId && activeTask && (
+                  <div className="flex flex-col w-[420px] shrink-0 h-full rounded-md border border-olive-200/60  bg-white/70  backdrop-blur-md shadow-sm overflow-hidden animate-slideInRight duration-500 z-10">
+                    <div className="flex items-center justify-between px-6 pt-6 bg-linear-to-b from-white to-olive-50/30   border-b border-olive-100 ">
+                      <div>
+                        <span className="text-[0.6rem] uppercase tracking-[0.2em] font-black text-olive-600  opacity-80">Task Focus</span>
+                        <h3 className="text-[1.1rem] font-bold font-sans text-olive-950  m-0 mt-1 tracking-tight truncate max-w-[240px]">
+                          {activeTask.title}
+                        </h3>
+                      </div>
+                      <button
+                        onClick={() => setSelectedTaskId(null)}
+                        className="p-2 text-olive-400 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50 "
+                        title="Close details"
+                      >
+                        <X size={20} />
+                      </button>
+                    </div>
+                    <div className="flex gap-6 mt-6 px-6 border-b border-olive-100 ">
+                      <button
+                        onClick={() => setSidePanelTab('subtasks')}
+                        className={`pb-3 text-xs font-bold uppercase tracking-widest transition-all relative ${sidePanelTab === 'subtasks' ? 'text-olive-600' : 'text-olive-400 hover:text-olive-600'}`}
+                      >
+                        Subtasks
+                        {sidePanelTab === 'subtasks' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-olive-600 rounded-full" />}
+                      </button>
+                      <button
+                        onClick={() => setSidePanelTab('comments')}
+                        className={`pb-3 text-xs font-bold uppercase tracking-widest transition-all relative ${sidePanelTab === 'comments' ? 'text-olive-600' : 'text-olive-400 hover:text-olive-600'}`}
+                      >
+                        Comments
+                        {sidePanelTab === 'comments' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-olive-600 rounded-full" />}
+                      </button>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto bg-white  p-6 flex flex-col min-h-0">
+                      {sidePanelTab === 'subtasks' ? (
+                        <div className="flex flex-col gap-5">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-bold text-olive-500 uppercase tracking-widest">Subtasks</h4>
+                            <button
+                              className="flex items-center justify-center w-8 h-8 bg-olive-600 hover:bg-olive-500 text-white rounded-lg shadow-sm transition-all transform active:scale-95 disabled:opacity-40"
+                              disabled={!activeTask.permissions.canUpdate}
+                              onClick={() => setSubtaskModalTask(activeTask)}
+                              title="New Subtask"
+                              type="button"
+                            >
+                              <Plus size={16} />
+                            </button>
                           </div>
-                          <SourceBadge source={activeTask.source} />
-                          <SlaIndicator task={activeTask} compact />
+                          {activeTask.subtasks.map(subtask => {
+                            const isEditingThisSubtask = editingSubtask?.task.id === activeTask.id && editingSubtask?.subtask.id === subtask.id;
+                            return (
+                              <div key={subtask.id} className="group relative bg-white  border border-olive-200/70  rounded-xl p-5 transition-all duration-300 shadow-sm hover:-tranolive-y-[2px] hover:border-olive-300 ">
+                                <div className="flex items-start justify-between gap-6">
+                                  <div className="flex items-start gap-4.5 flex-1 min-w-0">
+                                    <div className="mt-1 relative flex items-center justify-center">
+                                      <input
+                                        checked={subtask.status === 'DONE'}
+                                        className="peer w-6 h-6 accent-olive-600 cursor-pointer rounded-lg border-olive-300  transition-all shadow-sm"
+                                        disabled={!activeTask.permissions.canUpdate}
+                                        onChange={() => void handleUpdateSubtaskStatus(activeTask, subtask, subtask.status === 'DONE' ? 'TODO' : 'DONE')}
+                                        type="checkbox"
+                                      />
+                                    </div>
+                                    <div className="flex flex-col gap-1.5 min-w-0">
+                                      <div className="flex items-center gap-3 min-w-0">
+                                        <span className={`text-[1rem] transition-all duration-300 ${subtask.status === 'DONE'
+                                          ? 'text-olive-400  line-through'
+                                          : 'text-olive-900  font-semibold tracking-tight'
+                                          }`}>
+                                          {subtask.title}
+                                        </span>
+                                        {subtask.assignedToUser && (
+                                          <UserAvatar
+                                            name={subtask.assignedToUser.name}
+                                            email={subtask.assignedToUser.email}
+                                            size="sm"
+                                          />
+                                        )}
+                                      </div>
+                                      {!isEditingThisSubtask && subtask.description && (
+                                        <p className="text-olive-400  text-[0.82rem] leading-relaxed line-clamp-2 opacity-80">{subtask.description}</p>
+                                      )}
+                                      {!isEditingThisSubtask && subtask.note && (
+                                        <div className="flex items-center gap-2 mt-2 px-3 py-1.5 bg-olive-50  rounded-xl text-olive-500  text-[0.78rem] font-medium italic border border-olive-100 ">
+                                          <MessageSquare size={14} className="shrink-0 text-olive-400" />
+                                          <span className="truncate">{subtask.note}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
 
-                          <button
-                            type="button"
-                            onClick={() => handleToggleBlocked(activeTask)}
-                            className={[
-                              'flex items-center gap-2 px-4 py-2 rounded-lg border text-[0.72rem] font-black uppercase tracking-wider transition-all shadow-sm',
-                              activeTask.isBlocked
-                                ? 'bg-red-500 border-red-600 text-white'
-                                : 'bg-white border-olive-200 text-red-500 hover:bg-red-50'
-                            ].join(' ')}
-                          >
-                            <AlertCircle size={12} />
-                            {activeTask.isBlocked ? 'Unblock Task' : 'Block Task'}
-                          </button>
+                                  <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-300 tranolive-x-2 group-hover:tranolive-x-0">
+                                    <button
+                                      className="p-2 rounded-xl hover:bg-olive-50  text-olive-400 hover:text-olive-600  transition-all disabled:opacity-40"
+                                      disabled={!activeTask.permissions.canUpdate}
+                                      onClick={() => setEditingSubtask(isEditingThisSubtask ? null : { task: activeTask, subtask })}
+                                      title={isEditingThisSubtask ? 'Cancel' : 'Edit Subtask'}
+                                      type="button"
+                                    >
+                                      <Edit3 size={16} />
+                                    </button>
+                                    <button
+                                      className="p-2 rounded-xl hover:bg-olive-50  text-olive-400 hover:text-olive-600  transition-all"
+                                      onClick={() => handleOpenSubtaskNote(activeTask, subtask)}
+                                      title="Subtask Note"
+                                      type="button"
+                                    >
+                                      <FileText size={16} />
+                                    </button>
+                                    <button
+                                      className="p-2 rounded-xl hover:bg-red-50  text-olive-400 hover:text-red-500  transition-all disabled:opacity-40"
+                                      disabled={!activeTask.permissions.canUpdate}
+                                      onClick={() => void handleDeleteSubtask(activeTask, subtask.id)}
+                                      title="Delete Subtask"
+                                      type="button"
+                                    >
+                                      <Trash2 size={16} />
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* Inline subtask edit form */}
+                                {isEditingThisSubtask && (
+                                  <div className="mt-5 pt-5 border-t border-olive-100 ">
+                                    <SubtaskInlineEdit
+                                      subtask={subtask}
+                                      onSave={(patch) => void handleUpdateSubtask(activeTask, subtask, patch)}
+                                      onCancel={() => setEditingSubtask(null)}
+                                      isSaving={actionTaskId === activeTask.id}
+                                      members={activeProjectMembers}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
+                      ) : (
+                        <div className="flex-1 min-h-0 flex flex-col">
+                          <CommentSection taskId={activeTask.id} />
+                        </div>
+                      )}
+                      {/* Task detail footer */}
+                      <div className="mt-8 mb-4">
+                        <div className="bg-white  border border-olive-200/70  rounded-xl p-8 shadow-sm relative overflow-hidden group/detail">
+                          {/* Decorative Glow */}
+                          <div className="absolute -top-24 -right-24 w-48 h-48 bg-olive-500/5 rounded-full blur-3xl group-hover/detail:bg-olive-500/10 transition-all duration-700" />
 
-                        <div className="grid gap-3 mb-8 p-4 rounded-xl bg-olive-50 border border-olive-200">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="font-bold text-olive-700">Response due</span>
-                            <span className="text-olive-600">{activeTask.slaResponseDueAt ? new Date(activeTask.slaResponseDueAt).toLocaleString() : 'Not set'}</span>
-                          </div>
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="font-bold text-olive-700">Resolution due</span>
-                            <span className="text-olive-600">{activeTask.slaResolutionDueAt ? new Date(activeTask.slaResolutionDueAt).toLocaleString() : 'Not set'}</span>
-                          </div>
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="font-bold text-olive-700">First response</span>
-                            <span className="text-olive-600">{activeTask.firstResponseAt ? new Date(activeTask.firstResponseAt).toLocaleString() : 'Pending'}</span>
-                          </div>
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="font-bold text-olive-700">Completed</span>
-                            <span className="text-olive-600">{activeTask.completedAt ? new Date(activeTask.completedAt).toLocaleString() : 'Pending'}</span>
-                          </div>
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="font-bold text-olive-700">Paused</span>
-                            <span className="text-olive-600">{activeTask.slaPausedAt ? new Date(activeTask.slaPausedAt).toLocaleString() : 'No'}</span>
-                          </div>
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="font-bold text-olive-700">Dynamic priority</span>
-                            <span className="text-olive-600">{activeTask.dynamicPriority} / {activeTask.dynamicPriorityScore}</span>
-                          </div>
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="font-bold text-olive-700">Impact</span>
-                            <span className="text-olive-600">{activeTask.impactScore} impact, {activeTask.dependencyWeight} downstream</span>
-                          </div>
-                          {activeTask.priorityEscalationReason && (
-                            <div className="text-sm">
-                              <span className="font-bold text-olive-700">Escalation reason</span>
-                              <p className="m-0 mt-1 text-olive-600">{activeTask.priorityEscalationReason}</p>
+                          <h4 className="text-[1.05rem] font-bold font-sans text-olive-900  m-0 mb-6 flex items-center gap-3">
+                            <div className="p-2.5 bg-olive-50  rounded-lg">
+                              <Layout size={20} className="text-olive-600 " />
+                            </div>
+                            Task Properties
+                          </h4>
+
+                          {activeTask.description && (
+                            <div className="relative">
+                              <p className="text-olive-600  text-[0.92rem] leading-relaxed mb-8 pl-4 border-l-2 border-olive-100  italic">{activeTask.description}</p>
                             </div>
                           )}
 
-                          <div className="pt-2">
+                          <div className="flex flex-wrap items-center gap-4 mb-10">
+                            <div className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-[0.72rem] font-black uppercase tracking-wider transition-all duration-500 shadow-sm ${statusPillCls[activeTask.status] ?? 'bg-olive-100 text-olive-600 border-olive-200'}`}>
+                              <CheckCircle size={12} />
+                              {activeTask.status.replace('_', ' ')}
+                            </div>
+                            <SourceBadge source={activeTask.source} />
+                            <SlaIndicator task={activeTask} compact />
+
                             <button
                               type="button"
-                              onClick={() => void handleEvaluatePriority(activeTask.id)}
-                              disabled={isEvaluatingPriority}
-                              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white border border-olive-200 text-olive-700 rounded-lg text-sm font-bold hover:bg-olive-50 transition-colors disabled:opacity-50"
+                              onClick={() => handleToggleBlocked(activeTask)}
+                              className={[
+                                'flex items-center gap-2 px-4 py-2 rounded-lg border text-[0.72rem] font-black uppercase tracking-wider transition-all shadow-sm',
+                                activeTask.isBlocked
+                                  ? 'bg-red-500 border-red-600 text-white'
+                                  : 'bg-white border-olive-200 text-red-500 hover:bg-red-50'
+                              ].join(' ')}
                             >
-                              <Zap className="w-4 h-4 text-amber-500" />
-                              {isEvaluatingPriority ? 'Evaluating...' : 'Evaluate Dynamic Priority'}
+                              <AlertCircle size={12} />
+                              {activeTask.isBlocked ? 'Unblock Task' : 'Block Task'}
                             </button>
                           </div>
+
+                          <div className="grid gap-3 mb-8 p-4 rounded-xl bg-olive-50 border border-olive-200">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="font-bold text-olive-700">Response due</span>
+                              <span className="text-olive-600">{activeTask.slaResponseDueAt ? new Date(activeTask.slaResponseDueAt).toLocaleString() : 'Not set'}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="font-bold text-olive-700">Resolution due</span>
+                              <span className="text-olive-600">{activeTask.slaResolutionDueAt ? new Date(activeTask.slaResolutionDueAt).toLocaleString() : 'Not set'}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="font-bold text-olive-700">First response</span>
+                              <span className="text-olive-600">{activeTask.firstResponseAt ? new Date(activeTask.firstResponseAt).toLocaleString() : 'Pending'}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="font-bold text-olive-700">Completed</span>
+                              <span className="text-olive-600">{activeTask.completedAt ? new Date(activeTask.completedAt).toLocaleString() : 'Pending'}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="font-bold text-olive-700">Paused</span>
+                              <span className="text-olive-600">{activeTask.slaPausedAt ? new Date(activeTask.slaPausedAt).toLocaleString() : 'No'}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="font-bold text-olive-700">Dynamic priority</span>
+                              <span className="text-olive-600">{activeTask.dynamicPriority} / {activeTask.dynamicPriorityScore}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="font-bold text-olive-700">Impact</span>
+                              <span className="text-olive-600">{activeTask.impactScore} impact, {activeTask.dependencyWeight} downstream</span>
+                            </div>
+                            {activeTask.priorityEscalationReason && (
+                              <div className="text-sm">
+                                <span className="font-bold text-olive-700">Escalation reason</span>
+                                <p className="m-0 mt-1 text-olive-600">{activeTask.priorityEscalationReason}</p>
+                              </div>
+                            )}
+
+                            <div className="pt-2">
+                              <button
+                                type="button"
+                                onClick={() => void handleEvaluatePriority(activeTask.id)}
+                                disabled={isEvaluatingPriority}
+                                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white border border-olive-200 text-olive-700 rounded-lg text-sm font-bold hover:bg-olive-50 transition-colors disabled:opacity-50"
+                              >
+                                <Zap className="w-4 h-4 text-amber-500" />
+                                {isEvaluatingPriority ? 'Evaluating...' : 'Evaluate Dynamic Priority'}
+                              </button>
+                            </div>
+                          </div>
+
+                          <button
+                            className="w-full group/btn relative flex items-center justify-center gap-3 px-6 py-4 bg-olive-900  text-white  rounded-xl font-bold text-[0.95rem] shadow-sm shadow-olive-900/20  hover:scale-[1.01] active:scale-[0.98] transition-all duration-300 overflow-hidden"
+                            onClick={() => handleOpenTaskNote(activeTask)}
+                            type="button"
+                          >
+                            <NotebookPen size={20} className="transition-transform group-hover/btn:rotate-12" />
+                            Manage Work Notes
+
+                            {/* Inner Glow Effect */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -tranolive-x-full group-hover/btn:tranolive-x-full transition-transform duration-1000" />
+                          </button>
+
+                          <ApprovalSection
+                            projectId={activeTask.projectId || ''}
+                            taskId={activeTask.id}
+                            members={activeProjectMembers}
+                          />
                         </div>
-
-                        <button
-                          className="w-full group/btn relative flex items-center justify-center gap-3 px-6 py-4 bg-olive-900  text-white  rounded-xl font-bold text-[0.95rem] shadow-sm shadow-olive-900/20  hover:scale-[1.01] active:scale-[0.98] transition-all duration-300 overflow-hidden"
-                          onClick={() => handleOpenTaskNote(activeTask)}
-                          type="button"
-                        >
-                          <NotebookPen size={20} className="transition-transform group-hover/btn:rotate-12" />
-                          Manage Work Notes
-
-                          {/* Inner Glow Effect */}
-                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -tranolive-x-full group-hover/btn:tranolive-x-full transition-transform duration-1000" />
-                        </button>
-
-                        <ApprovalSection
-                          projectId={activeTask.projectId || ''}
-                          taskId={activeTask.id}
-                          members={activeProjectMembers}
-                        />
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
             </div>
           )}
-    </main>
+        </main>
       </div >
 
-    {/* Modals & Overlays */ }
-  {
-    isProjectCreateModalOpen ? (
-      <Modal onClose={() => setIsProjectCreateModalOpen(false)} title="Create Project">
-        <ProjectForm onSubmit={handleCreateProject} />
-      </Modal>
-    ) : null
-  }
-  {
-    isAiPlanningWorkspaceOpen && activeProject ? (
-      <Modal
-        bodyClassName="p-6"
-        maxWidth="max-w-[1100px]"
-        onClose={() => setIsAiPlanningWorkspaceOpen(false)}
-        title={`AI Planning Workspace - ${activeProject.name}`}
-      >
-        <AiPlanningWorkspace
-          onArtifactsCreated={() => void loadDashboard()}
-          project={activeProject}
-          onGoToSettings={() => {
-            setIsAiPlanningWorkspaceOpen(false);
-            setActiveView('settings');
-          }}
-        />
-      </Modal>
-    ) : null
-  }
-  {
-    isChatPanelOpen && activeProject ? (
-      <>
-        {/* Chat Drawer Backdrop */}
-        <div
-          className="fixed inset-0 bg-olive-900/20 backdrop-blur-[2px] z-[2000] animate-in fade-in duration-300"
-          onClick={() => setIsChatPanelOpen(false)}
-        />
-        {/* Chat Drawer Container */}
-        <div className="fixed top-0 right-0 h-full w-full md:w-1/2 lg:max-w-1/2 bg-white  z-[5001] shadow-2xl animate-in slide-in-from-right duration-500 overflow-hidden border-l border-olive-200  flex flex-col">
-          <ChatPanel
-            project={activeProject}
-            members={activeProjectMembers}
-            isOpen={isChatPanelOpen}
-            onClose={() => setIsChatPanelOpen(false)}
-          />
-        </div>
-      </>
-    ) : null
-  }
-  {
-    editingProject ? (
-      <Modal onClose={() => setEditingProject(null)} title="Update Project">
-        <ProjectForm initialDescription={editingProject.description} initialName={editingProject.name} onSubmit={handleUpdateProject} submitLabel="Update project" />
-      </Modal>
-    ) : null
-  }
-  {
-    isEpicCreateModalOpen && activeProject ? (
-      <Modal onClose={() => setIsEpicCreateModalOpen(false)} title={`Create Epic for ${activeProject.name}`}>
-        <EpicForm onSubmit={handleCreateEpic} submitLabel="Create epic" />
-      </Modal>
-    ) : null
-  }
-  {
-    editingEpic && activeProject ? (
-      <Modal onClose={() => setEditingEpic(null)} title={`Update Epic for ${activeProject.name}`}>
-        <EpicForm
-          initialDescription={editingEpic.description}
-          initialName={editingEpic.name}
-          initialStatus={editingEpic.status}
-          onSubmit={handleUpdateEpic}
-          submitLabel="Update epic"
-        />
-      </Modal>
-    ) : null
-  }
-  {
-    isTaskCreateModalOpen ? (
-      <Modal onClose={() => setIsTaskCreateModalOpen(false)} title="Create Task">
-        <AddTaskForm
-          epics={epics}
-          initialProjectId={taskModalProjectId}
-          initialEpicId={selectedEpicId}
-          onCreateTask={handleCreateTask}
-          projects={projects}
-        />
-      </Modal>
-    ) : null
-  }
-  {
-    isProjectTeamModalOpen && activeProject ? (
-      <Modal
-        bodyClassName="!p-0"
-        onClose={() => setIsProjectTeamModalOpen(false)}
-        panelClassName="!max-w-[820px]"
-        title={`Team for ${activeProject.name}`}
-      >
-        <ProjectTeamPanel
-          canManageTeam={canManageTeam}
-          currentUserId={user?.id ?? null}
-          isMutating={teamMutationLoading}
-          members={activeProjectMembers}
-          onAddMember={handleAddProjectMember}
-          onRemoveMember={handleRemoveProjectMember}
-          onLeaveProject={handleLeaveProject}
-          onSearchChange={(value) => { void handleProjectMemberSearch(value); }}
-          searchResults={memberSearchResults}
-          searchTerm={memberSearchTerm}
-        />
-      </Modal>
-    ) : null
-  }
-  {
-    isActivityHistoryOpen && activeProject ? (
-      <Modal
-        bodyClassName="!p-0"
-        onClose={() => setIsActivityHistoryOpen(false)}
-        panelClassName="!max-w-[720px]"
-        title={`Activity History — ${activeProject.name}`}
-      >
-        <ActivityHistoryPanel
-          projectId={activeProject.id}
-          projectName={activeProject.name}
-        />
-      </Modal>
-    ) : null
-  }
-
-  {
-    isProjectNotesModalOpen && activeProjectForNotes ? (
-      <Modal onClose={() => setIsProjectNotesModalOpen(false)} title={activeProjectNotesModalTitle}>
-        <ProjectNotes
-          actionNoteId={actionNoteId}
-          heading="Project notes"
-          loading={activeProjectForNotes != null && notesLoadingKey === `project:${activeProjectForNotes.id}`}
-          notes={activeProjectNotes}
-          onCreateNote={activeProjectForNotes.currentUserRole === 'ADMIN'
-            ? () => activeProjectForNotes && handleOpenCreateProjectNote(activeProjectForNotes)
-            : undefined}
-          onDeleteNote={activeProjectForNotes.currentUserRole === 'ADMIN'
-            ? (note) => void handleDeleteNote(note)
-            : undefined}
-          onOpenNote={(note) => void handleOpenExistingNote(note)}
-        />
-      </Modal>
-    ) : null
-  }
-  {
-    isEpicNotesModalOpen && activeEpicForNotes ? (
-      <Modal onClose={() => setIsEpicNotesModalOpen(false)} title={activeEpicNotesModalTitle}>
-        <ProjectNotes
-          actionNoteId={actionNoteId}
-          createLabel="Create epic note"
-          emptyDescription="Create the first note to capture decisions, references, or follow-ups for this epic."
-          emptyTitle="No epic notes yet"
-          heading="Epic notes"
-          loading={notesLoadingKey === `epic:${activeEpicForNotes.id}`}
-          notes={activeEpicNotes}
-          onCreateNote={projects.find((project) => project.id === activeEpicForNotes.projectId)?.currentUserRole === 'ADMIN'
-            ? () => handleOpenCreateEpicNote(activeEpicForNotes)
-            : undefined}
-          onDeleteNote={projects.find((project) => project.id === activeEpicForNotes.projectId)?.currentUserRole === 'ADMIN'
-            ? (note) => void handleDeleteNote(note)
-            : undefined}
-          onOpenNote={(note) => void handleOpenExistingNote(note)}
-        />
-      </Modal>
-    ) : null
-  }
-  {
-    editingTask ? (
-      <Modal onClose={() => setEditingTask(null)} title={`Edit Task: ${editingTask.title}`}>
-        <EditTaskForm
-          epics={epics}
-          allTasks={tasks}
-          onSubmit={handleUpdateTask}
-          projects={projects}
-          task={editingTask}
-        />
-      </Modal>
-    ) : null
-  }
-  {
-    subtaskModalTask ? (
-      <Modal
-        onClose={() => setSubtaskModalTask(null)}
-        title={`Create Subtask for ${subtaskModalTask.title}`}
-      >
-        <SubtaskForm members={activeProjectMembers} onSubmit={handleCreateSubtask} />
-      </Modal>
-    ) : null
-  }
-  {
-    activeNoteEditor ? (
-      <NoteModal
-        allowAppend={(activeNoteEditor.kind === 'project' || activeNoteEditor.kind === 'epic') && activeNoteEditor.note != null}
-        allowDelete={
-          activeNoteEditor.kind === 'project' || activeNoteEditor.kind === 'epic'
-            ? activeNoteEditor.note != null
-            : activeNoteEditor.kind === 'task'
-              ? Boolean(activeNoteEditor.task.note?.trim())
-              : Boolean(activeNoteEditor.subtask.note?.trim())
-        }
-        deleteLabel={
-          activeNoteEditor.kind === 'project'
-            ? 'Delete Note'
-            : activeNoteEditor.kind === 'epic'
-              ? 'Delete Epic Note'
-              : activeNoteEditor.kind === 'task'
-                ? 'Delete Task Note'
-                : 'Delete Sub-task Note'
-        }
-        entityLabel={
-          activeNoteEditor.kind === 'project'
-            ? activeNoteEditor.projectName
-            : activeNoteEditor.kind === 'epic'
-              ? activeNoteEditor.epicName
-              : activeNoteEditor.kind === 'task'
-                ? activeNoteEditor.task.title
-                : `${activeNoteEditor.task.title} / ${activeNoteEditor.subtask.title}`
-        }
-        modalTitle={
-          activeNoteEditor.kind === 'project'
-            ? activeNoteEditor.note
-              ? 'Edit Project Note'
-              : 'Create Project Note'
-            : activeNoteEditor.kind === 'epic'
-              ? activeNoteEditor.note
-                ? 'Edit Epic Note'
-                : 'Create Epic Note'
-              : activeNoteEditor.kind === 'task'
-                ? activeNoteEditor.task.note?.trim()
-                  ? 'Edit Task Note'
-                  : 'Create Task Note'
-                : activeNoteEditor.subtask.note?.trim()
-                  ? 'Edit Sub-task Note'
-                  : 'Create Sub-task Note'
-        }
-        note={
-          activeNoteEditor.kind === 'project'
-            ? activeNoteEditor.note
-            : activeNoteEditor.kind === 'epic'
-              ? activeNoteEditor.note
-              : activeNoteEditor.kind === 'task'
-                ? { title: '', content: activeNoteEditor.task.note ?? '' }
-                : { title: '', content: activeNoteEditor.subtask.note ?? '' }
-        }
-        onClose={() => {
-          setActiveNoteEditor(null);
-        }}
-        onDelete={
-          activeNoteEditor.kind === 'project' || activeNoteEditor.kind === 'epic'
-            ? activeNoteEditor.note
-              ? () => void handleDeleteNote(activeNoteEditor.note as Note)
-              : undefined
-            : () => void handleDeleteInlineNote()
-        }
-        onSave={handleSaveNote}
-        showTitle={activeNoteEditor.kind === 'project' || activeNoteEditor.kind === 'epic'}
-        titlePlaceholder="Sprint recap"
-      />
-    ) : null
-  }
-  {priorityEvaluationModalOpen && priorityEvaluationResult && (
-    <Modal onClose={() => setPriorityEvaluationModalOpen(false)} title="Priority Evaluation">
-      <div className="grid gap-4">
-        <div className="grid gap-2 text-sm">
-          <div className="flex justify-between items-center py-2 border-b border-olive-100">
-            <span className="font-bold text-olive-700">Base Priority</span>
-            <span className="text-olive-900 font-medium">{priorityEvaluationResult.basePriority}</span>
-          </div>
-          <div className="flex justify-between items-center py-2 border-b border-olive-100">
-            <span className="font-bold text-olive-700">Dynamic Priority</span>
-            <span className="text-olive-900 font-bold px-2 py-0.5 bg-olive-100 rounded">{priorityEvaluationResult.dynamicPriority}</span>
-          </div>
-          <div className="flex justify-between items-center py-2 border-b border-olive-100">
-            <span className="font-bold text-olive-700">Dynamic Score</span>
-            <span className="text-olive-900">{priorityEvaluationResult.dynamicPriorityScore}</span>
-          </div>
-          <div className="flex justify-between items-center py-2 border-b border-olive-100">
-            <span className="font-bold text-olive-700">Urgency / Impact</span>
-            <span className="text-olive-900">{priorityEvaluationResult.urgencyScore} / {priorityEvaluationResult.impactScore}</span>
-          </div>
-          <div className="flex justify-between items-center py-2 border-b border-olive-100">
-            <span className="font-bold text-olive-700">Downstream Impact</span>
-            <span className="text-olive-900">{priorityEvaluationResult.downstreamTaskCount} tasks ({priorityEvaluationResult.dependencyWeight} weight)</span>
-          </div>
-        </div>
-        <div className="bg-olive-50 p-3 rounded-lg border border-olive-200">
-          <h4 className="text-xs font-bold text-olive-800 uppercase tracking-wider mb-1">Reasoning</h4>
-          <p className="text-sm text-olive-600 m-0">{priorityEvaluationResult.reason}</p>
-        </div>
-        <div className="flex justify-end pt-2">
-          <button
-            className="px-4 py-2 bg-olive-900 text-white rounded-lg text-sm font-bold hover:bg-olive-800"
-            onClick={() => setPriorityEvaluationModalOpen(false)}
+      {/* Modals & Overlays */}
+      {
+        isProjectCreateModalOpen ? (
+          <Modal onClose={() => setIsProjectCreateModalOpen(false)} title="Create Project">
+            <ProjectForm onSubmit={handleCreateProject} />
+          </Modal>
+        ) : null
+      }
+      {
+        isAiPlanningWorkspaceOpen && activeProject ? (
+          <Modal
+            bodyClassName="p-6"
+            maxWidth="max-w-[1100px]"
+            onClose={() => setIsAiPlanningWorkspaceOpen(false)}
+            title={`AI Planning Workspace - ${activeProject.name}`}
           >
-            Close
-          </button>
-        </div>
-      </div>
-    </Modal>
-  )}
+            <AiPlanningWorkspace
+              onArtifactsCreated={() => void loadDashboard()}
+              project={activeProject}
+              onGoToSettings={() => {
+                setIsAiPlanningWorkspaceOpen(false);
+                setActiveView('settings');
+              }}
+            />
+          </Modal>
+        ) : null
+      }
+      {
+        isChatPanelOpen && activeProject ? (
+          <>
+            {/* Chat Drawer Backdrop */}
+            <div
+              className="fixed inset-0 bg-olive-900/20 backdrop-blur-[2px] z-[2000] animate-in fade-in duration-300"
+              onClick={() => setIsChatPanelOpen(false)}
+            />
+            {/* Chat Drawer Container */}
+            <div className="fixed top-0 right-0 h-full w-full md:w-1/2 lg:max-w-1/2 bg-white  z-[5001] shadow-2xl animate-in slide-in-from-right duration-500 overflow-hidden border-l border-olive-200  flex flex-col">
+              <ChatPanel
+                project={activeProject}
+                members={activeProjectMembers}
+                isOpen={isChatPanelOpen}
+                onClose={() => setIsChatPanelOpen(false)}
+              />
+            </div>
+          </>
+        ) : null
+      }
+      {
+        editingProject ? (
+          <Modal onClose={() => setEditingProject(null)} title="Update Project">
+            <ProjectForm initialDescription={editingProject.description} initialName={editingProject.name} onSubmit={handleUpdateProject} submitLabel="Update project" />
+          </Modal>
+        ) : null
+      }
+      {
+        isEpicCreateModalOpen && activeProject ? (
+          <Modal onClose={() => setIsEpicCreateModalOpen(false)} title={`Create Epic for ${activeProject.name}`}>
+            <EpicForm onSubmit={handleCreateEpic} submitLabel="Create epic" />
+          </Modal>
+        ) : null
+      }
+      {
+        editingEpic && activeProject ? (
+          <Modal onClose={() => setEditingEpic(null)} title={`Update Epic for ${activeProject.name}`}>
+            <EpicForm
+              initialDescription={editingEpic.description}
+              initialName={editingEpic.name}
+              initialStatus={editingEpic.status}
+              onSubmit={handleUpdateEpic}
+              submitLabel="Update epic"
+            />
+          </Modal>
+        ) : null
+      }
+      {
+        isTaskCreateModalOpen ? (
+          <Modal onClose={() => setIsTaskCreateModalOpen(false)} title="Create Task">
+            <AddTaskForm
+              epics={epics}
+              initialProjectId={taskModalProjectId}
+              initialEpicId={selectedEpicId}
+              onCreateTask={handleCreateTask}
+              projects={projects}
+            />
+          </Modal>
+        ) : null
+      }
+      {
+        isProjectTeamModalOpen && activeProject ? (
+          <Modal
+            bodyClassName="!p-0"
+            onClose={() => setIsProjectTeamModalOpen(false)}
+            panelClassName="!max-w-[820px]"
+            title={`Team for ${activeProject.name}`}
+          >
+            <ProjectTeamPanel
+              canManageTeam={canManageTeam}
+              currentUserId={user?.id ?? null}
+              isMutating={teamMutationLoading}
+              members={activeProjectMembers}
+              projectId={activeProject.id}
+              onInviteMember={handleInviteProjectMember}
+              onRemoveMember={handleRemoveProjectMember}
+              onLeaveProject={handleLeaveProject}
+            />
+          </Modal>
+        ) : null
+      }
+      {
+        isActivityHistoryOpen && activeProject ? (
+          <Modal
+            bodyClassName="!p-0"
+            onClose={() => setIsActivityHistoryOpen(false)}
+            panelClassName="!max-w-[720px]"
+            title={`Activity History — ${activeProject.name}`}
+          >
+            <ActivityHistoryPanel
+              projectId={activeProject.id}
+              projectName={activeProject.name}
+            />
+          </Modal>
+        ) : null
+      }
+
+      {
+        isProjectNotesModalOpen && activeProjectForNotes ? (
+          <Modal onClose={() => setIsProjectNotesModalOpen(false)} title={activeProjectNotesModalTitle}>
+            <ProjectNotes
+              actionNoteId={actionNoteId}
+              heading="Project notes"
+              loading={activeProjectForNotes != null && notesLoadingKey === `project:${activeProjectForNotes.id}`}
+              notes={activeProjectNotes}
+              onCreateNote={() => activeProjectForNotes && handleOpenCreateProjectNote(activeProjectForNotes)}
+              onDeleteNote={activeProjectForNotes.currentUserRole === 'ADMIN'
+                ? (note) => void handleDeleteNote(note)
+                : undefined}
+              onOpenNote={(note) => void handleOpenExistingNote(note)}
+            />
+          </Modal>
+        ) : null
+      }
+      {
+        isEpicNotesModalOpen && activeEpicForNotes ? (
+          <Modal onClose={() => setIsEpicNotesModalOpen(false)} title={activeEpicNotesModalTitle}>
+            <ProjectNotes
+              actionNoteId={actionNoteId}
+              createLabel="Create epic note"
+              emptyDescription="Create the first note to capture decisions, references, or follow-ups for this epic."
+              emptyTitle="No epic notes yet"
+              heading="Epic notes"
+              loading={notesLoadingKey === `epic:${activeEpicForNotes.id}`}
+              notes={activeEpicNotes}
+              onCreateNote={projects.find((project) => project.id === activeEpicForNotes.projectId)?.currentUserRole === 'ADMIN'
+                ? () => handleOpenCreateEpicNote(activeEpicForNotes)
+                : undefined}
+              onDeleteNote={projects.find((project) => project.id === activeEpicForNotes.projectId)?.currentUserRole === 'ADMIN'
+                ? (note) => void handleDeleteNote(note)
+                : undefined}
+              onOpenNote={(note) => void handleOpenExistingNote(note)}
+            />
+          </Modal>
+        ) : null
+      }
+      {
+        editingTask ? (
+          <Modal onClose={() => setEditingTask(null)} title={`Edit Task: ${editingTask.title}`}>
+            <EditTaskForm
+              epics={epics}
+              allTasks={tasks}
+              onSubmit={handleUpdateTask}
+              projects={projects}
+              task={editingTask}
+            />
+          </Modal>
+        ) : null
+      }
+      {
+        subtaskModalTask ? (
+          <Modal
+            onClose={() => setSubtaskModalTask(null)}
+            title={`Create Subtask for ${subtaskModalTask.title}`}
+          >
+            <SubtaskForm members={activeProjectMembers} onSubmit={handleCreateSubtask} />
+          </Modal>
+        ) : null
+      }
+      {
+        activeNoteEditor ? (
+          <NoteModal
+            allowAppend={(activeNoteEditor.kind === 'project' || activeNoteEditor.kind === 'epic') && activeNoteEditor.note != null}
+            allowDelete={
+              activeNoteEditor.kind === 'project' || activeNoteEditor.kind === 'epic'
+                ? activeNoteEditor.note != null
+                : activeNoteEditor.kind === 'task'
+                  ? Boolean(activeNoteEditor.task.note?.trim())
+                  : Boolean(activeNoteEditor.subtask.note?.trim())
+            }
+            deleteLabel={
+              activeNoteEditor.kind === 'project'
+                ? 'Delete Note'
+                : activeNoteEditor.kind === 'epic'
+                  ? 'Delete Epic Note'
+                  : activeNoteEditor.kind === 'task'
+                    ? 'Delete Task Note'
+                    : 'Delete Sub-task Note'
+            }
+            entityLabel={
+              activeNoteEditor.kind === 'project'
+                ? activeNoteEditor.projectName
+                : activeNoteEditor.kind === 'epic'
+                  ? activeNoteEditor.epicName
+                  : activeNoteEditor.kind === 'task'
+                    ? activeNoteEditor.task.title
+                    : `${activeNoteEditor.task.title} / ${activeNoteEditor.subtask.title}`
+            }
+            modalTitle={
+              activeNoteEditor.kind === 'project'
+                ? activeNoteEditor.note
+                  ? 'Edit Project Note'
+                  : 'Create Project Note'
+                : activeNoteEditor.kind === 'epic'
+                  ? activeNoteEditor.note
+                    ? 'Edit Epic Note'
+                    : 'Create Epic Note'
+                  : activeNoteEditor.kind === 'task'
+                    ? activeNoteEditor.task.note?.trim()
+                      ? 'Edit Task Note'
+                      : 'Create Task Note'
+                    : activeNoteEditor.subtask.note?.trim()
+                      ? 'Edit Sub-task Note'
+                      : 'Create Sub-task Note'
+            }
+            note={
+              activeNoteEditor.kind === 'project'
+                ? activeNoteEditor.note
+                : activeNoteEditor.kind === 'epic'
+                  ? activeNoteEditor.note
+                  : activeNoteEditor.kind === 'task'
+                    ? { title: '', content: activeNoteEditor.task.note ?? '' }
+                    : { title: '', content: activeNoteEditor.subtask.note ?? '' }
+            }
+            onClose={() => {
+              setActiveNoteEditor(null);
+            }}
+            onDelete={
+              activeNoteEditor.kind === 'project' || activeNoteEditor.kind === 'epic'
+                ? activeNoteEditor.note
+                  ? () => void handleDeleteNote(activeNoteEditor.note as Note)
+                  : undefined
+                : () => void handleDeleteInlineNote()
+            }
+            onSave={handleSaveNote}
+            showTitle={activeNoteEditor.kind === 'project' || activeNoteEditor.kind === 'epic'}
+            titlePlaceholder="Sprint recap"
+          />
+        ) : null
+      }
+      {priorityEvaluationModalOpen && priorityEvaluationResult && (
+        <Modal onClose={() => setPriorityEvaluationModalOpen(false)} title="Priority Evaluation">
+          <div className="grid gap-4">
+            <div className="grid gap-2 text-sm">
+              <div className="flex justify-between items-center py-2 border-b border-olive-100">
+                <span className="font-bold text-olive-700">Base Priority</span>
+                <span className="text-olive-900 font-medium">{priorityEvaluationResult.basePriority}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-olive-100">
+                <span className="font-bold text-olive-700">Dynamic Priority</span>
+                <span className="text-olive-900 font-bold px-2 py-0.5 bg-olive-100 rounded">{priorityEvaluationResult.dynamicPriority}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-olive-100">
+                <span className="font-bold text-olive-700">Dynamic Score</span>
+                <span className="text-olive-900">{priorityEvaluationResult.dynamicPriorityScore}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-olive-100">
+                <span className="font-bold text-olive-700">Urgency / Impact</span>
+                <span className="text-olive-900">{priorityEvaluationResult.urgencyScore} / {priorityEvaluationResult.impactScore}</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-olive-100">
+                <span className="font-bold text-olive-700">Downstream Impact</span>
+                <span className="text-olive-900">{priorityEvaluationResult.downstreamTaskCount} tasks ({priorityEvaluationResult.dependencyWeight} weight)</span>
+              </div>
+            </div>
+            <div className="bg-olive-50 p-3 rounded-lg border border-olive-200">
+              <h4 className="text-xs font-bold text-olive-800 uppercase tracking-wider mb-1">Reasoning</h4>
+              <p className="text-sm text-olive-600 m-0">{priorityEvaluationResult.reason}</p>
+            </div>
+            <div className="flex justify-end pt-2">
+              <button
+                className="px-4 py-2 bg-olive-900 text-white rounded-lg text-sm font-bold hover:bg-olive-800"
+                onClick={() => setPriorityEvaluationModalOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
     </div >
   );
