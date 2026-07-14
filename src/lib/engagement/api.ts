@@ -80,50 +80,51 @@ export interface GuideAnalyticsSummary {
   events: Array<{ eventName: string; count: number }>;
 }
 
-export const listGuides = async (): Promise<Guide[]> => {
-  const response = await api.get<ApiEnvelope<{ guides: Guide[] }>>('/guides');
+export const listGuides = async (sdkIntegrationId: string): Promise<Guide[]> => {
+  const response = await api.get<ApiEnvelope<{ guides: Guide[] }>>(`/sdk-integrations/${sdkIntegrationId}/guides`);
   return response.data.data.guides.map(normalizeGuide);
 };
 
-export const createGuide = async (payload: GuidePayload): Promise<Guide> => {
-  const response = await api.post<ApiEnvelope<{ guide: Guide }>>('/guides', payload);
+export const createGuide = async (sdkIntegrationId: string, payload: GuidePayload): Promise<Guide> => {
+  const response = await api.post<ApiEnvelope<{ guide: Guide }>>(`/sdk-integrations/${sdkIntegrationId}/guides`, payload);
   return normalizeGuide(response.data.data.guide);
 };
 
-export const updateGuide = async (guideId: string, payload: Partial<GuidePayload>): Promise<Guide> => {
-  const response = await api.patch<ApiEnvelope<{ guide: Guide }>>(`/guides/${guideId}`, payload);
+export const updateGuide = async (sdkIntegrationId: string, guideId: string, payload: Partial<GuidePayload>): Promise<Guide> => {
+  const response = await api.patch<ApiEnvelope<{ guide: Guide }>>(`/sdk-integrations/${sdkIntegrationId}/guides/${guideId}`, payload);
   return normalizeGuide(response.data.data.guide);
 };
 
-export const updateGuideStatus = async (guideId: string, status: GuideStatus): Promise<Guide> => {
-  const response = await api.post<ApiEnvelope<{ guide: Guide }>>(`/guides/${guideId}/status/${status}`);
+export const updateGuideStatus = async (sdkIntegrationId: string, guideId: string, status: GuideStatus): Promise<Guide> => {
+  const response = await api.post<ApiEnvelope<{ guide: Guide }>>(`/sdk-integrations/${sdkIntegrationId}/guides/${guideId}/status/${status}`);
   return normalizeGuide(response.data.data.guide);
 };
 
-export const deleteGuide = async (guideId: string): Promise<void> => {
-  await api.delete(`/guides/${guideId}`);
+export const deleteGuide = async (sdkIntegrationId: string, guideId: string): Promise<void> => {
+  await api.delete(`/sdk-integrations/${sdkIntegrationId}/guides/${guideId}`);
 };
 
-export const listSurveys = async (): Promise<Guide[]> => {
-  const response = await api.get<ApiEnvelope<{ surveys: Guide[] }>>('/surveys');
+export const listSurveys = async (sdkIntegrationId: string): Promise<Guide[]> => {
+  const response = await api.get<ApiEnvelope<{ surveys: Guide[] }>>(`/sdk-integrations/${sdkIntegrationId}/surveys`);
   return response.data.data.surveys.map((survey) => normalizeGuide({ ...survey, type: 'SURVEY', steps: survey.steps ?? (survey as Guide & { questions?: GuideStep[] }).questions ?? [] }));
 };
 
-export const createSurvey = async (payload: SurveyPayload): Promise<Guide> => {
-  const response = await api.post<ApiEnvelope<{ survey: Guide }>>('/surveys', payload);
+export const createSurvey = async (sdkIntegrationId: string, payload: SurveyPayload): Promise<Guide> => {
+  const response = await api.post<ApiEnvelope<{ survey: Guide }>>(`/sdk-integrations/${sdkIntegrationId}/surveys`, payload);
   return normalizeGuide({ ...response.data.data.survey, type: 'SURVEY', steps: payload.questions });
 };
 
-export const updateSurvey = async (surveyId: string, payload: Partial<SurveyPayload>): Promise<Guide> => {
-  const response = await api.patch<ApiEnvelope<{ survey: Guide }>>(`/surveys/${surveyId}`, payload);
+export const updateSurvey = async (sdkIntegrationId: string, surveyId: string, payload: Partial<SurveyPayload>): Promise<Guide> => {
+  const response = await api.patch<ApiEnvelope<{ survey: Guide }>>(`/sdk-integrations/${sdkIntegrationId}/surveys/${surveyId}`, payload);
   return normalizeGuide({ ...response.data.data.survey, type: 'SURVEY', steps: payload.questions ?? [] });
 };
 
 export const submitSurveyResponse = async (
+  sdkIntegrationId: string,
   surveyId: string,
   payload: { userId?: string; sessionId?: string | null; answers: Record<string, unknown>; metadata?: Record<string, unknown> }
 ): Promise<void> => {
-  await api.post(`/surveys/${surveyId}/responses`, payload);
+  await api.post(`/sdk-integrations/${sdkIntegrationId}/surveys/${surveyId}/responses`, payload);
 };
 
 export const listChecklists = async (): Promise<Guide[]> => {
@@ -159,8 +160,8 @@ export const trackEngagementEvent = async (payload: {
   await api.post('/engagement/track', payload);
 };
 
-export const getGuideAnalyticsSummary = async (): Promise<GuideAnalyticsSummary> => {
-  const response = await api.get<ApiEnvelope<GuideAnalyticsSummary>>('/guide-analytics/summary');
+export const getGuideAnalyticsSummary = async (sdkIntegrationId: string): Promise<GuideAnalyticsSummary> => {
+  const response = await api.get<ApiEnvelope<GuideAnalyticsSummary>>(`/sdk-integrations/${sdkIntegrationId}/guide-analytics/summary`);
   return response.data.data;
 };
 

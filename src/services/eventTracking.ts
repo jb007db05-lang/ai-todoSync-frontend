@@ -60,6 +60,7 @@ export interface RawEvent {
 
 export interface EventFilters {
   apiKeyId?: string;
+  sdkIntegrationId?: string;
   page?: number;
   limit?: number;
   offset?: number;
@@ -83,16 +84,36 @@ export const deleteApiKey = async (id: string): Promise<void> => {
   await api.delete(`/keys/${id}`);
 };
 
-export const getTrackedEvents = async (apiKeyId: string, filters: Record<string, unknown> = {}): Promise<TrackedEvent[]> => {
+export const getTrackedEvents = async (
+  apiKeyIdOrSdkIntegrationId: string,
+  filters: Record<string, unknown> = {},
+  isSdkIntegration = false
+): Promise<TrackedEvent[]> => {
+  const params: Record<string, unknown> = { ...filters };
+  if (isSdkIntegration) {
+    params.sdkIntegrationId = apiKeyIdOrSdkIntegrationId;
+  } else {
+    params.apiKeyId = apiKeyIdOrSdkIntegrationId;
+  }
   const response = await api.get('/analytics/events', {
-    params: { apiKeyId, ...filters },
+    params,
   });
   return response.data;
 };
 
-export const getEventLogs = async (eventId: string, apiKeyId: string): Promise<EventLog[]> => {
+export const getEventLogs = async (
+  eventId: string,
+  apiKeyIdOrSdkIntegrationId: string,
+  isSdkIntegration = false
+): Promise<EventLog[]> => {
+  const params: Record<string, unknown> = {};
+  if (isSdkIntegration) {
+    params.sdkIntegrationId = apiKeyIdOrSdkIntegrationId;
+  } else {
+    params.apiKeyId = apiKeyIdOrSdkIntegrationId;
+  }
   const response = await api.get(`/analytics/events/${eventId}/logs`, {
-    params: { apiKeyId },
+    params,
   });
   return response.data;
 };

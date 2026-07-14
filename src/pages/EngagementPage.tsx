@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import {
   BarChart3,
   Bell,
@@ -30,6 +31,7 @@ import {
   updateSurvey,
   type GuideAnalyticsSummary
 } from '@/lib/engagement/api';
+import { listIntegrations, type SdkIntegration } from '@/lib/sdk-integrations/api';
 import type {
   FrequencyRules,
   Guide,
@@ -137,8 +139,17 @@ const conditionPlaceholders: Partial<Record<TargetingConditionType, string>> = {
 const guideTypes: GuideType[] = ['MODAL', 'TOUR', 'SMART_TIP', 'HOTSPOT', 'BANNER'];
 const priorities: GuidePriority[] = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
 
-function EngagementPage(): JSX.Element {
-  const [tab, setTab] = useState<BuilderTab>('guides');
+export interface EngagementPageProps {
+  sdkIntegrationId?: string;
+  defaultTab?: BuilderTab;
+  hideHeader?: boolean;
+}
+
+function EngagementPage({ sdkIntegrationId: propSdkIntegrationId, defaultTab, hideHeader = false }: EngagementPageProps): JSX.Element {
+  const { integrationId } = useParams();
+  const [activeIntegrationId, setActiveIntegrationId] = useState<string>('');
+  const [integrations, setIntegrations] = useState<SdkIntegration[]>([]);
+  const [tab, setTab] = useState<BuilderTab>(defaultTab ?? 'guides');
   const [guides, setGuides] = useState<Guide[]>([]);
   const [surveys, setSurveys] = useState<Guide[]>([]);
   const [checklists, setChecklists] = useState<Guide[]>([]);
@@ -146,27 +157,58 @@ function EngagementPage(): JSX.Element {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (defaultTab) {
+      setTab(defaultTab);
+    }
+  }, [defaultTab]);
+
+  useEffect(() => {
+    const resolvedId = propSdkIntegrationId ?? integrationId;
+    if (resolvedId) {
+      setActiveIntegrationId(resolvedId);
+    } else {
+      const fetchIntegrations = async () => {
+        try {
+          const list = await listIntegrations();
+          setIntegrations(list);
+          if (list.length > 0) {
+            setActiveIntegrationId(list[0].id);
+          }
+        } catch (err) {
+          console.error('Failed to load integrations', err);
+        }
+      };
+      void fetchIntegrations();
+    }
+  }, [propSdkIntegrationId, integrationId]);
+
   const load = async () => {
+    if (!activeIntegrationId) return;
     setLoading(true);
     try {
       const [guideList, surveyList, checklistList, summary] = await Promise.all([
-        listGuides(),
-        listSurveys(),
+        listGuides(activeIntegrationId),
+        listSurveys(activeIntegrationId),
         listChecklists(),
-        getGuideAnalyticsSummary()
+        getGuideAnalyticsSummary(activeIntegrationId)
       ]);
       setGuides(guideList);
       setSurveys(surveyList);
       setChecklists(checklistList);
       setAnalytics(summary);
+    } catch (error) {
+      console.error('Failed to load engagement data', error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    void load();
-  }, []);
+    if (activeIntegrationId) {
+      void load();
+    }
+  }, [activeIntegrationId]);
 
   const totals = useMemo(
     () => ({
@@ -178,25 +220,42 @@ function EngagementPage(): JSX.Element {
 
   return (
     <div className="min-h-full bg-olive-50">
-      <div className="border-b border-olive-200 bg-white px-8 py-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="m-0 text-2xl font-bold text-olive-950">Engagement</h2>
-            <p className="m-0 mt-1 text-sm text-olive-500">Guides, surveys, checklists, targeting, and behavior analytics</p>
+      {!hideHeader && (
+        <div className="border-b border-olive-200 bg-white px-8 py-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-3">
+                <h2 className="m-0 text-2xl font-bold text-olive-950">Engagement</h2>
+                {integrations.length > 0 && !propSdkIntegrationId && (
+                  <select
+                    value={activeIntegrationId}
+                    onChange={(e) => setActiveIntegrationId(e.target.value)}
+                    className="rounded-lg border border-olive-200 bg-white px-3 py-1.5 text-sm font-semibold text-olive-800 shadow-sm focus:border-olive-500 focus:outline-none"
+                  >
+                    {integrations.map((integration) => (
+                      <option key={integration.id} value={integration.id}>
+                        {integration.name} ({integration.environment})
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+              <p className="m-0 mt-1 text-sm text-olive-500">Guides, surveys, checklists, targeting, and behavior analytics</p>
+            </div>
+            <div className="grid grid-cols-3 gap-3 text-right">
+              <Metric label="Live" value={totals.live} />
+              <Metric label="Drafts" value={totals.drafts} />
+              <Metric label="MTU" value={analytics?.mtu.users ?? 0} />
+            </div>
           </div>
-          <div className="grid grid-cols-3 gap-3 text-right">
-            <Metric label="Live" value={totals.live} />
-            <Metric label="Drafts" value={totals.drafts} />
-            <Metric label="MTU" value={analytics?.mtu.users ?? 0} />
+          <div className="mt-5 flex flex-wrap gap-2">
+            <TabButton active={tab === 'guides'} icon={Layers3} label="Guides" onClick={() => setTab('guides')} />
+            <TabButton active={tab === 'surveys'} icon={Radio} label="Surveys" onClick={() => setTab('surveys')} />
+            <TabButton active={tab === 'checklists'} icon={CheckSquare} label="Checklists" onClick={() => setTab('checklists')} />
+            <TabButton active={tab === 'analytics'} icon={BarChart3} label="Analytics" onClick={() => setTab('analytics')} />
           </div>
         </div>
-        <div className="mt-5 flex flex-wrap gap-2">
-          <TabButton active={tab === 'guides'} icon={Layers3} label="Guides" onClick={() => setTab('guides')} />
-          <TabButton active={tab === 'surveys'} icon={Radio} label="Surveys" onClick={() => setTab('surveys')} />
-          <TabButton active={tab === 'checklists'} icon={CheckSquare} label="Checklists" onClick={() => setTab('checklists')} />
-          <TabButton active={tab === 'analytics'} icon={BarChart3} label="Analytics" onClick={() => setTab('analytics')} />
-        </div>
-      </div>
+      )}
 
       {message && (
         <div className="mx-8 mt-5 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
@@ -210,12 +269,12 @@ function EngagementPage(): JSX.Element {
             guides={guides}
             loading={loading}
             onCreate={async (payload) => {
-              await createGuide(payload);
+              await createGuide(activeIntegrationId, payload);
               setMessage('Guide saved.');
               await load();
             }}
             onStatusChange={async (guide, status) => {
-              await updateGuideStatus(guide.id, status);
+              await updateGuideStatus(activeIntegrationId, guide.id, status);
               setMessage(`Guide ${status.toLowerCase()}.`);
               await load();
             }}
@@ -226,12 +285,12 @@ function EngagementPage(): JSX.Element {
             surveys={surveys}
             loading={loading}
             onCreate={async (payload) => {
-              await createSurvey(payload);
+              await createSurvey(activeIntegrationId, payload);
               setMessage('Survey saved.');
               await load();
             }}
             onStatusChange={async (survey, status) => {
-              await updateSurvey(survey.id, { status });
+              await updateSurvey(activeIntegrationId, survey.id, { status });
               setMessage(`Survey ${status.toLowerCase()}.`);
               await load();
             }}
@@ -267,7 +326,7 @@ function GuideBuilder({
 }: {
   guides: Guide[];
   loading: boolean;
-  onCreate: (payload: Parameters<typeof createGuide>[0]) => Promise<void>;
+  onCreate: (payload: Parameters<typeof createGuide>[1]) => Promise<void>;
   onStatusChange: (guide: Guide, status: 'LIVE' | 'PAUSED' | 'ARCHIVED') => Promise<void>;
 }): JSX.Element {
   const [title, setTitle] = useState('New onboarding modal');
@@ -308,7 +367,7 @@ function SurveyBuilder({
 }: {
   surveys: Guide[];
   loading: boolean;
-  onCreate: (payload: Parameters<typeof createSurvey>[0]) => Promise<void>;
+  onCreate: (payload: Parameters<typeof createSurvey>[1]) => Promise<void>;
   onStatusChange: (survey: Guide, status: 'LIVE' | 'PAUSED' | 'ARCHIVED') => Promise<void>;
 }): JSX.Element {
   const [title, setTitle] = useState('NPS pulse');

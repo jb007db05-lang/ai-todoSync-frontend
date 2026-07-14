@@ -178,9 +178,11 @@ const MultiSelect = ({
 
 interface EventTrackingPageProps {
   onOpenDocs?: () => void;
+  sdkIntegrationId?: string;
+  hideHeader?: boolean;
 }
 
-const EventTrackingPage: React.FC<EventTrackingPageProps> = ({ onOpenDocs }) => {
+const EventTrackingPage: React.FC<EventTrackingPageProps> = ({ onOpenDocs, sdkIntegrationId, hideHeader = false }) => {
   const confirm = useConfirm();
   const [keys, setKeys] = useState<AnalyticsKey[]>([]);
   const [selectedKeyId, setSelectedKeyId] = useState<string>('');
@@ -216,6 +218,10 @@ const EventTrackingPage: React.FC<EventTrackingPageProps> = ({ onOpenDocs }) => 
   });
 
   const loadInitialData = async () => {
+    if (sdkIntegrationId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const apiKeys = await listApiKeys();
@@ -233,15 +239,20 @@ const EventTrackingPage: React.FC<EventTrackingPageProps> = ({ onOpenDocs }) => 
   const loadLogs = async (keyId: string, page: number) => {
     setRefreshing(true);
     try {
-      const data = await getAnalyticsEvents({
-        apiKeyId: keyId,
+      const queryParams: any = {
         page,
         limit: pageSize,
         eventNames: appliedFilters.eventNames.length > 0 ? appliedFilters.eventNames : undefined,
         startDate: appliedFilters.startDate || undefined,
         endDate: appliedFilters.endDate || undefined
-      });
-      setRawLogs(data.events);
+      };
+      if (sdkIntegrationId) {
+        queryParams.sdkIntegrationId = sdkIntegrationId;
+      } else {
+        queryParams.apiKeyId = keyId;
+      }
+      const data = await getAnalyticsEvents(queryParams);
+      setRawLogs(data.events || []);
       setTotalPages(data.totalPages || 1);
     } catch (err) {
       console.error('Failed to load logs', err);
@@ -251,8 +262,13 @@ const EventTrackingPage: React.FC<EventTrackingPageProps> = ({ onOpenDocs }) => 
   };
 
   const loadAvailableEvents = async (keyId: string) => {
+    if (!keyId && !sdkIntegrationId) return;
     try {
-      const data = await getTrackedEvents(keyId);
+      const data = await getTrackedEvents(
+        sdkIntegrationId || keyId,
+        {},
+        !!sdkIntegrationId
+      );
       setAvailableEvents(data);
     } catch (err) {
       console.error('Failed to load available events', err);
@@ -261,21 +277,21 @@ const EventTrackingPage: React.FC<EventTrackingPageProps> = ({ onOpenDocs }) => 
 
   useEffect(() => {
     loadInitialData();
-  }, []);
+  }, [sdkIntegrationId]);
 
   useEffect(() => {
-    if (selectedKeyId) {
+    if (sdkIntegrationId || selectedKeyId) {
       setCurrentPage(1);
       void loadAvailableEvents(selectedKeyId);
       loadLogs(selectedKeyId, 1);
     }
-  }, [selectedKeyId, appliedFilters]);
+  }, [selectedKeyId, sdkIntegrationId, appliedFilters]);
 
   useEffect(() => {
-    if (selectedKeyId) {
+    if (sdkIntegrationId || selectedKeyId) {
       loadLogs(selectedKeyId, currentPage);
     }
-  }, [currentPage]);
+  }, [currentPage, sdkIntegrationId, selectedKeyId]);
 
   const handleCreateKey = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -349,10 +365,10 @@ const EventTrackingPage: React.FC<EventTrackingPageProps> = ({ onOpenDocs }) => 
 
     row.toggleExpanded();
 
-    if (isExpanding && !logDetails[event._id] && selectedKeyId) {
+    if (isExpanding && !logDetails[event._id] && (sdkIntegrationId || selectedKeyId)) {
       setFetchingPayloadId(event._id);
       try {
-        const logs = await getEventLogs(event._id, selectedKeyId);
+        const logs = await getEventLogs(event._id, sdkIntegrationId || selectedKeyId, !!sdkIntegrationId);
         if (logs && logs.length > 0) {
           setLogDetails(prev => ({ ...prev, [event._id]: logs[0] }));
         }
@@ -367,92 +383,96 @@ const EventTrackingPage: React.FC<EventTrackingPageProps> = ({ onOpenDocs }) => 
   return (
     <div className="flex flex-col h-full bg-white ">
       {/* Clean Toolbar (Matches ProjectPanel) */}
-      <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-olive-200  bg-olive-50  sticky top-0 z-30">
-        <div className="grid gap-0.5">
-          <h4 className="m-0 font-semibold text-olive-800  text-[0.95rem]">Event Tracking</h4>
-          <span className="text-olive-400  text-[0.75rem]">Telemetry Stream Monitoring</span>
-        </div>
+      {!hideHeader && (
+        <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-olive-200  bg-olive-50  sticky top-0 z-30">
+          <div className="grid gap-0.5">
+            <h4 className="m-0 font-semibold text-olive-800  text-[0.95rem]">Event Tracking</h4>
+            <span className="text-olive-400  text-[0.75rem]">Telemetry Stream Monitoring</span>
+          </div>
 
-        {/* Divider */}
-        <div className="h-6 w-px bg-olive-200  opacity-60 mx-2" />
+          {/* Divider */}
+          {!sdkIntegrationId && <div className="h-6 w-px bg-olive-200  opacity-60 mx-2" />}
 
-        {/* Optimized Node Switcher */}
-        <div className="relative">
-          <button
-            onClick={() => setIsNodeSwitcherOpen(!isNodeSwitcherOpen)}
-            className="flex items-center gap-3 h-9 px-3 bg-white  border border-olive-200  rounded text-[0.85rem] font-medium text-olive-800  shadow-sm hover:bg-olive-50  transition-colors min-w-[180px] justify-between"
-          >
-            <div className="flex items-center gap-2 truncate">
-              <span className="truncate">{activeKey ? activeKey.name : 'Select Node'}</span>
-            </div>
-            <ChevronDown size={14} className="text-olive-400" />
-          </button>
+          {/* Optimized Node Switcher */}
+          {!sdkIntegrationId && (
+            <div className="relative">
+              <button
+                onClick={() => setIsNodeSwitcherOpen(!isNodeSwitcherOpen)}
+                className="flex items-center gap-3 h-9 px-3 bg-white  border border-olive-200  rounded text-[0.85rem] font-medium text-olive-800  shadow-sm hover:bg-olive-50  transition-colors min-w-[180px] justify-between"
+              >
+                <div className="flex items-center gap-2 truncate">
+                  <span className="truncate">{activeKey ? activeKey.name : 'Select Node'}</span>
+                </div>
+                <ChevronDown size={14} className="text-olive-400" />
+              </button>
 
-          {isNodeSwitcherOpen && (
-            <div className="absolute top-full left-0 mt-1 w-[240px] bg-white  border border-olive-200  rounded shadow-xl z-50">
-              <div className="py-1">
-                {keys.map(key => (
-                  <button
-                    key={key.id}
-                    onClick={() => { setSelectedKeyId(key.id); setIsNodeSwitcherOpen(false); }}
-                    className={`w-full py-2 text-left text-[0.85rem] transition-colors ${selectedKeyId === key.id ? 'bg-olive-50 text-olive-600' : 'text-olive-600 hover:bg-olive-50'}`}
-                  >
-                    {key.name}
-                  </button>
-                ))}
-                <div className="border-t border-olive-100  my-1" />
-                <button
-                  onClick={() => { setIsManageKeysModalOpen(true); setIsNodeSwitcherOpen(false); }}
-                  className="w-full px-4 py-2 text-left text-[0.75rem] font-semibold text-olive-500 hover:text-olive-600 transition-colors uppercase tracking-wider"
-                >
-                  Manage Nodes
-                </button>
-              </div>
+              {isNodeSwitcherOpen && (
+                <div className="absolute top-full left-0 mt-1 w-[240px] bg-white  border border-olive-200  rounded shadow-xl z-50">
+                  <div className="py-1">
+                    {keys.map(key => (
+                      <button
+                        key={key.id}
+                        onClick={() => { setSelectedKeyId(key.id); setIsNodeSwitcherOpen(false); }}
+                        className={`w-full py-2 text-left text-[0.85rem] transition-colors ${selectedKeyId === key.id ? 'bg-olive-50 text-olive-600' : 'text-olive-600 hover:bg-olive-50'}`}
+                      >
+                        {key.name}
+                      </button>
+                    ))}
+                    <div className="border-t border-olive-100  my-1" />
+                    <button
+                      onClick={() => { setIsManageKeysModalOpen(true); setIsNodeSwitcherOpen(false); }}
+                      className="w-full px-4 py-2 text-left text-[0.75rem] font-semibold text-olive-500 hover:text-olive-600 transition-colors uppercase tracking-wider"
+                    >
+                      Manage Nodes
+                    </button>
+                  </div>
+                </div>
+              )}
+              {isNodeSwitcherOpen && <div className="fixed inset-0 z-40" onClick={() => setIsNodeSwitcherOpen(false)} />}
             </div>
           )}
-          {isNodeSwitcherOpen && <div className="fixed inset-0 z-40" onClick={() => setIsNodeSwitcherOpen(false)} />}
+
+          <div className="flex-1" />
+
+          <button
+            className="inline-flex items-center gap-2 h-9 px-4 bg-olive-900  rounded text-[0.85rem] font-medium text-white shadow-sm hover:bg-olive-800  transition-colors"
+            onClick={() => onOpenDocs?.()}
+            type="button"
+          >
+            <BookOpen size={14} />
+            <span>SDK Documentation</span>
+          </button>
+
+          <button
+            className="inline-flex items-center gap-2 h-9 px-4 bg-white  border border-olive-200  rounded text-[0.85rem] font-medium text-olive-600  shadow-sm hover:bg-olive-50  transition-colors"
+            onClick={() => {
+              setDraftFilters(appliedFilters);
+              setIsFiltersModalOpen(true);
+            }}
+            type="button"
+          >
+            <Filter size={14} />
+            <span>Filters</span>
+            {appliedFilters.eventNames.length > 0 || appliedFilters.startDate || appliedFilters.endDate ? (
+              <span className="rounded-full bg-olive-900 px-1.5 py-0.5 text-[0.65rem] font-medium text-white ">
+                {appliedFilters.eventNames.length + (appliedFilters.startDate ? 1 : 0) + (appliedFilters.endDate ? 1 : 0)}
+              </span>
+            ) : null}
+          </button>
+
+          <button
+            onClick={() => { loadLogs(selectedKeyId, currentPage); }}
+            disabled={refreshing || (!selectedKeyId && !sdkIntegrationId)}
+            className="inline-flex items-center justify-center w-9 h-9 bg-white  border border-olive-200  rounded text-olive-400 hover:text-olive-600 transition-colors disabled:opacity-30"
+          >
+            <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
+          </button>
         </div>
-
-        <div className="flex-1" />
-
-        <button
-          className="inline-flex items-center gap-2 h-9 px-4 bg-olive-900  rounded text-[0.85rem] font-medium text-white shadow-sm hover:bg-olive-800  transition-colors"
-          onClick={() => onOpenDocs?.()}
-          type="button"
-        >
-          <BookOpen size={14} />
-          <span>SDK Documentation</span>
-        </button>
-
-        <button
-          className="inline-flex items-center gap-2 h-9 px-4 bg-white  border border-olive-200  rounded text-[0.85rem] font-medium text-olive-600  shadow-sm hover:bg-olive-50  transition-colors"
-          onClick={() => {
-            setDraftFilters(appliedFilters);
-            setIsFiltersModalOpen(true);
-          }}
-          type="button"
-        >
-          <Filter size={14} />
-          <span>Filters</span>
-          {appliedFilters.eventNames.length > 0 || appliedFilters.startDate || appliedFilters.endDate ? (
-            <span className="rounded-full bg-olive-900 px-1.5 py-0.5 text-[0.65rem] font-medium text-white ">
-              {appliedFilters.eventNames.length + (appliedFilters.startDate ? 1 : 0) + (appliedFilters.endDate ? 1 : 0)}
-            </span>
-          ) : null}
-        </button>
-
-        <button
-          onClick={() => { if (selectedKeyId) loadLogs(selectedKeyId, currentPage); }}
-          disabled={refreshing || !selectedKeyId}
-          className="inline-flex items-center justify-center w-9 h-9 bg-white  border border-olive-200  rounded text-olive-400 hover:text-olive-600 transition-colors disabled:opacity-30"
-        >
-          <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
-        </button>
-      </div>
+      )}
 
       {/* Main Content */}
       <div className="flex-1 overflow-hidden flex flex-col">
-        {!selectedKeyId ? (
+        {(!selectedKeyId && !sdkIntegrationId) ? (
           <div className="flex-1 flex flex-col items-center justify-center py-24 text-center animate-in fade-in zoom-in duration-500 bg-white ">
             <div className="relative mb-6">
               <img

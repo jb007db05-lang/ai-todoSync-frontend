@@ -103,6 +103,7 @@ export interface Guide {
   _id?: string;
   id: string;
   tenantId?: string;
+  sdkIntegrationId?: string;
   title: string;
   description?: string;
   type: GuideType;
