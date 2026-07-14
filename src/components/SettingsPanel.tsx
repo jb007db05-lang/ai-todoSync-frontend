@@ -237,6 +237,26 @@ function SettingsPanel({ activeProject, onAiConfigChange }: SettingsPanelProps):
   const { showToast } = useToast();
   const confirm = useConfirm();
   const canManagePrimarySecurity = session?.deviceType === 'primary';
+  const [isToggling2FA, setIsToggling2FA] = useState(false);
+
+  const handleToggle2FA = async (enabled: boolean): Promise<void> => {
+    setIsToggling2FA(true);
+    try {
+      await api.post('/auth/2fa/toggle', { enabled });
+      await refreshUser();
+      showToast({
+        message: `Two-Factor Authentication has been ${enabled ? 'enabled' : 'disabled'} successfully.`,
+        variant: 'success'
+      });
+    } catch {
+      showToast({
+        message: 'Failed to update Two-Factor Authentication status.',
+        variant: 'error'
+      });
+    } finally {
+      setIsToggling2FA(false);
+    }
+  };
 
   const loadDevices = async (): Promise<void> => {
     try {
@@ -582,6 +602,48 @@ function SettingsPanel({ activeProject, onAiConfigChange }: SettingsPanelProps):
               </button>
             </div>
           ))}
+        </div>
+      </SectionCard>
+
+      {/* Two-Factor Authentication Card */}
+      <SectionCard>
+        <div className="flex items-start justify-between gap-4 mb-6">
+          <div>
+            <span className="text-olive-600 text-[0.72rem] tracking-[0.12em] uppercase font-semibold">Security</span>
+            <h2 className="mt-1 mb-1 text-olive-950">Two-Factor Authentication (2FA)</h2>
+            <p className="text-olive-500 m-0 text-sm">Add an extra layer of security to your account by requiring a verification code sent to your email upon login.</p>
+          </div>
+          <span className="flex items-center justify-center w-10 h-10 bg-olive-600/8 rounded-xl text-olive-600 shrink-0">
+            <Shield size={18} />
+          </span>
+        </div>
+
+        <div className="flex items-center justify-between p-5 bg-olive-50/60 border border-olive-200 rounded-xl">
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-bold text-olive-950">
+              Status: {user?.twoFactorEnabled ? (
+                <span className="text-emerald-750 font-black">ENABLED</span>
+              ) : (
+                <span className="text-olive-500 font-bold">DISABLED</span>
+              )}
+            </span>
+            <p className="text-olive-500 text-xs m-0">
+              {user?.twoFactorEnabled 
+                ? 'Your account is protected with email verification codes.' 
+                : 'Enable to require a verification code sent via email when logging in.'}
+            </p>
+          </div>
+          <button
+            onClick={() => void handleToggle2FA(!user?.twoFactorEnabled)}
+            disabled={isToggling2FA}
+            className={`inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-bold shadow-md transition-all active:scale-95 ${
+              user?.twoFactorEnabled 
+                ? 'bg-red-50 text-red-700 border border-red-200 hover:bg-red-100' 
+                : 'bg-olive-900 text-white hover:bg-olive-800'
+            }`}
+          >
+            {isToggling2FA ? 'Updating...' : user?.twoFactorEnabled ? 'Disable 2FA' : 'Enable 2FA'}
+          </button>
         </div>
       </SectionCard>
 

@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  Layout,
   Folder,
   Plus,
   Settings,
@@ -11,6 +10,7 @@ import {
   Target,
   Plug
 } from 'lucide-react';
+import logoImg from '@/assets/logo.png';
 
 export type SidebarView = 'dashboard' | 'settings' | 'event-tracking' | 'semantic-intelligence' | 'sdk-docs' | 'engagement' | 'sdk-integrations';
 
@@ -37,8 +37,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     <aside className="flex flex-col w-[260px] shrink-0 bg-slate-50  border-r border-zinc-200  h-full shadow-[4px_0_24px_rgba(0,0,0,0.02)]  z-10 transition-colors duration-300">
       {/* Logo */}
       <div className="flex items-center gap-3 px-6 h-[72px] border-b border-zinc-200  shrink-0">
-        <Layout className="text-olive-600 " size={24} strokeWidth={2.5} />
-        <span className="font-['Outfit'] font-extrabold text-olive-950  text-[1.25rem] tracking-tight">Task Manager</span>
+        <img src={logoImg} alt="Pristine Logo" className="w-6 h-6 object-contain" />
+        <span className="font-['Outfit'] font-extrabold text-olive-950  text-[1.25rem] tracking-tight">Pristine</span>
       </div>
 
       {/* Project nav */}
