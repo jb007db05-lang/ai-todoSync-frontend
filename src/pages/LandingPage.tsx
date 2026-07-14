@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -6,23 +6,23 @@ import {
   Zap,
   Clock,
   ChevronRight,
-  Layers,
   Calculator,
   Users,
   ArrowRight,
   TrendingUp,
-  Workflow,
   Sparkles,
-  Database,
   Lock,
   ChevronDown,
   ArrowUpRight,
   HelpCircle,
-  Activity,
-  Terminal
+  Terminal,
+  CheckCircle2,
+  LockKeyhole,
+  Search,
+  Server
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import dashboardImg from '@/assets/dashboard.png';
+import logoImg from '@/assets/logo.png';
 
 export default function LandingPage(): JSX.Element {
   const navigate = useNavigate();
@@ -38,11 +38,57 @@ export default function LandingPage(): JSX.Element {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Dynamic Priority Calculator State for Interactive Demo
+  // Interactive Calculator State
   const [basePriority, setBasePriority] = useState<'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'>('MEDIUM');
   const [slaUrgency, setSlaUrgency] = useState<'NORMAL' | 'NEAR_BREACH' | 'BREACHED'>('NORMAL');
-  const [downstreamTasks, setDownstreamTasks] = useState<number>(2);
+  const [downstreamTasks, setDownstreamTasks] = useState<number>(3);
   const [impact, setImpact] = useState<'LOW' | 'MEDIUM' | 'HIGH'>('MEDIUM');
+
+  // Ledger validation state
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanComplete, setScanComplete] = useState(false);
+
+  const triggerLedgerScan = () => {
+    if (isScanning) return;
+    setIsScanning(true);
+    setScanComplete(false);
+    setTimeout(() => {
+      setIsScanning(false);
+      setScanComplete(true);
+    }, 1200);
+  };
+
+  // Semantic Search Simulation State
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isSearching, setIsSearching] = useState<boolean>(false);
+  const [searchMatches, setSearchMatches] = useState<Array<{ title: string; score: number; status: string; priority: string }>>([]);
+
+  const presetQueries = [
+    { query: "auth latency problems", results: [
+      { title: "Optimize Redis Access Token Cache Store", score: 0.94, status: "IN_PROGRESS", priority: "CRITICAL" },
+      { title: "Review Axios Interceptor Request Queue Delay", score: 0.88, status: "BACKLOG", priority: "HIGH" },
+      { title: "Toggle 2FA Code Delivery Gateway Timeout", score: 0.81, status: "BLOCKED", priority: "HIGH" }
+    ]},
+    { query: "sla resolution breach warnings", results: [
+      { title: "Escalate Legal Hold Deletion Override request", score: 0.96, status: "PENDING_APPROVAL", priority: "CRITICAL" },
+      { title: "Audit Downstream Blocked Tasks on Database Layer", score: 0.89, status: "IN_PROGRESS", priority: "HIGH" },
+      { title: "Check Task Inspector Calculation Offset logs", score: 0.83, status: "COMPLETED", priority: "MEDIUM" }
+    ]},
+    { query: "cryptographic verification logs", results: [
+      { title: "Verify SHA-256 Ledger Chain Integrity Verification", score: 0.98, status: "COMPLETED", priority: "MEDIUM" },
+      { title: "Lock Project Record Retention legal hold logs", score: 0.85, status: "IN_PROGRESS", priority: "HIGH" }
+    ]}
+  ];
+
+  const handleQueryClick = (queryText: string) => {
+    setSearchQuery(queryText);
+    setIsSearching(true);
+    const matched = presetQueries.find(q => q.query === queryText)?.results ?? [];
+    setTimeout(() => {
+      setSearchMatches(matched);
+      setIsSearching(false);
+    }, 450);
+  };
 
   // FAQ Accordion State
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
@@ -50,48 +96,37 @@ export default function LandingPage(): JSX.Element {
   // Interactive Calculator Logic matching backend formulas
   const calculateScore = () => {
     let score = 0;
-
-    // Base Priority Score
     const baseMap = { LOW: 10, MEDIUM: 30, HIGH: 60, CRITICAL: 90 };
     score += baseMap[basePriority];
-
-    // SLA Urgency Score (SLA Status adds offset)
     if (slaUrgency === 'NEAR_BREACH') score += 20;
     else if (slaUrgency === 'BREACHED') score += 40;
-
-    // Downstream Dependency weight (downstream block multiplier)
     score += downstreamTasks * 15;
-
-    // Impact Score (Organizational weight)
     const impactMap = { LOW: 5, MEDIUM: 15, HIGH: 30 };
     score += impactMap[impact];
-
-    return Math.min(score, 200); // capped at 200 max
+    return Math.min(score, 200);
   };
 
   const score = calculateScore();
   const getPriorityLabel = (s: number) => {
-    if (s < 40) return { label: 'LOW', color: 'text-green-600 bg-green-50 border-green-200', darkColor: 'text-emerald-400 bg-emerald-950/40 border-emerald-500/30', led: 'bg-emerald-400' };
-    if (s < 90) return { label: 'MEDIUM', color: 'text-amber-600 bg-amber-50 border-amber-200', darkColor: 'text-amber-400 bg-amber-950/40 border-amber-500/30', led: 'bg-amber-400' };
-    if (s < 140) return { label: 'HIGH', color: 'text-orange-600 bg-orange-50 border-orange-200', darkColor: 'text-orange-400 bg-orange-950/40 border-orange-500/30', led: 'bg-orange-400' };
-    return { label: 'CRITICAL', color: 'text-red-600 bg-red-50 border-red-200', darkColor: 'text-rose-400 bg-rose-950/40 border-rose-500/30', led: 'bg-rose-400' };
+    if (s < 40) return { label: 'LOW', color: 'text-emerald-700 bg-emerald-50 border-emerald-200', darkColor: 'text-emerald-400 bg-emerald-950/40 border-emerald-500/20', led: 'bg-emerald-500' };
+    if (s < 90) return { label: 'MEDIUM', color: 'text-amber-700 bg-amber-50 border-amber-200', darkColor: 'text-amber-400 bg-amber-950/40 border-amber-500/20', led: 'bg-amber-500' };
+    if (s < 140) return { label: 'HIGH', color: 'text-orange-700 bg-orange-50 border-orange-200', darkColor: 'text-orange-400 bg-orange-950/40 border-orange-500/20', led: 'bg-orange-500' };
+    return { label: 'CRITICAL', color: 'text-rose-700 bg-rose-50 border-rose-200', darkColor: 'text-rose-400 bg-rose-950/40 border-rose-500/20', led: 'bg-rose-500' };
   };
 
   const priorityResult = getPriorityLabel(score);
 
-  // Pseudo-Execution Logs for the Terminal View
   const getExecutionLogs = () => {
     return [
-      `[GATEWAY] Ingested evaluation trigger...`,
-      `[ENGINE] Evaluated base priority: ${basePriority} (${basePriority === 'LOW' ? 10 : basePriority === 'MEDIUM' ? 30 : basePriority === 'HIGH' ? 60 : 90} pts)`,
-      `[SLA_MONITOR] SLA Urgency offset: ${slaUrgency} (${slaUrgency === 'NEAR_BREACH' ? '+20' : slaUrgency === 'BREACHED' ? '+40' : '+0'} pts)`,
-      `[CASCADE] Processed ${downstreamTasks} downstream blocked tasks (${downstreamTasks * 15} pts)`,
-      `[IMPACT] Analyzed organizational weight: ${impact} (${impact === 'LOW' ? 5 : impact === 'MEDIUM' ? 15 : 30} pts)`,
-      `[LEDGER] Dynamic Priority compiled successfully: ${score} / 200`
+      { prefix: '[GATEWAY]', text: 'Ingested evaluation trigger payload...', color: 'text-sky-400' },
+      { prefix: '[ENGINE]', text: `Evaluated base priority: ${basePriority} (${basePriority === 'LOW' ? 10 : basePriority === 'MEDIUM' ? 30 : basePriority === 'HIGH' ? 60 : 90} pts)`, color: 'text-emerald-400' },
+      { prefix: '[SLA_MONITOR]', text: `SLA Urgency offset: ${slaUrgency} (${slaUrgency === 'NEAR_BREACH' ? '+20' : slaUrgency === 'BREACHED' ? '+40' : '+0'} pts)`, color: 'text-amber-400' },
+      { prefix: '[CASCADE]', text: `Processed ${downstreamTasks} downstream blocked tasks (${downstreamTasks * 15} pts)`, color: 'text-violet-400' },
+      { prefix: '[IMPACT]', text: `Analyzed organizational weight: ${impact} (${impact === 'LOW' ? 5 : impact === 'MEDIUM' ? 15 : 30} pts)`, color: 'text-teal-400' },
+      { prefix: '[LEDGER]', text: `Dynamic Priority compiled successfully: ${score} / 200`, color: 'text-emerald-300 font-bold' }
     ];
   };
 
-  // Enterprise FAQ Data
   const faqs = [
     {
       q: "How does the Dynamic Priority Engine compute priority scores?",
@@ -112,70 +147,58 @@ export default function LandingPage(): JSX.Element {
   ];
 
   return (
-    <div className="min-h-screen bg-olive-50 institutional-grid overflow-hidden selection:bg-olive-200 selection:text-olive-900 pb-0">
-
-      {/* Floating Dynamic Island Navbar */}
+    <div className="min-h-screen bg-neutral-50 text-neutral-800 relative overflow-hidden font-sans selection:bg-emerald-500/10 selection:text-emerald-950">
+      
+      {/* Modern Floating Capsule Navbar */}
       <div className="fixed top-0 left-0 right-0 z-50 flex justify-center p-4 pointer-events-none">
         <motion.header
           initial={{ y: -50, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 100, damping: 15 }}
-          className={`pointer-events-auto flex items-center justify-between transition-all duration-500 ease-in-out ${isScrolled
-              ? "w-[92%] md:w-[65%] max-w-4xl rounded-full py-2.5 px-6 bg-olive-950/95 text-white shadow-2xl backdrop-blur-xl border border-white/10"
-              : "w-full max-w-7xl rounded-2xl py-4 px-8 bg-white/80 text-olive-950 shadow-sm backdrop-blur-md border border-olive-200/50"
-            }`}
+          transition={{ type: "spring", stiffness: 100, damping: 18 }}
+          className={`pointer-events-auto flex items-center justify-between border rounded-full py-2.5 px-6 transition-all duration-300 ease-in-out w-[92%] md:w-[75%] max-w-5xl ${
+            isScrolled
+              ? "bg-white/85 border-neutral-200/60 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.03)]"
+              : "bg-white/60 border-neutral-200/30 backdrop-blur-md shadow-none"
+          }`}
         >
-          {/* Logo */}
+          {/* Logo & Branding */}
           <div className="flex items-center gap-2">
-            <div className={`p-2 rounded-lg flex items-center justify-center transition-all ${isScrolled ? "bg-white text-olive-950" : "bg-olive-900 text-white"
-              }`}>
-              <Layers className="w-4 h-4" />
-            </div>
-            <span className={`font-display font-black text-sm tracking-widest transition-all ${isScrolled ? "text-white" : "text-olive-900"
-              }`}>SYNC TODO</span>
+            <img src={logoImg} alt="Pristine Logo" className="w-5 h-5 object-contain" />
+            <span className="font-display font-black text-xs tracking-[0.2em] text-neutral-900">PRISTINE</span>
           </div>
 
           {/* Navigation Links */}
-          <nav className="hidden md:flex items-center gap-6">
-            <a href="#features" className={`text-xs font-mono tracking-wider transition-colors ${isScrolled ? "text-white/70 hover:text-white" : "text-olive-600 hover:text-olive-950"
-              }`}>FEATURES</a>
-            <a href="#matrix" className={`text-xs font-mono tracking-wider transition-colors ${isScrolled ? "text-white/70 hover:text-white" : "text-olive-600 hover:text-olive-950"
-              }`}>COMPARE</a>
-            <a href="#demo" className={`text-xs font-mono tracking-wider transition-colors ${isScrolled ? "text-white/70 hover:text-white" : "text-olive-600 hover:text-olive-950"
-              }`}>CALCULATOR</a>
-            <a href="#governance" className={`text-xs font-mono tracking-wider transition-colors ${isScrolled ? "text-white/70 hover:text-white" : "text-olive-600 hover:text-olive-950"
-              }`}>GOVERNANCE</a>
-            <a href="#faq" className={`text-xs font-mono tracking-wider transition-colors ${isScrolled ? "text-white/70 hover:text-white" : "text-olive-600 hover:text-olive-950"
-              }`}>FAQ</a>
+          <nav className="hidden md:flex items-center gap-8">
+            <a href="#demo" className="text-xs font-semibold text-neutral-500 hover:text-neutral-950 transition-colors">Simulator</a>
+            <a href="#features" className="text-xs font-semibold text-neutral-500 hover:text-neutral-950 transition-colors">Features</a>
+            <a href="#semantic-ai" className="text-xs font-semibold text-neutral-500 hover:text-neutral-950 transition-colors">Semantic AI</a>
+            <a href="#matrix" className="text-xs font-semibold text-neutral-500 hover:text-neutral-950 transition-colors">Compare</a>
+            <a href="#governance" className="text-xs font-semibold text-neutral-500 hover:text-neutral-950 transition-colors">Governance</a>
+            <a href="#faq" className="text-xs font-semibold text-neutral-500 hover:text-neutral-950 transition-colors">FAQ</a>
           </nav>
 
           {/* CTA Buttons */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             {user ? (
               <button
                 onClick={() => navigate('/dashboard')}
-                className={`py-1.5 px-4 rounded-full font-bold text-xs flex items-center gap-1 transition-all ${isScrolled
-                    ? "bg-white text-olive-950 hover:bg-olive-100"
-                    : "bg-olive-700 text-white hover:bg-olive-800"
-                  }`}
+                className="py-1.5 px-4 rounded-full font-bold text-xs bg-neutral-900 text-white hover:bg-neutral-800 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
               >
-                Launch App <ArrowRight className="w-3.5 h-3.5" />
+                <span>Launch Portal</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <ArrowRight className="w-3 h-3" />
               </button>
             ) : (
               <>
                 <button
                   onClick={() => navigate('/login')}
-                  className={`text-xs font-bold transition-all ${isScrolled ? "text-white/70 hover:text-white" : "text-olive-700 hover:text-olive-950"
-                    }`}
+                  className="text-xs font-bold text-neutral-500 hover:text-neutral-950 transition-colors cursor-pointer"
                 >
                   Log In
                 </button>
                 <button
                   onClick={() => navigate('/register')}
-                  className={`py-1.5 px-4 rounded-full font-bold text-xs transition-all ${isScrolled
-                      ? "bg-white text-olive-950 hover:bg-olive-100"
-                      : "bg-olive-700 text-white hover:bg-olive-800"
-                    }`}
+                  className="py-1.5 px-4 rounded-full font-bold text-xs bg-neutral-900 text-white hover:bg-neutral-800 transition-all cursor-pointer shadow-sm"
                 >
                   Register
                 </button>
@@ -186,368 +209,99 @@ export default function LandingPage(): JSX.Element {
       </div>
 
       {/* Hero Section */}
-      <section className="relative pt-40 pb-24 px-6 text-center max-w-7xl mx-auto z-10">
+      <section className="relative pt-40 pb-20 px-6 text-center max-w-7xl mx-auto z-10">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.5 }}
           className="space-y-6"
         >
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-neutral-200/50 border border-neutral-300/40 rounded-full">
+            <Sparkles size={11} className="text-emerald-700" />
+            <span className="text-[9px] font-bold text-neutral-600 uppercase tracking-widest">Version 1.2 Enterprise Active</span>
+          </div>
 
-          <h1 className="text-4xl md:text-6xl font-black tracking-tight text-olive-950 max-w-5xl mx-auto leading-none">
-            Deep Operational Architecture.<br />
-            <span className="text-gradient">Govern tasks with absolute certitude.</span>
+          <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-neutral-900 max-w-4xl mx-auto leading-tight">
+            Operational Control for <br />
+            <span className="text-emerald-700 font-black">High-Performance Teams</span>
           </h1>
 
-          <p className="text-base md:text-lg text-olive-600 max-w-3xl mx-auto leading-relaxed">
-            Sync Todo bridges collaborative task coordination with mathematical priority simulation, microsecond SLA audit tracks, cryptographically chained sequence governance, and vector intelligence suggestions.
+          <p className="text-sm md:text-base text-neutral-500 max-w-2xl mx-auto leading-relaxed font-normal">
+            Pristine bridges collaborative task coordination with mathematical priority simulation, microsecond SLA audit tracks, cryptographically chained sequence governance, and vector intelligence suggestions.
           </p>
 
-          {/* Institutional KPI Stats Badges */}
-          <div className="grid grid-cols-3 gap-4 max-w-3xl mx-auto pt-6 py-6">
-            <div className="text-center">
-              <div className="text-2xl md:text-2xl font-bold text-olive-900">100%</div>
-              <div className="text-[10px] text-olive-400 uppercase tracking-widest mt-1">Tamper Proof Auditing</div>
+          {/* Clean Key Metrics Widgets */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-3xl mx-auto pt-6">
+            <div className="bg-white border border-neutral-200 p-5 rounded-2xl text-center hover:border-neutral-300 transition-all">
+              <span className="text-[9px] font-mono text-neutral-400 uppercase tracking-wider block mb-1">LEDGER INTEGRITY</span>
+              <div className="text-xl font-bold text-emerald-700">100% Secure</div>
             </div>
-            <div className="text-center border-x border-olive-200/50">
-              <div className="text-2xl md:text-2xl font-bold text-olive-900">0.0ms</div>
-              <div className="text-[10px] text-olive-400 uppercase tracking-widest mt-1">Priority Calculation Latency</div>
+            <div className="bg-white border border-neutral-200 p-5 rounded-2xl text-center hover:border-neutral-300 transition-all">
+              <span className="text-[9px] font-mono text-neutral-400 uppercase tracking-wider block mb-1">CALCULATION TIMING</span>
+              <div className="text-xl font-bold text-neutral-800">&lt; 0.1ms</div>
             </div>
-            <div className="text-center">
-              <div className="text-2xl md:text-2xl font-bold text-olive-900">99.98%</div>
-              <div className="text-[10px] text-olive-400 uppercase tracking-widest mt-1">SLA Compliance Ratio</div>
+            <div className="bg-white border border-neutral-200 p-5 rounded-2xl text-center hover:border-neutral-300 transition-all">
+              <span className="text-[9px] font-mono text-neutral-400 uppercase tracking-wider block mb-1">MICRO-SLA COMPLIANCE</span>
+              <div className="text-xl font-bold text-neutral-800">99.98% Met</div>
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-6">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-6">
             <button
               onClick={() => navigate(user ? '/dashboard' : '/register')}
-              className="btn-primary text-base px-8 py-3.5 shadow-xl shadow-olive-900/10"
+              className="px-6 py-3 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl font-bold transition-all flex items-center gap-2 cursor-pointer text-xs"
             >
-              Get Started Free <ChevronRight className="w-5 h-5" />
+              Get Started Free <ChevronRight className="w-3.5 h-3.5" />
             </button>
             <a
               href="#demo"
-              className="btn-secondary text-base px-8 py-3.5"
+              className="px-6 py-3 bg-white border border-neutral-200 hover:border-neutral-350 text-neutral-700 rounded-xl font-bold transition-all text-xs"
             >
-              Try Interactive Calculator
+              Open Evaluation Simulator
             </a>
           </div>
         </motion.div>
-
-        {/* Dashboard Screenshot Mockup */}
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-          className="mt-16 relative mx-auto max-w-5xl rounded-2xl border border-olive-200/80 bg-white p-2 shadow-2xl shadow-olive-900/5 overflow-hidden group perspective-1000"
-        >
-          <div className="absolute inset-0 bg-gradient-to-t from-olive-50/50 via-transparent to-transparent z-10 pointer-events-none" />
-          <img
-            src={dashboardImg}
-            alt="Sync Todo Dashboard Page Mockup"
-            className="w-full h-auto rounded-xl border border-olive-100 shadow-inner group-hover:scale-[1.005] transition-transform duration-700"
-          />
-        </motion.div>
       </section>
 
-      {/* Core Features Bento Grid */}
-      <section id="features" className="py-24 bg-white border-y border-olive-200/50 px-6">
-        <div className="max-w-7xl mx-auto space-y-16">
-          <div className="text-center space-y-4">
-            <h2 className="text-3xl md:text-4xl font-black text-olive-950 tracking-tight">
-              An Exhaustive Breakdown of Capabilities
-            </h2>
-            <p className="text-olive-500 text-sm md:text-base max-w-2xl mx-auto">
-              We cover every administrative, intelligence, and operational workflow implemented inside Sync Todo. No generic lists, only precise technical features.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6">
-
-            {/* 1. Dynamic Priority Engine Card */}
-            <div className="bento-item flex flex-col justify-between group">
-              <div className="space-y-4">
-                <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl w-fit">
-                  <Zap className="w-6 h-6 text-amber-600" />
-                </div>
-                <h3 className="text-xl font-bold text-olive-900">Dynamic Priority Engine</h3>
-                <p className="text-xs text-olive-600 leading-relaxed">
-                  Real-time recalculation of task priority based on an exact mathematical combination of base severity, organization impact weights, SLA urgency offsets, and cascading downstream dependency calculations. Evaluates bottleneck tasks blocking multiple active team deliverables.
-                </p>
-                <ul className="text-[11px] text-olive-500 space-y-1 pl-4 list-disc">
-                  <li>Global mass recalculation option next to refresh</li>
-                  <li>Real-time priority breakdowns in Task Inspector</li>
-                  <li>Capped evaluation scale (0 - 200)</li>
-                </ul>
-              </div>
-            </div>
-
-            {/* 2. Micro-SLA Management Card */}
-            <div className="bento-item flex flex-col justify-between group">
-              <div className="space-y-4">
-                <div className="p-3 bg-red-50 border border-red-100 rounded-xl w-fit">
-                  <Clock className="w-6 h-6 text-red-600" />
-                </div>
-                <h3 className="text-xl font-bold text-olive-900">Micro-SLA Breach Tracking</h3>
-                <p className="text-xs text-olive-600 leading-relaxed">
-                  Rigorous timers measuring both First Response due times and Resolution due times. Keeps close logs of completion times, SLA statuses (Breached, Near Breach, Met), and pauses due timers whenever task execution is blocked.
-                </p>
-                <ul className="text-[11px] text-olive-500 space-y-1 pl-4 list-disc">
-                  <li>First response date logging in settings</li>
-                  <li>SLA dashboard panel summarizing breach ratios</li>
-                  <li>Compact badge indicators showing remaining time</li>
-                </ul>
-              </div>
-            </div>
-
-            {/* 3. Cryptographic Activity History Card */}
-            <div className="bento-item flex flex-col justify-between group">
-              <div className="space-y-4">
-                <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl w-fit">
-                  <ShieldCheck className="w-6 h-6 text-emerald-600" />
-                </div>
-                <h3 className="text-xl font-bold text-olive-900">Cryptographic Governance</h3>
-                <p className="text-xs text-olive-600 leading-relaxed">
-                  Compliance validation through SHA-256 block hash chaining. Every project operation (creation, deletions, note updates, team modifications) receives sequential ID hashes, preventing administrative log manipulation.
-                </p>
-                <ul className="text-[11px] text-olive-500 space-y-1 pl-4 list-disc">
-                  <li>On-demand audit chain integrity validation</li>
-                  <li>Customizable project retention policies (days)</li>
-                  <li>Legal Hold locks to prevent data deletion</li>
-                </ul>
-              </div>
-            </div>
-
-            {/* 4. AI-Powered Semantic Intelligence Card */}
-            <div className="bento-item flex flex-col justify-between group">
-              <div className="space-y-4">
-                <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-xl w-fit">
-                  <Sparkles className="w-6 h-6 text-indigo-600" />
-                </div>
-                <h3 className="text-xl font-bold text-olive-900">Semantic AI Intelligence</h3>
-                <p className="text-xs text-olive-600 leading-relaxed">
-                  Go beyond keyword matching. Leverage built-in vector embeddings to semantically query tasks, discover cross-project task suggestions, and automatically align work notes using semantic similarity algorithms.
-                </p>
-                <ul className="text-[11px] text-olive-500 space-y-1 pl-4 list-disc">
-                  <li>Semantic search interface for conceptual matches</li>
-                  <li>AI task and note relationship matching suggestions</li>
-                  <li>Vector distance visualizations</li>
-                </ul>
-              </div>
-            </div>
-
-            {/* 5. Ordered Approval Workflows Card */}
-            <div className="bento-item flex flex-col justify-between group">
-              <div className="space-y-4">
-                <div className="p-3 bg-violet-50 border border-violet-100 rounded-xl w-fit">
-                  <Workflow className="w-6 h-6 text-violet-600" />
-                </div>
-                <h3 className="text-xl font-bold text-olive-900">Ordered Approval Workflows</h3>
-                <p className="text-xs text-olive-600 leading-relaxed">
-                  Restricts sensitive operations (such as legal hold overrides, priority updates, and settings changes) using structured multi-approver chains. Every change request requires ordered, sequential team consensus.
-                </p>
-                <ul className="text-[11px] text-olive-500 space-y-1 pl-4 list-disc">
-                  <li>Request modal targeting specific team members</li>
-                  <li>Actionable pending approval banners</li>
-                  <li>State tracking (Pending, Approved, Rejected, Cancelled)</li>
-                </ul>
-              </div>
-            </div>
-
-            {/* 6. Collaborative Project Workspace Card */}
-            <div className="bento-item flex flex-col justify-between group">
-              <div className="space-y-4">
-                <div className="p-3 bg-teal-50 border border-teal-100 rounded-xl w-fit">
-                  <Database className="w-6 h-6 text-teal-600" />
-                </div>
-                <h3 className="text-xl font-bold text-olive-900">Structured Workspace</h3>
-                <p className="text-xs text-olive-600 leading-relaxed">
-                  Complete operational coordination via highly responsive Kanban boards and list layouts. Break deliverables into Epics, edit subtasks inline, compile rich markdown work notes, and discuss changes over task comments.
-                </p>
-                <ul className="text-[11px] text-olive-500 space-y-1 pl-4 list-disc">
-                  <li>Real-time sync via WebSocket integration</li>
-                  <li>Robust member management and task assignments</li>
-                  <li>Sober, professional layout focusing on typography</li>
-                </ul>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </section>
-
-      {/* Comparison Feature Matrix Section */}
-      <section id="matrix" className="py-24 px-6 max-w-7xl mx-auto space-y-12">
-        <div className="text-center space-y-4">
-          <span className="system-label text-olive-500">How We Stand Out</span>
-          <h2 className="text-3xl md:text-4xl font-black text-olive-950 tracking-tight">
-            Sync Todo vs Legacy Task Managers
-          </h2>
-          <p className="text-olive-600 text-sm md:text-base max-w-2xl mx-auto">
-            Traditional todo lists rely on basic tags and manual sorting. Sync Todo implements strict cryptographically governed operations and mathematical priority routing.
-          </p>
-        </div>
-
-        <div className="overflow-x-auto rounded-2xl border border-olive-200 shadow-xl bg-white">
-          <table className="w-full text-left border-collapse text-sm">
-            <thead>
-              <tr className="bg-olive-900 text-white font-mono text-xs uppercase tracking-wider">
-                <th className="p-5 font-bold">Advanced Capabilities</th>
-                <th className="p-5 font-bold">Standard Task Tool</th>
-                <th className="p-5 font-bold text-amber-400">Sync Todo Enterprise</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-olive-100">
-              <tr>
-                <td className="p-5 font-bold text-olive-900">Task Priority Calculations</td>
-                <td className="p-5 text-olive-500">Static (Low/Med/High text dropdown)</td>
-                <td className="p-5 text-olive-800 font-bold bg-olive-50/50 flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-amber-500" />
-                  Dynamic Score Engine (0-200) based on SLAs, impacts, downstream counts
-                </td>
-              </tr>
-              <tr>
-                <td className="p-5 font-bold text-olive-900">Activity Log Compliance</td>
-                <td className="p-5 text-olive-500">Plain Database Logs (modifiable by admins)</td>
-                <td className="p-5 text-olive-800 font-bold bg-olive-50/50">
-                  <ShieldCheck className="w-4 h-4 text-emerald-500 inline mr-2" />
-                  Immutable SHA-256 block-hash chaining with on-demand tampering verification
-                </td>
-              </tr>
-              <tr>
-                <td className="p-5 font-bold text-olive-900">SLA Breach Tracking</td>
-                <td className="p-5 text-olive-500">Basic due dates with no response tracking</td>
-                <td className="p-5 text-olive-800 font-bold bg-olive-50/50">
-                  Dual-timer tracking (First Response & Resolution due times) + Block pause states
-                </td>
-              </tr>
-              <tr>
-                <td className="p-5 font-bold text-olive-900">Sensitive Action Control</td>
-                <td className="p-5 text-olive-500">None (Anyone with write access can edit anything)</td>
-                <td className="p-5 text-olive-800 font-bold bg-olive-50/50">
-                  <Workflow className="w-4 h-4 text-violet-500 inline mr-2" />
-                  Sequential ordered team approval chains for escalations and overrides
-                </td>
-              </tr>
-              <tr>
-                <td className="p-5 font-bold text-olive-900">AI Assistance</td>
-                <td className="p-5 text-olive-500">Basic keyword search filters</td>
-                <td className="p-5 text-olive-800 font-bold bg-olive-50/50">
-                  Vector similarity queries, cross-project suggestions, semantic note matching
-                </td>
-              </tr>
-              <tr>
-                <td className="p-5 font-bold text-olive-900">Real-time Task Board</td>
-                <td className="p-5 text-olive-500">Requires manual browser refresh</td>
-                <td className="p-5 text-olive-800 font-bold bg-olive-50/50">
-                  Socket.io-based immediate synchronizations across collaborative teams
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      {/* Dynamic Visual Operations Pipeline Section */}
-      <section className="py-24 px-6 bg-white border-y border-olive-200/50">
-        <div className="max-w-7xl mx-auto space-y-16">
-          <div className="text-center space-y-4">
-            <span className="system-label text-olive-500">System Architecture</span>
-            <h2 className="text-3xl md:text-4xl font-black text-olive-950 tracking-tight">
-              Dynamic Operations Flow
-            </h2>
-            <p className="text-olive-600 text-sm md:text-base max-w-2xl mx-auto">
-              Behind the scenes, Sync Todo synchronizes user actions, priority calculations, and security signatures in a unified high-speed pipeline.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-4 gap-6 relative">
-            {/* Step 1 */}
-            <div className="p-6 bg-olive-50/50 border border-olive-200 rounded-xl relative group hover:border-olive-400 hover:bg-olive-50 transition-all duration-300">
-              <div className="absolute -top-3 -left-3 w-8 h-8 rounded-full bg-olive-900 text-white font-mono text-xs flex items-center justify-center font-bold">1</div>
-              <div className="space-y-3 pt-2">
-                <div className="p-2 bg-olive-900 text-white rounded w-fit"><Activity className="w-4 h-4" /></div>
-                <h4 className="font-bold text-olive-900 text-sm">Action Ingestion</h4>
-                <p className="text-xs text-olive-600 leading-relaxed">Task creation, subtask updates, or note configurations hit the gateway controller via Secure WebSocket streams.</p>
-              </div>
-            </div>
-
-            {/* Step 2 */}
-            <div className="p-6 bg-olive-50/50 border border-olive-200 rounded-xl relative group hover:border-olive-400 hover:bg-olive-50 transition-all duration-300">
-              <div className="absolute -top-3 -left-3 w-8 h-8 rounded-full bg-olive-900 text-white font-mono text-xs flex items-center justify-center font-bold">2</div>
-              <div className="space-y-3 pt-2">
-                <div className="p-2 bg-olive-900 text-white rounded w-fit"><Calculator className="w-4 h-4" /></div>
-                <h4 className="font-bold text-olive-900 text-sm">Priority Optimization</h4>
-                <p className="text-xs text-olive-600 leading-relaxed">The Priority Engine recalculates scores using base parameters, active SLA durations, and cascading downstream blocked dependencies.</p>
-              </div>
-            </div>
-
-            {/* Step 3 */}
-            <div className="p-6 bg-olive-50/50 border border-olive-200 rounded-xl relative group hover:border-olive-400 hover:bg-olive-50 transition-all duration-300">
-              <div className="absolute -top-3 -left-3 w-8 h-8 rounded-full bg-olive-900 text-white font-mono text-xs flex items-center justify-center font-bold">3</div>
-              <div className="space-y-3 pt-2">
-                <div className="p-2 bg-olive-900 text-white rounded w-fit"><ShieldCheck className="w-4 h-4" /></div>
-                <h4 className="font-bold text-olive-900 text-sm">Ledger Verification</h4>
-                <p className="text-xs text-olive-600 leading-relaxed">The activity commits to the chronological database. The system appends a sequential sequence ID and locks the hash pointer.</p>
-              </div>
-            </div>
-
-            {/* Step 4 */}
-            <div className="p-6 bg-olive-50/50 border border-olive-200 rounded-xl relative group hover:border-olive-400 hover:bg-olive-50 transition-all duration-300">
-              <div className="absolute -top-3 -left-3 w-8 h-8 rounded-full bg-olive-900 text-white font-mono text-xs flex items-center justify-center font-bold">4</div>
-              <div className="space-y-3 pt-2">
-                <div className="p-2 bg-olive-900 text-white rounded w-fit"><Users className="w-4 h-4" /></div>
-                <h4 className="font-bold text-olive-900 text-sm">Consensus Dispatch</h4>
-                <p className="text-xs text-olive-600 leading-relaxed">Changes stream immediately to all project members. Bypasses normal database sync lag for optimal group transparency.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Interactive Calculator Section */}
-      <section id="demo" className="py-24 px-6 max-w-7xl mx-auto space-y-16">
-        <div className="text-center space-y-4">
-          <span className="system-label text-olive-500">Live Simulator</span>
-          <h2 className="text-3xl md:text-4xl font-black text-olive-950 tracking-tight">
+      {/* Simulator Section */}
+      <section id="demo" className="py-20 px-6 max-w-6xl mx-auto space-y-10 relative z-10">
+        <div className="text-center space-y-2">
+          <span className="text-xs font-bold uppercase tracking-wider text-emerald-600">Interactive Engine</span>
+          <h2 className="text-2xl md:text-3xl font-extrabold text-neutral-900 tracking-tight">
             See the Priority Engine in Action
           </h2>
-          <p className="text-olive-600 text-sm md:text-base max-w-xl mx-auto">
-            Interact with the factors that drive our dynamic evaluation score. Watch priority ratings update live based on backend logic.
-          </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-12 bg-white/60 backdrop-blur-xl border border-olive-200/60 p-8 md:p-12 shadow-[0_20px_50px_rgba(40,55,30,0.06)] rounded-3xl relative overflow-hidden">
-          {/* Controls */}
-          <div className="space-y-8 pr-2">
-            <div className="space-y-2">
-              <span className="bg-olive-100 border border-olive-200/50 text-olive-800 px-3 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider inline-flex items-center gap-1.5">
-                <Calculator className="w-3.5 h-3.5 text-olive-600" /> Evaluation Simulator
+        <div className="grid lg:grid-cols-2 gap-8 bg-white border border-neutral-200 p-6 md:p-8 rounded-2xl shadow-sm">
+          {/* Left panel: Controls */}
+          <div className="space-y-6">
+            <div className="space-y-1">
+              <span className="bg-neutral-100 border border-neutral-200 text-neutral-700 px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-wider inline-flex items-center gap-1">
+                <Calculator className="w-3 h-3 text-emerald-600" /> Evaluation Simulator
               </span>
-              <h3 className="text-2xl font-black text-olive-950 tracking-tight">
-                Evaluation Inputs
+              <h3 className="text-lg font-bold text-neutral-900">
+                Simulate Pipeline Constraints
               </h3>
             </div>
 
             {/* Base Priority */}
-            <div className="space-y-3">
-              <label className="text-[10px] font-mono font-bold text-olive-500 uppercase tracking-widest flex items-center gap-1.5">
-                <Zap className="w-3 h-3 text-olive-400" /> Base Priority
+            <div className="space-y-2">
+              <label className="text-[9px] font-mono font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-1">
+                <Zap className="w-3 h-3 text-amber-500" /> Base Priority
               </label>
-              <div className="grid grid-cols-4 gap-2.5">
+              <div className="grid grid-cols-4 gap-2">
                 {(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as const).map(p => {
                   const activeStyles = {
-                    LOW: basePriority === 'LOW' ? 'bg-emerald-500/10 text-emerald-800 border-emerald-500/80 shadow-[0_0_12px_rgba(16,185,129,0.15)] scale-[1.02]' : 'bg-olive-50/40 text-olive-600 border-olive-200/60 hover:border-olive-400 hover:bg-white',
-                    MEDIUM: basePriority === 'MEDIUM' ? 'bg-amber-500/10 text-amber-800 border-amber-500/80 shadow-[0_0_12px_rgba(245,158,11,0.15)] scale-[1.02]' : 'bg-olive-50/40 text-olive-600 border-olive-200/60 hover:border-olive-400 hover:bg-white',
-                    HIGH: basePriority === 'HIGH' ? 'bg-orange-500/10 text-orange-800 border-orange-500/80 shadow-[0_0_12px_rgba(249,115,22,0.15)] scale-[1.02]' : 'bg-olive-50/40 text-olive-600 border-olive-200/60 hover:border-olive-400 hover:bg-white',
-                    CRITICAL: basePriority === 'CRITICAL' ? 'bg-rose-500/10 text-rose-800 border-rose-500/80 shadow-[0_0_12px_rgba(244,63,94,0.15)] scale-[1.02]' : 'bg-olive-50/40 text-olive-600 border-olive-200/60 hover:border-olive-400 hover:bg-white',
+                    LOW: basePriority === 'LOW' ? 'bg-emerald-50 text-emerald-800 border-emerald-400 font-bold' : 'bg-neutral-50 text-neutral-500 border-neutral-200 hover:border-neutral-300',
+                    MEDIUM: basePriority === 'MEDIUM' ? 'bg-amber-50 text-amber-800 border-amber-400 font-bold' : 'bg-neutral-50 text-neutral-500 border-neutral-200 hover:border-neutral-300',
+                    HIGH: basePriority === 'HIGH' ? 'bg-orange-50 text-orange-800 border-orange-400 font-bold' : 'bg-neutral-50 text-neutral-500 border-neutral-200 hover:border-neutral-300',
+                    CRITICAL: basePriority === 'CRITICAL' ? 'bg-rose-50 text-rose-800 border-rose-400 font-bold' : 'bg-neutral-50 text-neutral-500 border-neutral-200 hover:border-neutral-300',
                   };
                   return (
                     <button
                       key={p}
                       onClick={() => setBasePriority(p)}
-                      className={`py-2.5 text-[10px] font-mono font-bold border rounded-xl transition-all duration-300 ${activeStyles[p]}`}
+                      className={`py-2 text-[9px] font-mono border rounded-lg transition-all cursor-pointer ${activeStyles[p]}`}
                     >
                       {p}
                     </button>
@@ -557,22 +311,22 @@ export default function LandingPage(): JSX.Element {
             </div>
 
             {/* SLA Urgency */}
-            <div className="space-y-3">
-              <label className="text-[10px] font-mono font-bold text-olive-500 uppercase tracking-widest flex items-center gap-1.5">
-                <Clock className="w-3 h-3 text-olive-400" /> SLA Urgency
+            <div className="space-y-2">
+              <label className="text-[9px] font-mono font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-1">
+                <Clock className="w-3 h-3 text-rose-500" /> SLA Urgency
               </label>
-              <div className="grid grid-cols-3 gap-2.5">
+              <div className="grid grid-cols-3 gap-2">
                 {(['NORMAL', 'NEAR_BREACH', 'BREACHED'] as const).map(u => {
                   const activeStyles = {
-                    NORMAL: slaUrgency === 'NORMAL' ? 'bg-emerald-500/10 text-emerald-800 border-emerald-500/80 shadow-[0_0_12px_rgba(16,185,129,0.15)] scale-[1.02]' : 'bg-olive-50/40 text-olive-600 border-olive-200/60 hover:border-olive-400 hover:bg-white',
-                    NEAR_BREACH: slaUrgency === 'NEAR_BREACH' ? 'bg-orange-500/10 text-orange-800 border-orange-500/80 shadow-[0_0_12px_rgba(249,115,22,0.15)] scale-[1.02]' : 'bg-olive-50/40 text-olive-600 border-olive-200/60 hover:border-olive-400 hover:bg-white',
-                    BREACHED: slaUrgency === 'BREACHED' ? 'bg-rose-500/10 text-rose-800 border-rose-500/80 shadow-[0_0_12px_rgba(244,63,94,0.15)] scale-[1.02]' : 'bg-olive-50/40 text-olive-600 border-olive-200/60 hover:border-olive-400 hover:bg-white',
+                    NORMAL: slaUrgency === 'NORMAL' ? 'bg-emerald-50 text-emerald-800 border-emerald-400 font-bold' : 'bg-neutral-50 text-neutral-500 border-neutral-200 hover:border-neutral-300',
+                    NEAR_BREACH: slaUrgency === 'NEAR_BREACH' ? 'bg-orange-50 text-orange-800 border-orange-400 font-bold' : 'bg-neutral-50 text-neutral-500 border-neutral-200 hover:border-neutral-300',
+                    BREACHED: slaUrgency === 'BREACHED' ? 'bg-rose-50 text-rose-800 border-rose-400 font-bold' : 'bg-neutral-50 text-neutral-500 border-neutral-200 hover:border-neutral-300',
                   };
                   return (
                     <button
                       key={u}
                       onClick={() => setSlaUrgency(u)}
-                      className={`py-2.5 text-[10px] font-mono font-bold border rounded-xl transition-all duration-300 ${activeStyles[u]}`}
+                      className={`py-2 text-[9px] font-mono border rounded-lg transition-all cursor-pointer ${activeStyles[u]}`}
                     >
                       {u.replace('_', ' ')}
                     </button>
@@ -582,22 +336,22 @@ export default function LandingPage(): JSX.Element {
             </div>
 
             {/* Impact */}
-            <div className="space-y-3">
-              <label className="text-[10px] font-mono font-bold text-olive-500 uppercase tracking-widest flex items-center gap-1.5">
-                <Users className="w-3 h-3 text-olive-400" /> Organizational Impact
+            <div className="space-y-2">
+              <label className="text-[9px] font-mono font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-1">
+                <Users className="w-3 h-3 text-sky-500" /> Impact
               </label>
-              <div className="grid grid-cols-3 gap-2.5">
+              <div className="grid grid-cols-3 gap-2">
                 {(['LOW', 'MEDIUM', 'HIGH'] as const).map(i => {
                   const activeStyles = {
-                    LOW: impact === 'LOW' ? 'bg-emerald-500/10 text-emerald-800 border-emerald-500/80 shadow-[0_0_12px_rgba(16,185,129,0.15)] scale-[1.02]' : 'bg-olive-50/40 text-olive-600 border-olive-200/60 hover:border-olive-400 hover:bg-white',
-                    MEDIUM: impact === 'MEDIUM' ? 'bg-amber-500/10 text-amber-800 border-amber-500/80 shadow-[0_0_12px_rgba(245,158,11,0.15)] scale-[1.02]' : 'bg-olive-50/40 text-olive-600 border-olive-200/60 hover:border-olive-400 hover:bg-white',
-                    HIGH: impact === 'HIGH' ? 'bg-orange-500/10 text-orange-800 border-orange-500/80 shadow-[0_0_12px_rgba(249,115,22,0.15)] scale-[1.02]' : 'bg-olive-50/40 text-olive-600 border-olive-200/60 hover:border-olive-400 hover:bg-white',
+                    LOW: impact === 'LOW' ? 'bg-emerald-50 text-emerald-800 border-emerald-400 font-bold' : 'bg-neutral-50 text-neutral-500 border-neutral-200 hover:border-neutral-300',
+                    MEDIUM: impact === 'MEDIUM' ? 'bg-amber-50 text-amber-800 border-amber-400 font-bold' : 'bg-neutral-50 text-neutral-500 border-neutral-200 hover:border-neutral-300',
+                    HIGH: impact === 'HIGH' ? 'bg-orange-50 text-orange-800 border-orange-400 font-bold' : 'bg-neutral-50 text-neutral-500 border-neutral-200 hover:border-neutral-300',
                   };
                   return (
                     <button
                       key={i}
                       onClick={() => setImpact(i)}
-                      className={`py-2.5 text-[10px] font-mono font-bold border rounded-xl transition-all duration-300 ${activeStyles[i]}`}
+                      className={`py-2 text-[9px] font-mono border rounded-lg transition-all cursor-pointer ${activeStyles[i]}`}
                     >
                       {i}
                     </button>
@@ -606,269 +360,394 @@ export default function LandingPage(): JSX.Element {
               </div>
             </div>
 
-            {/* Downstream Tasks Dependency Slider */}
-            <div className="space-y-4 pt-2">
-              <div className="flex justify-between items-center text-[10px] font-mono font-bold text-olive-500 uppercase tracking-widest">
-                <span className="flex items-center gap-1.5"><Layers className="w-3.5 h-3.5 text-olive-400" /> Downstream Blocked Tasks</span>
-                <span className="bg-olive-900 text-white font-mono font-bold px-2 py-0.5 rounded text-[10px] shadow-sm">{downstreamTasks} {downstreamTasks === 1 ? 'Task' : 'Tasks'}</span>
+            {/* Downstream Slider */}
+            <div className="space-y-3">
+              <div className="flex justify-between items-center text-[9px] font-mono font-bold text-neutral-400 uppercase tracking-widest">
+                <span>Blocked Downstream</span>
+                <span className="text-neutral-800 font-bold">{downstreamTasks} Tasks</span>
               </div>
-              <div className="relative pt-1">
+              <div className="relative">
                 <input
                   type="range"
                   min="0"
                   max="8"
                   value={downstreamTasks}
                   onChange={(e) => setDownstreamTasks(parseInt(e.target.value))}
-                  className="w-full h-1.5 bg-olive-100 rounded-lg appearance-none cursor-pointer accent-olive-900 focus:outline-none border border-olive-200/50"
+                  className="w-full h-1 bg-neutral-200 rounded-lg appearance-none cursor-pointer accent-neutral-900 focus:outline-none border-none"
                 />
-                <div className="flex justify-between px-1 mt-2 text-[9px] font-mono font-bold text-olive-400 select-none">
-                  {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((val) => (
-                    <span
-                      key={val}
-                      className={`transition-all duration-300 ${
-                        downstreamTasks === val ? 'text-olive-950 scale-125 font-black drop-shadow-[0_1px_2px_rgba(0,0,0,0.05)]' : 'text-olive-400/70'
-                      }`}
-                    >
-                      {val}
-                    </span>
-                  ))}
-                </div>
               </div>
             </div>
           </div>
 
-          {/* Result Output Screen with Live Terminal Execution Console */}
-          <div className="flex flex-col justify-between p-8 bg-neutral-950 text-white rounded-3xl border border-neutral-800/80 relative overflow-hidden group shadow-[0_20px_50px_rgba(0,0,0,0.35)] min-h-[480px]">
-            {/* Ambient glowing radial shapes */}
-            <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff02_1px,transparent_1px),linear-gradient(to_bottom,#ffffff02_1px,transparent_1px)] bg-[size:16px_16px] pointer-events-none opacity-30 z-0" />
-            <div className="absolute -top-24 -left-24 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-emerald-500/15 transition-all duration-700 z-0" />
-            <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-amber-500/15 transition-all duration-700 z-0" />
-
-            <div className="space-y-6 relative z-10">
-              <div className="flex justify-between items-center border-b border-neutral-800/80 pb-4">
-                <span className="text-[10px] font-mono font-bold text-white/40 tracking-widest">CALCULATED SCORE</span>
-                <span className="flex items-center gap-1.5 text-[10px] text-amber-400 font-bold font-mono tracking-wider drop-shadow-[0_0_8px_rgba(245,158,11,0.25)]">
-                  <TrendingUp className="w-3.5 h-3.5" /> DYNAMIC ENGINE
+          {/* Right panel: Subtle compiler result block */}
+          <div className="flex flex-col justify-between p-6 bg-neutral-900 text-white rounded-xl border border-neutral-800 min-h-[350px]">
+            <div className="space-y-4">
+              <div className="flex justify-between items-center border-b border-white/5 pb-3">
+                <span className="text-[9px] font-mono text-neutral-500 tracking-wider">CALCULATION_RESULT</span>
+                <span className="text-[9px] text-amber-400 font-bold font-mono tracking-wider flex items-center gap-1">
+                  <TrendingUp className="w-3 h-3" /> ENGINE RUNNING
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 items-center">
-                <div className="space-y-1">
-                  <div className="text-7xl font-mono font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-400 to-amber-400 drop-shadow-[0_0_15px_rgba(52,211,153,0.35)] select-none flex items-baseline">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-4xl font-mono font-bold text-white flex items-baseline">
                     {score}
-                    <span className="text-lg text-white/30 font-normal ml-1">/200</span>
+                    <span className="text-xs text-neutral-500 ml-1">/ 200</span>
                   </div>
-                  <p className="text-[10px] font-mono text-white/40">Capped cumulative rating</p>
+                  <p className="text-[9px] font-mono text-neutral-500">Cumulative priority rating</p>
                 </div>
 
-                {/* Score Status Badge */}
-                <div className="flex flex-col items-end">
-                  <div className="text-[9px] font-mono text-white/40 uppercase tracking-widest">Engine Status</div>
-                  <div className={`text-[10px] mt-1.5 px-3 py-1.5 border rounded-xl font-mono font-black uppercase flex items-center gap-2 transition-all duration-300 ${priorityResult.darkColor || 'text-rose-400 bg-rose-950/40 border-rose-500/30'}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full animate-ping ${priorityResult.led || 'bg-rose-400'}`} />
-                    {priorityResult.label}
-                  </div>
+                <div className={`text-[9px] px-2 py-1 border rounded-lg font-mono font-bold uppercase flex items-center gap-1.5 ${priorityResult.darkColor}`}>
+                  <span className={`w-1 h-1 rounded-full ${priorityResult.led}`} />
+                  {priorityResult.label}
                 </div>
               </div>
 
-              {/* Score Meter Visualizer */}
-              <div className="space-y-2.5">
-                <div className="w-full bg-neutral-900 border border-neutral-800/80 rounded-full h-2.5 overflow-hidden p-[2px]">
-                  <div
-                    className="bg-gradient-to-r from-emerald-400 via-amber-400 to-rose-500 h-full rounded-full transition-all duration-500 shadow-[0_0_10px_rgba(52,211,153,0.5)]"
-                    style={{ width: `${(score / 200) * 100}%` }}
-                  />
-                </div>
-                <div className="flex justify-between text-[9px] text-white/30 font-mono font-bold tracking-wider select-none">
-                  <span>0 (LOW)</span>
-                  <span>100 (HIGH)</span>
-                  <span>200 (CRITICAL)</span>
-                </div>
+              {/* Progress bar */}
+              <div className="w-full bg-neutral-800 rounded-full h-1.5 overflow-hidden">
+                <div
+                  className="bg-emerald-500 h-full rounded-full transition-all duration-300"
+                  style={{ width: `${(score / 200) * 100}%` }}
+                />
               </div>
 
-              {/* Technical Execution Console Terminal Output */}
-              <div className="bg-black/90 rounded-2xl border border-neutral-800/85 p-5 mt-6 shadow-[0_10px_30px_rgba(0,0,0,0.5)] font-mono text-[10px] leading-relaxed relative">
-                <div className="flex items-center justify-between border-b border-neutral-800/50 pb-2.5 mb-3 text-white/30">
-                  <div className="flex items-center gap-1.5">
-                    <div className="flex items-center gap-1 mr-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500/80" />
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500/80" />
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/80" />
-                    </div>
-                    <span className="flex items-center gap-1.5"><Terminal className="w-3.5 h-3.5 text-emerald-500 animate-pulse" /> ENGINE_CONSOLE_V4.2</span>
-                  </div>
-                  <span className="text-[8px] bg-emerald-950/60 border border-emerald-800/40 px-2 py-0.5 rounded text-emerald-400 font-bold tracking-wider">LIVE EVAL</span>
+              {/* Terminal Logs */}
+              <div className="bg-neutral-950 rounded-lg border border-white/5 p-4 font-mono text-[9px] leading-relaxed">
+                <div className="flex items-center gap-1 border-b border-white/5 pb-2 mb-2 text-neutral-600 font-mono">
+                  <Terminal className="w-3 h-3 text-emerald-500" />
+                  <span>CONSOLE_V4.2</span>
                 </div>
-                <div className="space-y-1.5 text-emerald-400/90 font-mono">
-                  {getExecutionLogs().map((log, i) => (
+                <div className="space-y-1 font-mono">
+                  {getExecutionLogs().slice(-3).map((log, i) => (
                     <div key={i} className="flex gap-2">
-                      <span className="text-white/20 select-none w-4">{String(i + 1).padStart(2, '0')}</span>
-                      <span>{log}</span>
+                      <span className="text-neutral-500">{log.prefix}</span>
+                      <span className={log.color}>{log.text}</span>
                     </div>
                   ))}
-                  <div className="flex items-center gap-1 pl-6 pt-0.5">
-                    <span className="w-1.5 h-3 bg-emerald-400 animate-pulse" />
-                  </div>
                 </div>
               </div>
-
             </div>
 
-            <div className="pt-6 relative z-10">
-              <button
-                onClick={() => navigate('/register')}
-                className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-mono text-xs font-bold tracking-widest uppercase rounded-xl transition-all duration-300 hover:from-emerald-400 hover:to-teal-500 shadow-[0_4px_20px_rgba(16,185,129,0.25)] hover:shadow-[0_4px_25px_rgba(16,185,129,0.45)] transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 group cursor-pointer"
-              >
-                Deploy Engine Now <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
-              </button>
-            </div>
+            <button
+              onClick={() => navigate('/register')}
+              className="w-full py-3 bg-neutral-800 hover:bg-neutral-700 text-white font-mono text-[10px] font-bold tracking-widest uppercase rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              Deploy Engine Now <ArrowRight className="w-3 h-3" />
+            </button>
           </div>
         </div>
       </section>
 
-      {/* Governance & Crypto Ledger Diagram Section */}
-      <section id="governance" className="py-24 bg-neutral-950 border-t border-neutral-900 text-white relative overflow-hidden">
-        {/* Ambient Grid overlay and glowing vector shapes */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff01_1px,transparent_1px),linear-gradient(to_bottom,#ffffff01_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none opacity-50 z-0" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(16,185,129,0.06),transparent_60%)] pointer-events-none z-0" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(245,158,11,0.04),transparent_60%)] pointer-events-none z-0" />
-
-        <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-16 items-center relative z-10">
-          <div className="space-y-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 rounded-full">
-              <span className="system-label text-[9px] text-white/80 tracking-widest">Compliance First</span>
-            </div>
-            <h2 className="text-3xl md:text-5xl font-black tracking-tight leading-none">
-              Rigorous Security &<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-emerald-400">Activity Governance</span>
+      {/* Bento Grid Section */}
+      <section id="features" className="py-20 bg-white border-y border-neutral-200/60 px-6 relative z-10">
+        <div className="max-w-6xl mx-auto space-y-12">
+          <div className="text-center space-y-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-600">Platform Features</span>
+            <h2 className="text-2xl md:text-3xl font-extrabold text-neutral-900 tracking-tight">
+              An Exhaustive Breakdown of Capabilities
             </h2>
-            <p className="text-sm md:text-base text-white/70 leading-relaxed max-w-xl">
-              Every audit track, member sign-off, or project settings change is logged inside a non-repudiable audit chain. With cryptographically sealed logs, administrators can confirm chronological compliance in seconds.
-            </p>
+          </div>
 
-            <div className="space-y-6 pt-6">
-              <div className="group flex items-start gap-4 p-5 bg-white/[0.02] border border-white/5 hover:border-emerald-500/30 rounded-2xl transition-all duration-300 hover:bg-white/[0.04] shadow-lg shadow-black/10">
-                <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 mt-1 transition-all duration-300 group-hover:scale-110 group-hover:bg-emerald-500/20 group-hover:border-emerald-500/40">
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
-                <div className="space-y-1">
-                  <h4 className="font-bold text-white text-sm transition-colors duration-300 group-hover:text-emerald-300">Legal Hold Controls</h4>
-                  <p className="text-xs text-white/50 leading-relaxed">Prevent critical record purge during high-stakes compliance evaluations.</p>
-                </div>
+          <div className="grid md:grid-cols-3 gap-6">
+
+            {/* Card 1: Dynamic Priority Engine */}
+            <div className="bg-neutral-50/60 border border-neutral-200 p-6 rounded-2xl space-y-4 hover:border-neutral-350 transition-all md:col-span-2">
+              <div className="p-2.5 bg-emerald-50 border border-emerald-100 rounded-xl w-fit text-emerald-700">
+                <Zap className="w-5 h-5" />
               </div>
-              <div className="group flex items-start gap-4 p-5 bg-white/[0.02] border border-white/5 hover:border-amber-500/30 rounded-2xl transition-all duration-300 hover:bg-white/[0.04] shadow-lg shadow-black/10">
-                <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-400 mt-1 transition-all duration-300 group-hover:scale-110 group-hover:bg-amber-500/20 group-hover:border-amber-500/40">
-                  <Users className="w-5 h-5" />
-                </div>
-                <div className="space-y-1">
-                  <h4 className="font-bold text-white text-sm transition-colors duration-300 group-hover:text-amber-300">Ordered Sign-Off Chains</h4>
-                  <p className="text-xs text-white/50 leading-relaxed">Require multi-step approvals for priority adjustments or regulatory changes.</p>
-                </div>
+              <h3 className="text-lg font-bold text-neutral-900">Dynamic Priority Engine</h3>
+              <p className="text-xs text-neutral-500 leading-relaxed font-normal">
+                Real-time recalculation of task priority based on an exact mathematical combination of base severity, organization impact weights, SLA urgency offsets, and cascading downstream dependency calculations.
+              </p>
+            </div>
+
+            {/* Card 2: Micro-SLA Breach Tracking */}
+            <div className="bg-neutral-50/60 border border-neutral-200 p-6 rounded-2xl space-y-4 hover:border-neutral-350 transition-all md:col-span-1">
+              <div className="p-2.5 bg-rose-50 border border-rose-100 rounded-xl w-fit text-rose-700">
+                <Clock className="w-5 h-5" />
               </div>
+              <h3 className="text-lg font-bold text-neutral-900">SLA Breach Tracking</h3>
+              <p className="text-xs text-neutral-500 leading-relaxed font-normal">
+                Rigorous timers measuring both First Response due times and Resolution due times. Pauses timer execution when tasks are blocked.
+              </p>
+            </div>
+
+            {/* Card 3: Cryptographic Activity History */}
+            <div className="bg-neutral-50/60 border border-neutral-200 p-6 rounded-2xl space-y-4 hover:border-neutral-350 transition-all md:col-span-1">
+              <div className="p-2.5 bg-violet-50 border border-violet-100 rounded-xl w-fit text-violet-700">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <h3 className="text-lg font-bold text-neutral-900">Cryptographic Ledger</h3>
+              <p className="text-xs text-neutral-500 leading-relaxed font-normal">
+                Compliance validation through SHA-256 block hash chaining. Every project operation receives sequential ID hashes, preventing administrative log manipulation.
+              </p>
+            </div>
+
+            {/* Card 4: AI Semantic Intelligence */}
+            <div className="bg-neutral-50/60 border border-neutral-200 p-6 rounded-2xl space-y-4 hover:border-neutral-350 transition-all md:col-span-2">
+              <div className="p-2.5 bg-indigo-50 border border-indigo-100 rounded-xl w-fit text-indigo-700">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <h3 className="text-lg font-bold text-neutral-900">Semantic AI Intelligence</h3>
+              <p className="text-xs text-neutral-500 leading-relaxed font-normal">
+                Leverage vector embeddings to semantically query tasks, discover cross-project task suggestions, and automatically align work notes using semantic similarity algorithms.
+              </p>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* Semantic AI Live Interaction Sandbox Section */}
+      <section id="semantic-ai" className="py-20 px-6 max-w-6xl mx-auto space-y-10 relative z-10">
+        <div className="text-center space-y-2">
+          <span className="text-xs font-bold uppercase tracking-wider text-emerald-600">Semantic Sandbox</span>
+          <h2 className="text-2xl md:text-3xl font-extrabold text-neutral-900 tracking-tight">
+            Try Conceptual Semantic Matching
+          </h2>
+        </div>
+
+        <div className="grid lg:grid-cols-3 gap-6 bg-white border border-neutral-200 p-6 rounded-2xl shadow-sm">
+          {/* Preset options */}
+          <div className="space-y-3 lg:col-span-1 border-r border-neutral-250/30 pr-6">
+            <h4 className="font-bold text-xs text-neutral-900 uppercase tracking-wider mb-2">Select Concept Query</h4>
+            <div className="flex flex-col gap-2">
+              {presetQueries.map((q, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleQueryClick(q.query)}
+                  className={`p-3 text-left rounded-xl border text-xs font-mono transition-all cursor-pointer flex justify-between items-center ${
+                    searchQuery === q.query
+                      ? "bg-emerald-50 border-emerald-300 text-emerald-800"
+                      : "bg-neutral-50 border-neutral-200 text-neutral-600 hover:border-neutral-300 hover:text-neutral-900"
+                  }`}
+                >
+                  <span>"{q.query}"</span>
+                  <Search size={12} className={searchQuery === q.query ? "text-emerald-600" : "text-neutral-400"} />
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Interactive Cryptographic Ledger Visualizer */}
-          <div className="w-full flex flex-col gap-5 p-8 bg-neutral-900/60 backdrop-blur-xl border border-neutral-800/80 rounded-3xl relative shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-            <div className="flex items-center justify-between border-b border-neutral-800/85 pb-4">
-              <div className="flex items-center gap-2.5">
-                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_#10b981]" />
-                <span className="text-xs font-mono font-bold tracking-widest text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]">LEDGER INTEGRITY VERIFIED</span>
+          {/* Results dashboard */}
+          <div className="lg:col-span-2 space-y-4 pl-2">
+            <div className="flex items-center justify-between">
+              <h4 className="font-bold text-xs text-neutral-900 uppercase tracking-wider">Matched Tasks</h4>
+              <span className="text-[9px] font-mono text-neutral-400">THRESHOLD: &gt;0.80</span>
+            </div>
+
+            {isSearching ? (
+              <div className="h-32 flex items-center justify-center space-x-2">
+                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce" />
+                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce [animation-delay:0.2s]" />
+                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce [animation-delay:0.4s]" />
               </div>
-              <div className="p-1.5 bg-emerald-950/40 border border-emerald-800/30 rounded text-emerald-400">
-                <Lock className="w-4 h-4" />
+            ) : searchMatches.length > 0 ? (
+              <div className="space-y-2">
+                {searchMatches.map((m, i) => (
+                  <div key={i} className="flex items-center justify-between p-3.5 bg-neutral-50/60 border border-neutral-200 rounded-xl">
+                    <div className="space-y-1">
+                      <span className="text-[8px] font-mono text-neutral-400 uppercase tracking-wider">{m.status}</span>
+                      <h5 className="text-xs font-bold text-neutral-900">{m.title}</h5>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="text-[9px] font-mono text-emerald-800 font-bold bg-emerald-50 border border-emerald-150 px-2 py-0.5 rounded">
+                        {(m.score * 100).toFixed(0)}% Match
+                      </span>
+                      <span className="text-[8px] font-mono text-rose-700 bg-rose-50 border border-rose-150 px-2 py-0.5 rounded">
+                        {m.priority}
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
+            ) : (
+              <div className="h-32 border border-dashed border-neutral-300 rounded-xl flex flex-col items-center justify-center text-center p-4 text-neutral-400">
+                <Search className="w-6 h-6 text-neutral-400 mb-1" />
+                <p className="text-xs">No active search query selected.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* Comparison Feature Matrix Section */}
+      <section id="matrix" className="py-20 px-6 max-w-6xl mx-auto space-y-10 relative z-10">
+        <div className="text-center space-y-2">
+          <span className="text-xs font-bold uppercase tracking-wider text-emerald-600">Capability Matrix</span>
+          <h2 className="text-2xl md:text-3xl font-extrabold text-neutral-900 tracking-tight">
+            Pristine vs Legacy Task Managers
+          </h2>
+        </div>
+
+        <div className="overflow-x-auto rounded-2xl border border-neutral-200 shadow-sm bg-white p-2">
+          <table className="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr className="bg-neutral-900 text-white font-mono text-[10px] uppercase tracking-wider">
+                <th className="p-4 font-bold rounded-l-xl">Advanced Capabilities</th>
+                <th className="p-4 font-bold">Standard Task Tool</th>
+                <th className="p-4 font-bold text-emerald-400 bg-neutral-950 rounded-r-xl">Pristine Enterprise</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-200 text-neutral-600">
+              <tr>
+                <td className="p-4 font-bold text-neutral-900">Task Priority Calculations</td>
+                <td className="p-4 text-neutral-400">Static Dropdown</td>
+                <td className="p-4 text-emerald-800 font-bold bg-emerald-50/5">
+                  <span>Dynamic Score Engine (0-200) based on SLA urgency, impact, dependency chain</span>
+                </td>
+              </tr>
+              <tr>
+                <td className="p-4 font-bold text-neutral-900">Activity Log Compliance</td>
+                <td className="p-4 text-neutral-400">Plain Database Logs</td>
+                <td className="p-4 text-emerald-800 font-bold bg-emerald-50/5">
+                  <span>Immutable SHA-256 block-hash chaining with on-demand verification</span>
+                </td>
+              </tr>
+              <tr>
+                <td className="p-4 font-bold text-neutral-900">SLA Breach Tracking</td>
+                <td className="p-4 text-neutral-400">Basic due dates</td>
+                <td className="p-4 text-emerald-800 font-bold bg-emerald-50/5">
+                  <span>Dual-timer tracking (Response & Resolution due times) + Block pause states</span>
+                </td>
+              </tr>
+              <tr>
+                <td className="p-4 font-bold text-neutral-900">AI Intelligence</td>
+                <td className="p-4 text-neutral-400">Keyword search</td>
+                <td className="p-4 text-emerald-800 font-bold bg-emerald-50/5">
+                  <span>Vector similarity queries, cross-project suggestions, semantic note matching</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* Governance Section */}
+      <section id="governance" className="py-20 bg-neutral-900 text-white relative overflow-hidden z-10">
+        <div className="max-w-6xl mx-auto px-6 grid md:grid-cols-2 gap-12 items-center relative z-10">
+          <div className="space-y-5">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">Compliance First</span>
+            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">
+              Rigorous Security & Activity Governance
+            </h2>
+            <p className="text-xs md:text-sm text-white/70 leading-relaxed max-w-lg">
+              Every audit track, member sign-off, or project settings change is logged inside a non-repudiable audit chain. With cryptographically sealed logs, administrators can confirm chronological compliance in seconds.
+            </p>
+          </div>
+
+          {/* Clean Cryptographic Ledger Visualizer */}
+          <div className="w-full flex flex-col gap-4 p-6 bg-neutral-950 border border-white/5 rounded-2xl shadow-sm">
+            <div className="flex items-center justify-between border-b border-white/5 pb-3">
+              <span className="text-[10px] font-mono font-bold tracking-widest text-emerald-400">
+                {isScanning ? 'VALIDATING BLOCKCHAIN...' : 'LEDGER INTEGRITY SIGNED'}
+              </span>
+              <button 
+                onClick={triggerLedgerScan}
+                disabled={isScanning}
+                className="p-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded text-emerald-400 hover:bg-emerald-500/20 cursor-pointer disabled:opacity-50 transition-all text-xs"
+              >
+                {isScanning ? <Lock className="w-3.5 h-3.5 animate-spin" /> : <LockKeyhole className="w-3.5 h-3.5" />}
+              </button>
             </div>
 
             {/* Block 01 - Genesis */}
-            <div className="group flex items-center justify-between p-5 bg-neutral-950/80 border border-neutral-800 hover:border-emerald-500/30 rounded-2xl transition-all duration-300 relative overflow-hidden">
-              <div className="absolute top-0 left-0 h-full w-1 bg-emerald-500/50" />
-              <div className="space-y-1.5 pl-2">
-                <div className="text-[9px] font-mono text-emerald-500 font-bold flex items-center gap-1.5 uppercase tracking-widest">
-                  <Database className="w-3 h-3" /> Block #001 (Genesis)
-                </div>
-                <div className="text-xs font-bold text-white font-mono tracking-tight">SEQ_NO: 1 | ACTION: CREATE_PROJECT</div>
+            <div className="flex items-center justify-between p-4 bg-neutral-900 border border-white/5 rounded-xl">
+              <div className="space-y-1">
+                <div className="text-[8px] font-mono text-emerald-500 uppercase tracking-widest">Genesis Block #001</div>
+                <div className="text-[10px] font-mono text-white">SEQ_NO: 1 | ACTION: CREATE_PROJECT</div>
               </div>
-              <div className="text-[10px] font-mono bg-emerald-950/80 text-emerald-400 border border-emerald-900/60 px-3 py-1 rounded-lg shadow-sm">
-                SHA-256: 8a7f...d49e
-              </div>
-            </div>
-
-            {/* Neon Connection 1 -> 2 */}
-            <div className="flex justify-center -my-3.5 relative z-10">
-              <div className="h-7 w-0.5 bg-gradient-to-b from-emerald-500 to-teal-500 relative flex items-center justify-center">
-                <div className="absolute w-2 h-2 rounded-full bg-emerald-400 animate-ping opacity-60" />
-                <div className="absolute w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
+              <div className="text-[9px] font-mono text-neutral-400">
+                8a7f...d49e
               </div>
             </div>
 
             {/* Block 02 */}
-            <div className="group flex items-center justify-between p-5 bg-neutral-950/80 border border-neutral-800 hover:border-teal-500/30 rounded-2xl transition-all duration-300 relative overflow-hidden">
-              <div className="absolute top-0 left-0 h-full w-1 bg-teal-500/50" />
-              <div className="space-y-1.5 pl-2">
-                <div className="text-[9px] font-mono text-teal-400 font-bold flex items-center gap-1.5 uppercase tracking-widest">
-                  <Activity className="w-3 h-3" /> Block #002
-                </div>
-                <div className="text-xs font-bold text-white font-mono tracking-tight">SEQ_NO: 2 | ACTION: EVALUATE_PRIORITY</div>
+            <div className="flex items-center justify-between p-4 bg-neutral-900 border border-white/5 rounded-xl">
+              <div className="space-y-1">
+                <div className="text-[8px] font-mono text-teal-400 uppercase tracking-widest">Block #002</div>
+                <div className="text-[10px] font-mono text-white">SEQ_NO: 2 | ACTION: EVALUATE_PRIORITY</div>
               </div>
-              <div className="text-[10px] font-mono bg-teal-950/80 text-teal-400 border border-teal-900/60 px-3 py-1 rounded-lg shadow-sm">
-                SHA-256: 3c9b...81ea
+              <div className="text-[9px] font-mono text-neutral-400">
+                3c9b...81ea
               </div>
             </div>
 
-            {/* Neon Connection 2 -> 3 */}
-            <div className="flex justify-center -my-3.5 relative z-10">
-              <div className="h-7 w-0.5 bg-gradient-to-b from-teal-500 to-amber-500 relative flex items-center justify-center animate-pulse">
-                <div className="absolute w-2 h-2 rounded-full bg-amber-400 animate-ping opacity-60" />
-                <div className="absolute w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_#fbbf24]" />
+            {/* Diagnostic complete box */}
+            {scanComplete && (
+              <div className="absolute inset-0 bg-emerald-950/95 backdrop-blur-md rounded-2xl flex flex-col items-center justify-center space-y-3 p-6 text-center border border-emerald-500/30">
+                <CheckCircle2 className="w-12 h-12 text-emerald-400" />
+                <h3 className="text-sm font-bold text-white">Integrity Verification OK</h3>
+                <p className="text-[10px] text-neutral-400 max-w-sm">SHA-256 hashes verified. Zero alterations detected in database ledger.</p>
+                <button 
+                  onClick={() => setScanComplete(false)}
+                  className="px-3 py-1.5 bg-emerald-500 text-white rounded-lg text-[10px] font-bold hover:bg-emerald-400 cursor-pointer"
+                >
+                  Close
+                </button>
               </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* Dynamic Visual Operations Flow */}
+      <section className="py-20 bg-white border-b border-neutral-200/60 z-10 relative">
+        <div className="max-w-6xl mx-auto space-y-10">
+          <div className="text-center space-y-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-600">Workflow</span>
+            <h2 className="text-2xl md:text-3xl font-extrabold text-neutral-900 tracking-tight">
+              Dynamic Operations Flow
+            </h2>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            <div className="p-5 bg-neutral-50/50 border border-neutral-200 rounded-xl space-y-3">
+              <div className="p-2 bg-neutral-900 text-emerald-400 rounded-lg w-fit"><Server className="w-4 h-4" /></div>
+              <h4 className="font-bold text-neutral-900 text-xs uppercase tracking-wider">1. Action Ingestion</h4>
+              <p className="text-xs text-neutral-500 leading-relaxed font-normal">Task creation, subtask updates, or note configurations hit the gateway controller via Secure WebSocket streams.</p>
             </div>
 
-            {/* Block 03 (Pending/Active) */}
-            <div className="group flex items-center justify-between p-5 bg-gradient-to-r from-amber-500/[0.03] to-amber-500/[0.08] border border-amber-500/30 rounded-2xl transition-all duration-300 relative overflow-hidden shadow-[0_0_30px_rgba(245,158,11,0.06)] animate-[pulse_3s_infinite_ease-in-out]">
-              <div className="absolute top-0 left-0 h-full w-1 bg-amber-500 animate-pulse" />
-              <div className="space-y-1.5 pl-2">
-                <div className="text-[9px] font-mono text-amber-400 font-bold flex items-center gap-1.5 uppercase tracking-widest">
-                  <Workflow className="w-3 h-3" /> Block #003
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
-                </div>
-                <div className="text-xs font-bold text-white font-mono tracking-tight">SEQ_NO: 3 | ACTION: LEGAL_HOLD_ON</div>
-              </div>
-              <div className="text-[10px] font-mono bg-amber-950/80 text-amber-400 border border-amber-800/60 px-3 py-1 rounded-lg shadow-sm">
-                SHA-256: e2d4...91bc
-              </div>
+            <div className="p-5 bg-neutral-50/50 border border-neutral-200 rounded-xl space-y-3">
+              <div className="p-2 bg-neutral-900 text-amber-400 rounded-lg w-fit"><Calculator className="w-4 h-4" /></div>
+              <h4 className="font-bold text-neutral-900 text-xs uppercase tracking-wider">2. Priority Optimization</h4>
+              <p className="text-xs text-neutral-500 leading-relaxed font-normal">The Priority Engine recalculates scores using base parameters, active SLA durations, and cascading downstream blocked dependencies.</p>
+            </div>
+
+            <div className="p-5 bg-neutral-50/50 border border-neutral-200 rounded-xl space-y-3">
+              <div className="p-2 bg-neutral-900 text-violet-400 rounded-lg w-fit"><ShieldCheck className="w-4 h-4" /></div>
+              <h4 className="font-bold text-neutral-900 text-xs uppercase tracking-wider">3. Ledger Verification</h4>
+              <p className="text-xs text-neutral-500 leading-relaxed font-normal">The activity commits to the chronological database. The system appends a sequential sequence ID and locks the hash pointer.</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Enterprise FAQ Accordion Section */}
-      <section id="faq" className="py-24 px-6 max-w-4xl mx-auto space-y-12">
-        <div className="text-center space-y-4">
-          <span className="system-label text-olive-500">FAQ</span>
-          <h2 className="text-3xl md:text-4xl font-black text-olive-950 tracking-tight">
-            Technical Frequently Asked Questions
+      {/* FAQ Accordion Section */}
+      <section id="faq" className="py-20 px-6 max-w-3xl mx-auto space-y-8 relative z-10">
+        <div className="text-center space-y-2">
+          <span className="text-xs font-bold uppercase tracking-wider text-emerald-600">FAQ</span>
+          <h2 className="text-2xl md:text-3xl font-extrabold text-neutral-900 tracking-tight">
+            Frequently Asked Questions
           </h2>
-          <p className="text-olive-600 text-sm md:text-base max-w-xl mx-auto">
-            Get comprehensive, direct answers on the underlying engineering decisions and capabilities of the portal.
-          </p>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {faqs.map((faq, idx) => (
             <div
               key={idx}
-              className="bg-white rounded-xl border border-olive-200 shadow-sm overflow-hidden transition-all duration-300"
+              className="bg-white border border-neutral-200 rounded-xl overflow-hidden shadow-sm"
             >
               <button
                 onClick={() => setActiveFaq(activeFaq === idx ? null : idx)}
-                className="w-full p-6 text-left flex items-center justify-between gap-4 font-bold text-olive-900 hover:bg-olive-50/50 transition-colors"
+                className="w-full p-5 text-left flex items-center justify-between gap-4 font-bold text-neutral-900 hover:bg-neutral-50 transition-colors cursor-pointer"
               >
-                <span className="text-sm md:text-base flex items-center gap-2">
-                  <HelpCircle className="w-4 h-4 text-olive-400 flex-shrink-0" />
+                <span className="text-xs md:text-sm flex items-center gap-2">
+                  <HelpCircle className="w-4 h-4 text-emerald-650 flex-shrink-0" />
                   {faq.q}
                 </span>
-                <ChevronDown className={`w-4 h-4 text-olive-500 transition-transform duration-300 ${activeFaq === idx ? 'rotate-180' : ''
+                <ChevronDown className={`w-3.5 h-3.5 text-neutral-400 transition-transform duration-300 ${activeFaq === idx ? 'rotate-180' : ''
                   }`} />
               </button>
 
@@ -878,10 +757,10 @@ export default function LandingPage(): JSX.Element {
                     initial={{ height: 0 }}
                     animate={{ height: "auto" }}
                     exit={{ height: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="overflow-hidden border-t border-olive-100"
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden border-t border-neutral-150"
                   >
-                    <p className="p-6 text-xs md:text-sm text-olive-600 leading-relaxed bg-olive-50/20">
+                    <p className="p-5 text-xs text-neutral-500 leading-relaxed bg-neutral-50/50 font-normal">
                       {faq.a}
                     </p>
                   </motion.div>
@@ -892,72 +771,58 @@ export default function LandingPage(): JSX.Element {
         </div>
       </section>
 
-      {/* Massive Detailed Multi-Column Enterprise Footer */}
-      <footer className="bg-olive-950 text-white pt-24 pb-12 border-t border-olive-900">
-        <div className="max-w-7xl mx-auto px-6 space-y-16">
+      {/* Footer */}
+      <footer className="bg-neutral-900 text-neutral-350 pt-20 pb-10 border-t border-white/5 z-10 relative">
+        <div className="max-w-6xl mx-auto px-6 space-y-12">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
 
-            {/* Column 1: Info */}
-            <div className="space-y-4">
+            {/* Column 1 */}
+            <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-white text-olive-950 rounded-lg flex items-center justify-center">
-                  <Layers className="w-4 h-4" />
-                </div>
-                <span className="font-display font-black text-sm tracking-wider">SYNC TODO</span>
+                <img src={logoImg} alt="Pristine Logo" className="w-4 h-4 object-contain brightness-0 invert" />
+                <span className="font-display font-black text-sm tracking-wider text-white">PRISTINE</span>
               </div>
-              <p className="text-xs text-white/50 leading-relaxed">
-                Enterprise task intelligence, micro-SLA timelines, and immutable cryptographic chains for compliant engineering groups.
+              <p className="text-[11px] text-neutral-400 leading-relaxed">
+                Enterprise task intelligence, micro-SLA timelines, and immutable cryptographic chains.
               </p>
-              <div className="flex items-center gap-2 pt-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span className="text-[10px] font-mono text-white/50">ALL REGULATORY SYSTEMS OPERATIONAL</span>
-              </div>
             </div>
 
-            {/* Column 2: Operational Engine */}
-            <div className="space-y-3">
-              <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-amber-400">Operational Engine</h4>
-              <ul className="text-xs text-white/60 space-y-2">
+            {/* Column 2 */}
+            <div className="space-y-2">
+              <h4 className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400">Operational Engine</h4>
+              <ul className="text-xs text-neutral-400 space-y-1.5 font-normal">
                 <li><a href="#features" className="hover:text-white transition-colors">Dynamic Priority Matrix</a></li>
-                <li><a href="#features" className="hover:text-white transition-colors">Cascading Downstream Count</a></li>
                 <li><a href="#features" className="hover:text-white transition-colors">Microsecond Resolution SLA</a></li>
-                <li><a href="#features" className="hover:text-white transition-colors">First Response Timers</a></li>
               </ul>
             </div>
 
-            {/* Column 3: Compliance & Security */}
-            <div className="space-y-3">
-              <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-emerald-400">Security & Ledger</h4>
-              <ul className="text-xs text-white/60 space-y-2">
+            {/* Column 3 */}
+            <div className="space-y-2">
+              <h4 className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-400">Security & Ledger</h4>
+              <ul className="text-xs text-neutral-400 space-y-1.5 font-normal">
                 <li><a href="#features" className="hover:text-white transition-colors">SHA-256 Log Hash Chain</a></li>
-                <li><a href="#features" className="hover:text-white transition-colors">On-Demand Verification</a></li>
                 <li><a href="#features" className="hover:text-white transition-colors">Legal Retention Holds</a></li>
-                <li><a href="#features" className="hover:text-white transition-colors">Ordered Approval Consensus</a></li>
               </ul>
             </div>
 
-            {/* Column 4: Platform Resources */}
-            <div className="space-y-3">
-              <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-indigo-400">Resources</h4>
-              <ul className="text-xs text-white/60 space-y-2">
-                <li><a href="/sdk-docs" className="hover:text-white transition-colors flex items-center gap-1">Developer SDK Docs <ArrowUpRight className="w-3 h-3 text-white/40" /></a></li>
-                <li><a href="/intelligence" className="hover:text-white transition-colors">Semantic Indexer</a></li>
+            {/* Column 4 */}
+            <div className="space-y-2">
+              <h4 className="text-[10px] font-mono font-bold uppercase tracking-wider text-indigo-400">Resources</h4>
+              <ul className="text-xs text-neutral-400 space-y-1.5 font-normal">
+                <li><a href="/sdk-docs" className="hover:text-white transition-colors flex items-center gap-1 font-mono">Developer SDK Docs <ArrowUpRight className="w-3 h-3 text-neutral-500" /></a></li>
                 <li><a href="#matrix" className="hover:text-white transition-colors">Capability Matrix</a></li>
-                <li><a href="#demo" className="hover:text-white transition-colors">Engine Simulator</a></li>
               </ul>
             </div>
 
           </div>
 
-          {/* Bottom Copyright and Legal Bar */}
-          <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-mono text-white/40">
+          <div className="pt-6 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] font-mono text-neutral-500">
             <div>
-              &copy; {new Date().getFullYear()} Sync Todo Inc. All institutional and cryptographic rights reserved.
+              &copy; {new Date().getFullYear()} Pristine Inc. All rights reserved.
             </div>
             <div className="flex items-center gap-6">
               <a href="#" className="hover:text-white transition-colors">Security Policy</a>
               <a href="#" className="hover:text-white transition-colors">Terms of Operations</a>
-              <a href="#" className="hover:text-white transition-colors">Audit Ledger Whitepaper</a>
             </div>
           </div>
         </div>

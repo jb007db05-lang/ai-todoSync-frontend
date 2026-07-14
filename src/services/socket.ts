@@ -46,6 +46,11 @@ export enum SocketEvents {
   // Tasks
   TASK_ASSIGNED = 'task:assigned',
   TASK_BULK_ASSIGNED = 'task:bulk_assigned',
+
+  // Invitations
+  INVITATION_RECEIVED = 'invitation:received',
+  INVITATION_ACCEPTED = 'invitation:accepted',
+  INVITATION_REJECTED = 'invitation:rejected',
 }
 
 /**

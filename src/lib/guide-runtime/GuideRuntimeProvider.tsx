@@ -433,7 +433,7 @@ function GuideOverlay({
           startedAt: new Date(startedAtRef.current).toISOString(),
           completionTimeSeconds: Math.floor((Date.now() - startedAtRef.current) / 1000)
         };
-        void onSurveySubmit({ ...surveyAnswers, metadata });
+        void onSurveySubmit(surveyAnswers, metadata);
       } else {
         setHistory((prev) => [...prev, nextIdx]);
         setCurrentSurveyIdx(nextIdx);

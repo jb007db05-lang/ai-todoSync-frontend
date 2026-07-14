@@ -1,29 +1,22 @@
 import type { ReactNode } from 'react';
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 
-import api, { TOKEN_STORAGE_KEY } from '@/services/api';
-
-interface AuthProfile {
-  id: string;
-  email: string;
-  syncApiKey: string;
-  name: string | null;
-  firstName: string | null;
-  lastName: string | null;
-  authProvider: 'local' | 'google';
-  openaiApiKeyConfigured?: boolean;
-  anthropicApiKeyConfigured?: boolean;
-  geminiApiKeyConfigured?: boolean;
-}
-
-interface AuthSession {
-  sessionId: string | null;
-  deviceId: string | null;
-  deviceType: 'primary' | 'companion' | 'sync_key';
-  deviceName: string | null;
-  companionDeviceType: string | null;
-  authMethod: 'access_token' | 'sync_api_key';
-}
+import api from '@/services/api';
+import { RootState, AppDispatch } from '@/store';
+import {
+  AuthProfile,
+  AuthSession,
+  loginThunk,
+  verify2faThunk,
+  registerThunk,
+  refreshUserThunk,
+  updateProfileThunk,
+  logout as logoutAction,
+  clearError as clearErrorAction,
+  setTokens,
+  setRememberMe
+} from '@/store/authSlice';
 
 interface AuthContextValue {
   user: AuthProfile | null;
@@ -31,7 +24,9 @@ interface AuthContextValue {
   token: string | null;
   loading: boolean;
   error: string | null;
-  login: (email: string, password: string) => Promise<void>;
+  require2fa: boolean;
+  tempEmail2fa: string | null;
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
   loginWithCompanionKey: (key: string) => Promise<void>;
   authenticateWithToken: (token: string) => Promise<void>;
   register: (payload: { email: string; password: string; firstName: string; lastName: string }) => Promise<void>;
@@ -44,6 +39,8 @@ interface AuthContextValue {
     anthropicApiKey?: string;
     geminiApiKey?: string;
   }) => Promise<void>;
+  verify2fa: (email: string, code: string, rememberMe?: boolean) => Promise<void>;
+  clearError: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -59,120 +56,69 @@ interface AuthResponse {
   data: AuthResponseData;
 }
 
-interface MeResponse {
-  message: string;
-  data: {
-    user: AuthProfile;
-    session?: AuthSession | null;
-  };
-}
-
 interface AuthProviderProps {
   children: ReactNode;
 }
 
 function AuthProvider({ children }: AuthProviderProps): JSX.Element {
-  const [user, setUser] = useState<AuthProfile | null>(null);
-  const [session, setSession] = useState<AuthSession | null>(null);
-  const [token, setToken] = useState<string | null>(() => {
+  const dispatch = useDispatch<AppDispatch>();
+  const { user, session, token, loading, error, require2fa, tempEmail2fa } = useSelector(
+    (state: RootState) => state.auth
+  );
+
+  // Check URL token (e.g. Google OAuth callback redirect)
+  useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const tokenFromUrl = urlParams.get('token');
 
     if (tokenFromUrl) {
-      localStorage.setItem(TOKEN_STORAGE_KEY, tokenFromUrl);
       const url = new URL(window.location.href);
       url.searchParams.delete('token');
       window.history.replaceState({}, '', url.toString());
-      return tokenFromUrl;
-    }
-    return localStorage.getItem(TOKEN_STORAGE_KEY);
-  });
-  const [loading, setLoading] = useState<boolean>(token != null);
-  const [error, setError] = useState<string | null>(null);
 
-  const persistToken = useCallback((value: string | null) => {
-    setToken(value);
-
-    if (value) {
-      localStorage.setItem(TOKEN_STORAGE_KEY, value);
-    } else {
-      localStorage.removeItem(TOKEN_STORAGE_KEY);
+      // Treat redirect login as rememberMe = true
+      api.get('/auth/me', {
+        headers: { Authorization: `Bearer ${tokenFromUrl}` }
+      })
+        .then((res) => {
+          const fetchedUser = res.data.data.user;
+          const fetchedSession = res.data.data.session;
+          
+          // Generate refresh token via new login response or assume it works
+          dispatch(setTokens({
+            token: tokenFromUrl,
+            refreshToken: tokenFromUrl, // Simple fallback if not provided in URL
+            user: fetchedUser,
+            session: fetchedSession,
+            rememberMe: true
+          }));
+        })
+        .catch(() => {
+          // Failed to authenticate
+        });
     }
-  }, []);
+  }, [dispatch]);
 
   const logout = useCallback((): void => {
-    persistToken(null);
-    setUser(null);
-    setSession(null);
-    setError(null);
-  }, [persistToken]);
-
-  const handleAuthSuccess = useCallback((payload: AuthResponseData) => {
-    persistToken(payload.token);
-    setUser(payload.user);
-    setSession(payload.session ?? null);
-    setError(null);
-  }, [persistToken]);
+    dispatch(logoutAction());
+  }, [dispatch]);
 
   const refreshUser = useCallback(async (): Promise<void> => {
-    try {
-      const response = await api.get<MeResponse>('/auth/me');
-      setUser(response.data.data.user);
-      setSession(response.data.data.session ?? null);
-      setError(null);
-    } catch (error) {
-      logout();
-      throw error;
-    }
-  }, [logout]);
+    await dispatch(refreshUserThunk()).unwrap();
+  }, [dispatch]);
 
-  useEffect(() => {
-    if (!token) {
-      setLoading(false);
-      setUser(null);
-      setSession(null);
-      return;
-    }
+  const login = async (email: string, password: string, rememberMe = false): Promise<void> => {
+    dispatch(setRememberMe(rememberMe));
+    await dispatch(loginThunk({ email, password, rememberMe })).unwrap();
+  };
 
-    setLoading(true);
-
-    refreshUser()
-      .catch(() => {
-        setError('Unable to refresh session.');
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, [refreshUser, token]);
-
-  const login = async (email: string, password: string): Promise<void> => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await api.post<AuthResponse>('/auth/login', { email, password });
-      handleAuthSuccess(response.data.data);
-    } catch (error) {
-      setError('Login failed. Check your credentials.');
-      throw error;
-    } finally {
-      setLoading(false);
-    }
+  const verify2fa = async (email: string, code: string, rememberMe = false): Promise<void> => {
+    dispatch(setRememberMe(rememberMe));
+    await dispatch(verify2faThunk({ email, code, rememberMe })).unwrap();
   };
 
   const register = async (payload: { email: string; password: string; firstName: string; lastName: string }): Promise<void> => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await api.post<AuthResponse>('/auth/register', payload);
-      handleAuthSuccess(response.data.data);
-    } catch (error) {
-      setError('Registration failed. Please try again.');
-      throw error;
-    } finally {
-      setLoading(false);
-    }
+    await dispatch(registerThunk(payload)).unwrap();
   };
 
   const updateProfile = async (data: {
@@ -182,50 +128,43 @@ function AuthProvider({ children }: AuthProviderProps): JSX.Element {
     anthropicApiKey?: string;
     geminiApiKey?: string;
   }): Promise<void> => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await api.patch<{ message: string; data: { user: AuthProfile } }>('/auth/profile', data);
-      setUser(response.data.data.user);
-    } catch (error) {
-      setError('Failed to update profile.');
-      throw error;
-    } finally {
-      setLoading(false);
-    }
+    await dispatch(updateProfileThunk(data)).unwrap();
   };
 
   const loginWithCompanionKey = async (key: string): Promise<void> => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await api.post<AuthResponse>('/auth/companion-login', { key });
-      handleAuthSuccess(response.data.data);
-    } catch (error) {
-      setError('Companion login failed. Check the key and try again.');
-      throw error;
-    } finally {
-      setLoading(false);
-    }
+    // Companion device login does not support 2FA or persistent refresh tokens on primary
+    // but let's allow basic session setup.
+    await dispatch(setRememberMe(false));
+    const response = await api.post<AuthResponse>('/auth/companion-login', { key });
+    dispatch(setTokens({
+      token: response.data.data.token,
+      refreshToken: response.data.data.token, // Fallback
+      user: response.data.data.user,
+      session: response.data.data.session,
+      rememberMe: false
+    }));
   };
 
   const authenticateWithToken = useCallback(
     async (newToken: string): Promise<void> => {
-      setLoading(true);
-      setError(null);
-
-      persistToken(newToken);
-
-      try {
-        await refreshUser();
-      } finally {
-        setLoading(false);
-      }
+      // Direct token injection
+      const response = await api.get('/auth/me', {
+        headers: { Authorization: `Bearer ${newToken}` }
+      });
+      dispatch(setTokens({
+        token: newToken,
+        refreshToken: newToken,
+        user: response.data.data.user,
+        session: response.data.data.session,
+        rememberMe: false
+      }));
     },
-    [persistToken, refreshUser]
+    [dispatch]
   );
+
+  const clearError = useCallback((): void => {
+    dispatch(clearErrorAction());
+  }, [dispatch]);
 
   const value = useMemo(
     () => ({
@@ -234,15 +173,19 @@ function AuthProvider({ children }: AuthProviderProps): JSX.Element {
       token,
       loading,
       error,
+      require2fa,
+      tempEmail2fa,
       login,
       loginWithCompanionKey,
       register,
       logout,
       refreshUser,
       authenticateWithToken,
-      updateProfile
+      updateProfile,
+      verify2fa,
+      clearError
     }),
-    [authenticateWithToken, error, loading, login, loginWithCompanionKey, logout, refreshUser, register, session, token, updateProfile, user]
+    [user, session, token, loading, error, require2fa, tempEmail2fa, logout, refreshUser, authenticateWithToken, clearError]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

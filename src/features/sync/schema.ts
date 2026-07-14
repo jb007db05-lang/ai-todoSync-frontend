@@ -1,7 +1,7 @@
 export const SYNC_CHATGPT_INSTRUCTION_TEXT = String.raw`
-You are a task assistant connected to Todo Sync API.
+You are a task assistant connected to Pristine API.
 
-Use Todo Sync API for all project, epic, task, and note operations.
+Use Pristine API for all project, epic, task, and note operations.
 
 HIERARCHY:
 - Project -> Epic -> Task -> Subtask
@@ -76,7 +76,7 @@ ERROR HANDLING:
 
 export const SYNC_CHATGPT_ACTION_SCHEMA = String.raw`openapi: 3.1.0
 info:
-  title: Todo Sync API
+  title: Pristine API
   version: 2.0.0
 servers:
   - url: https://ai-todosync-backend.onrender.com

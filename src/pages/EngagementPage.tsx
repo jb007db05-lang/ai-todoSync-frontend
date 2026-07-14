@@ -312,7 +312,7 @@ function SurveyBuilder({
   onStatusChange: (survey: Guide, status: 'LIVE' | 'PAUSED' | 'ARCHIVED') => Promise<void>;
 }): JSX.Element {
   const [title, setTitle] = useState('NPS pulse');
-  const [description, setDescription] = useState('Ask users how likely they are to recommend Sync Todo.');
+  const [description, setDescription] = useState('Ask users how likely they are to recommend Pristine.');
   const [priority, setPriority] = useState<GuidePriority>('MEDIUM');
   const [rules, setRules] = useState<TargetingRuleGroup>(defaultRules);
   const [questions, setQuestions] = useState<GuideStep[]>([newSurveyQuestion('NPS')]);
@@ -742,7 +742,7 @@ function newStep(): GuideStep {
 function newSurveyQuestion(type: GuideStep['type']): GuideStep {
   return {
     id: crypto.randomUUID(),
-    title: type === 'NPS' ? 'How likely are you to recommend Sync Todo?' : 'Question',
+    title: type === 'NPS' ? 'How likely are you to recommend Pristine?' : 'Question',
     type,
     min: 0,
     max: type === 'NPS' ? 10 : 5,
