@@ -26,6 +26,8 @@ import EventTrackingPage from '@/pages/EventTrackingPage';
 import SemanticIntelligencePage from '@/pages/SemanticIntelligencePage';
 import EngagementPage from '@/pages/EngagementPage';
 import SdkIntegrationsPage from '@/pages/SdkIntegrationsPage';
+import SdkIntegrationDetailPage from '@/pages/SdkIntegrationDetailPage';
+import { getIntegration } from '@/lib/sdk-integrations/api';
 import Sidebar, { SidebarView } from '@/components/Sidebar';
 import Topbar from '@/components/Topbar';
 import InvitationNotificationPanel from '@/components/InvitationNotificationPanel';
@@ -154,7 +156,7 @@ function DashboardPage(): JSX.Element {
   const confirm = useConfirm();
   const navigate = useNavigate();
   const location = useLocation();
-  const { projectId, epicId } = useParams();
+  const { projectId, epicId, integrationId, tab } = useParams();
   const [selectedDate, setSelectedDate] = useState<string>(getTodayDate);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -260,6 +262,24 @@ function DashboardPage(): JSX.Element {
   const [isRecalculatingPriorities, setIsRecalculatingPriorities] = useState(false);
   const [isEvaluatingPriority, setIsEvaluatingPriority] = useState(false);
   const { lastMessage, clearLastMessage, setActiveProject } = useChat();
+  const [activeIntegrationName, setActiveIntegrationName] = useState<string>('');
+
+  useEffect(() => {
+    const fetchIntegrationDetails = async () => {
+      if (integrationId) {
+        try {
+          const data = await getIntegration(integrationId);
+          setActiveIntegrationName(data.name);
+        } catch (err) {
+          console.error('Failed to fetch integration name for sidebar', err);
+          setActiveIntegrationName('');
+        }
+      } else {
+        setActiveIntegrationName('');
+      }
+    };
+    void fetchIntegrationDetails();
+  }, [integrationId]);
 
   // Sync state with URL
   useEffect(() => {
@@ -271,6 +291,8 @@ function DashboardPage(): JSX.Element {
       setActiveView('event-tracking');
     } else if (path === '/engagement') {
       setActiveView('engagement');
+    } else if (path.startsWith('/sdk-integrations/')) {
+      setActiveView('sdk-integration-detail');
     } else if (path === '/sdk-integrations') {
       setActiveView('sdk-integrations');
     } else if (path === '/sdk-docs') {
@@ -292,7 +314,7 @@ function DashboardPage(): JSX.Element {
       setSelectedProjectView(ALL_PROJECTS_VALUE);
       setSelectedEpicId(null);
     }
-  }, [location.pathname, projectId, epicId]);
+  }, [location.pathname, projectId, epicId, integrationId]);
 
 
   const loadDashboard = useCallback(async (): Promise<void> => {
@@ -1736,17 +1758,25 @@ function DashboardPage(): JSX.Element {
         selectedProjectView={selectedProjectView}
         allProjectsValue={ALL_PROJECTS_VALUE}
         onProjectSelect={handleProjectSelect}
-        onViewChange={(view: SidebarView) => {
+        onViewChange={(view: SidebarView, targetTab?: string) => {
           if (view === 'dashboard') navigate('/dashboard');
           else if (view === 'semantic-intelligence') navigate('/intelligence');
           else if (view === 'event-tracking') navigate('/event-tracking');
           else if (view === 'engagement') navigate('/engagement');
           else if (view === 'sdk-integrations') navigate('/sdk-integrations');
+          else if (view === 'sdk-integration-detail') {
+            if (integrationId) {
+              navigate(`/sdk-integrations/${integrationId}/${targetTab || 'overview'}`);
+            }
+          }
           else if (view === 'sdk-docs') navigate('/sdk-docs');
           else if (view === 'settings') navigate('/settings');
         }}
         onNewProject={() => setIsProjectCreateModalOpen(true)}
         onLogout={handleLogout}
+        activeIntegrationId={integrationId}
+        activeIntegrationName={activeIntegrationName}
+        activeTab={tab || 'overview'}
       />
 
       {/* Right side wrapper */}
@@ -1796,6 +1826,18 @@ function DashboardPage(): JSX.Element {
                 <span className="text-olive-600 ">Engagement</span>
               ) : activeView === 'sdk-integrations' ? (
                 <span className="text-olive-600 ">SDK Integrations</span>
+              ) : activeView === 'sdk-integration-detail' ? (
+                <>
+                  <button
+                    onClick={() => navigate('/sdk-integrations')}
+                    className="hover:text-olive-600  transition-colors"
+                    type="button"
+                  >
+                    SDK Integrations
+                  </button>
+                  <span className="text-olive-300 ">/</span>
+                  <span className="text-olive-600 ">Integration Detail</span>
+                </>
               ) : activeView === 'semantic-intelligence' ? (
                 <span className="text-olive-600 ">Semantic Intelligence</span>
               ) : activeProject ? (
@@ -1866,6 +1908,10 @@ function DashboardPage(): JSX.Element {
           ) : activeView === 'sdk-integrations' ? (
             <div className="h-full overflow-y-auto">
               <SdkIntegrationsPage />
+            </div>
+          ) : activeView === 'sdk-integration-detail' ? (
+            <div className="h-full overflow-y-auto">
+              <SdkIntegrationDetailPage />
             </div>
           ) : activeView === 'semantic-intelligence' ? (
             <div className="h-full overflow-y-auto">

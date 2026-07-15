@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import {
   BarChart3,
   Bell,
@@ -28,8 +29,11 @@ import {
   updateChecklist,
   updateGuideStatus,
   updateSurvey,
-  type GuideAnalyticsSummary
+  listSurveyResponses,
+  type GuideAnalyticsSummary,
+  type SurveyResponse
 } from '@/lib/engagement/api';
+import { listIntegrations, type SdkIntegration } from '@/lib/sdk-integrations/api';
 import type {
   FrequencyRules,
   Guide,
@@ -137,36 +141,78 @@ const conditionPlaceholders: Partial<Record<TargetingConditionType, string>> = {
 const guideTypes: GuideType[] = ['MODAL', 'TOUR', 'SMART_TIP', 'HOTSPOT', 'BANNER'];
 const priorities: GuidePriority[] = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
 
-function EngagementPage(): JSX.Element {
-  const [tab, setTab] = useState<BuilderTab>('guides');
+export interface EngagementPageProps {
+  sdkIntegrationId?: string;
+  defaultTab?: BuilderTab;
+  hideHeader?: boolean;
+}
+
+function EngagementPage({ sdkIntegrationId: propSdkIntegrationId, defaultTab, hideHeader = false }: EngagementPageProps): JSX.Element {
+  const { integrationId } = useParams();
+  const [activeIntegrationId, setActiveIntegrationId] = useState<string>('');
+  const [integrations, setIntegrations] = useState<SdkIntegration[]>([]);
+  const [tab, setTab] = useState<BuilderTab>(defaultTab ?? 'guides');
   const [guides, setGuides] = useState<Guide[]>([]);
   const [surveys, setSurveys] = useState<Guide[]>([]);
   const [checklists, setChecklists] = useState<Guide[]>([]);
   const [analytics, setAnalytics] = useState<GuideAnalyticsSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [selectedSurveyForResponses, setSelectedSurveyForResponses] = useState<Guide | null>(null);
+  const [isResponsesModalOpen, setIsResponsesModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (defaultTab) {
+      setTab(defaultTab);
+    }
+  }, [defaultTab]);
+
+  useEffect(() => {
+    const resolvedId = propSdkIntegrationId ?? integrationId;
+    if (resolvedId) {
+      setActiveIntegrationId(resolvedId);
+    } else {
+      const fetchIntegrations = async () => {
+        try {
+          const list = await listIntegrations();
+          setIntegrations(list);
+          if (list.length > 0) {
+            setActiveIntegrationId(list[0].id);
+          }
+        } catch (err) {
+          console.error('Failed to load integrations', err);
+        }
+      };
+      void fetchIntegrations();
+    }
+  }, [propSdkIntegrationId, integrationId]);
 
   const load = async () => {
+    if (!activeIntegrationId) return;
     setLoading(true);
     try {
       const [guideList, surveyList, checklistList, summary] = await Promise.all([
-        listGuides(),
-        listSurveys(),
+        listGuides(activeIntegrationId),
+        listSurveys(activeIntegrationId),
         listChecklists(),
-        getGuideAnalyticsSummary()
+        getGuideAnalyticsSummary(activeIntegrationId)
       ]);
       setGuides(guideList);
       setSurveys(surveyList);
       setChecklists(checklistList);
       setAnalytics(summary);
+    } catch (error) {
+      console.error('Failed to load engagement data', error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    void load();
-  }, []);
+    if (activeIntegrationId) {
+      void load();
+    }
+  }, [activeIntegrationId]);
 
   const totals = useMemo(
     () => ({
@@ -178,25 +224,42 @@ function EngagementPage(): JSX.Element {
 
   return (
     <div className="min-h-full bg-olive-50">
-      <div className="border-b border-olive-200 bg-white px-8 py-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="m-0 text-2xl font-bold text-olive-950">Engagement</h2>
-            <p className="m-0 mt-1 text-sm text-olive-500">Guides, surveys, checklists, targeting, and behavior analytics</p>
+      {!hideHeader && (
+        <div className="border-b border-olive-200 bg-white px-8 py-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-3">
+                <h2 className="m-0 text-2xl font-bold text-olive-950">Engagement</h2>
+                {integrations.length > 0 && !propSdkIntegrationId && (
+                  <select
+                    value={activeIntegrationId}
+                    onChange={(e) => setActiveIntegrationId(e.target.value)}
+                    className="rounded-lg border border-olive-200 bg-white px-3 py-1.5 text-sm font-semibold text-olive-800 shadow-sm focus:border-olive-500 focus:outline-none"
+                  >
+                    {integrations.map((integration) => (
+                      <option key={integration.id} value={integration.id}>
+                        {integration.name} ({integration.environment})
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+              <p className="m-0 mt-1 text-sm text-olive-500">Guides, surveys, checklists, targeting, and behavior analytics</p>
+            </div>
+            <div className="grid grid-cols-3 gap-3 text-right">
+              <Metric label="Live" value={totals.live} />
+              <Metric label="Drafts" value={totals.drafts} />
+              <Metric label="MTU" value={analytics?.mtu.users ?? 0} />
+            </div>
           </div>
-          <div className="grid grid-cols-3 gap-3 text-right">
-            <Metric label="Live" value={totals.live} />
-            <Metric label="Drafts" value={totals.drafts} />
-            <Metric label="MTU" value={analytics?.mtu.users ?? 0} />
+          <div className="mt-5 flex flex-wrap gap-2">
+            <TabButton active={tab === 'guides'} icon={Layers3} label="Guides" onClick={() => setTab('guides')} />
+            <TabButton active={tab === 'surveys'} icon={Radio} label="Surveys" onClick={() => setTab('surveys')} />
+            <TabButton active={tab === 'checklists'} icon={CheckSquare} label="Checklists" onClick={() => setTab('checklists')} />
+            <TabButton active={tab === 'analytics'} icon={BarChart3} label="Analytics" onClick={() => setTab('analytics')} />
           </div>
         </div>
-        <div className="mt-5 flex flex-wrap gap-2">
-          <TabButton active={tab === 'guides'} icon={Layers3} label="Guides" onClick={() => setTab('guides')} />
-          <TabButton active={tab === 'surveys'} icon={Radio} label="Surveys" onClick={() => setTab('surveys')} />
-          <TabButton active={tab === 'checklists'} icon={CheckSquare} label="Checklists" onClick={() => setTab('checklists')} />
-          <TabButton active={tab === 'analytics'} icon={BarChart3} label="Analytics" onClick={() => setTab('analytics')} />
-        </div>
-      </div>
+      )}
 
       {message && (
         <div className="mx-8 mt-5 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
@@ -210,12 +273,12 @@ function EngagementPage(): JSX.Element {
             guides={guides}
             loading={loading}
             onCreate={async (payload) => {
-              await createGuide(payload);
+              await createGuide(activeIntegrationId, payload);
               setMessage('Guide saved.');
               await load();
             }}
             onStatusChange={async (guide, status) => {
-              await updateGuideStatus(guide.id, status);
+              await updateGuideStatus(activeIntegrationId, guide.id, status);
               setMessage(`Guide ${status.toLowerCase()}.`);
               await load();
             }}
@@ -226,14 +289,18 @@ function EngagementPage(): JSX.Element {
             surveys={surveys}
             loading={loading}
             onCreate={async (payload) => {
-              await createSurvey(payload);
+              await createSurvey(activeIntegrationId, payload);
               setMessage('Survey saved.');
               await load();
             }}
             onStatusChange={async (survey, status) => {
-              await updateSurvey(survey.id, { status });
+              await updateSurvey(activeIntegrationId, survey.id, { status });
               setMessage(`Survey ${status.toLowerCase()}.`);
               await load();
+            }}
+            onViewResponses={(survey) => {
+              setSelectedSurveyForResponses(survey);
+              setIsResponsesModalOpen(true);
             }}
           />
         )}
@@ -255,6 +322,17 @@ function EngagementPage(): JSX.Element {
         )}
         {tab === 'analytics' && <AnalyticsDashboard analytics={analytics} />}
       </div>
+      {selectedSurveyForResponses && (
+        <SurveyResponsesModal
+          isOpen={isResponsesModalOpen}
+          onClose={() => {
+            setIsResponsesModalOpen(false);
+            setSelectedSurveyForResponses(null);
+          }}
+          survey={selectedSurveyForResponses}
+          sdkIntegrationId={activeIntegrationId}
+        />
+      )}
     </div>
   );
 }
@@ -267,7 +345,7 @@ function GuideBuilder({
 }: {
   guides: Guide[];
   loading: boolean;
-  onCreate: (payload: Parameters<typeof createGuide>[0]) => Promise<void>;
+  onCreate: (payload: Parameters<typeof createGuide>[1]) => Promise<void>;
   onStatusChange: (guide: Guide, status: 'LIVE' | 'PAUSED' | 'ARCHIVED') => Promise<void>;
 }): JSX.Element {
   const [title, setTitle] = useState('New onboarding modal');
@@ -304,12 +382,14 @@ function SurveyBuilder({
   surveys,
   loading,
   onCreate,
-  onStatusChange
+  onStatusChange,
+  onViewResponses
 }: {
   surveys: Guide[];
   loading: boolean;
-  onCreate: (payload: Parameters<typeof createSurvey>[0]) => Promise<void>;
+  onCreate: (payload: Parameters<typeof createSurvey>[1]) => Promise<void>;
   onStatusChange: (survey: Guide, status: 'LIVE' | 'PAUSED' | 'ARCHIVED') => Promise<void>;
+  onViewResponses: (survey: Guide) => void;
 }): JSX.Element {
   const [title, setTitle] = useState('NPS pulse');
   const [description, setDescription] = useState('Ask users how likely they are to recommend Pristine.');
@@ -319,7 +399,7 @@ function SurveyBuilder({
 
   return (
     <BuilderLayout
-      list={<ExperienceList experiences={surveys} loading={loading} onStatusChange={onStatusChange} />}
+      list={<ExperienceList experiences={surveys} loading={loading} onStatusChange={onStatusChange} onViewResponses={onViewResponses} />}
       preview={<Preview guide={{ id: 'preview-survey', title, description, type: 'SURVEY', priority, steps: questions, targetingRules: rules }} />}
     >
       <SectionTitle icon={Radio} title="Survey Builder" />
@@ -391,11 +471,13 @@ function BuilderLayout({ children, list, preview }: { children: ReactNode; list:
 function ExperienceList({
   experiences,
   loading,
-  onStatusChange
+  onStatusChange,
+  onViewResponses
 }: {
   experiences: Guide[];
   loading: boolean;
   onStatusChange: (experience: Guide, status: 'LIVE' | 'PAUSED' | 'ARCHIVED') => Promise<void>;
+  onViewResponses?: (experience: Guide) => void;
 }): JSX.Element {
   return (
     <div className="rounded-lg border border-olive-200 bg-white p-6 shadow-sm">
@@ -409,7 +491,12 @@ function ExperienceList({
               <p className="m-0 text-sm font-bold text-olive-950">{experience.title}</p>
               <p className="m-0 mt-1 text-xs text-olive-500">{experience.type} · {experience.status ?? 'DRAFT'} · {experience.priority}</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {onViewResponses && experience.type === 'SURVEY' && (
+                <button className="rounded-md border border-olive-200 bg-olive-50 hover:bg-olive-100 px-3 py-1.5 text-xs font-bold text-olive-700" onClick={() => onViewResponses(experience)} type="button">
+                  Responses
+                </button>
+              )}
               <button className="rounded-md border border-olive-200 px-3 py-1.5 text-xs font-bold text-olive-700" onClick={() => onStatusChange(experience, 'LIVE')} type="button">
                 Publish
               </button>
@@ -758,6 +845,168 @@ function newChecklistItem(): GuideStep {
     linkedEvent: 'project_created',
     estimatedMinutes: 5
   };
+}
+
+interface SurveyResponsesModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  survey: Guide;
+  sdkIntegrationId: string;
+}
+
+function SurveyResponsesModal({
+  isOpen,
+  onClose,
+  survey,
+  sdkIntegrationId
+}: SurveyResponsesModalProps): JSX.Element | null {
+  const [responses, setResponses] = useState<SurveyResponse[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && survey.id) {
+      setLoading(true);
+      listSurveyResponses(sdkIntegrationId, survey.id)
+        .then(setResponses)
+        .catch(console.error)
+        .finally(() => setLoading(false));
+    }
+  }, [isOpen, survey.id, sdkIntegrationId]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+      <div className="flex h-[85vh] w-full max-w-5xl flex-col rounded-xl border border-olive-200 bg-white shadow-2xl transition-all duration-300">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-olive-100 bg-olive-50/50 px-6 py-4">
+          <div>
+            <h3 className="text-lg font-bold text-olive-950">Responses: {survey.title}</h3>
+            <p className="mt-0.5 text-xs text-olive-500">Showing all collected response payloads, including dynamic custom fields.</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-full p-1.5 text-olive-400 hover:bg-olive-100 hover:text-olive-700 transition-colors"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {loading ? (
+            <div className="flex h-full items-center justify-center">
+              <p className="text-sm font-medium text-olive-600 animate-pulse">Loading responses...</p>
+            </div>
+          ) : responses.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center text-center p-8">
+              <Radio className="h-10 w-10 text-olive-300 animate-bounce" />
+              <h4 className="mt-4 text-base font-semibold text-olive-900">No responses recorded yet</h4>
+              <p className="mt-1 text-sm text-olive-500 max-w-xs">Once users submit responses through the SDK, they will appear here in real-time.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {responses.map((response) => (
+                <div key={response._id} className="rounded-lg border border-olive-100 bg-olive-50/20 p-4 hover:border-olive-200 transition-colors shadow-sm">
+                  {/* Respondent Info */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-olive-100/50 pb-2 mb-3">
+                    <div className="flex items-center gap-4 text-xs">
+                      <div>
+                        <span className="font-semibold text-olive-500">User:</span>{' '}
+                        <span className="font-mono text-olive-900 bg-olive-100/50 px-1.5 py-0.5 rounded">{response.userId || 'Anonymous'}</span>
+                      </div>
+                      {response.sessionId && (
+                        <div>
+                          <span className="font-semibold text-olive-500">Session:</span>{' '}
+                          <span className="font-mono text-olive-900">{response.sessionId}</span>
+                        </div>
+                      )}
+                      {response.category && response.category !== 'NONE' && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-semibold text-olive-500">NPS Class:</span>
+                          <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] uppercase tracking-wider ${
+                            response.category === 'PROMOTER'
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                              : response.category === 'PASSIVE'
+                              ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                              : 'bg-rose-100 text-rose-800 border border-rose-200'
+                          }`}>
+                            {response.category}
+                          </span>
+                        </div>
+                      )}
+                      {response.npsScore !== null && (
+                        <div>
+                          <span className="font-semibold text-olive-500">NPS Score:</span>{' '}
+                          <span className="font-bold text-olive-900 bg-olive-100 px-1.5 py-0.5 rounded">{response.npsScore}/10</span>
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-xs text-olive-400">
+                      {new Date(response.submittedAt).toLocaleString()}
+                    </span>
+                  </div>
+
+                  {/* Answers */}
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-olive-800">Answers Payload</h4>
+                      <div className="space-y-1.5">
+                        {response.answers.map((answer) => (
+                          <div key={answer.questionId} className="text-sm rounded border border-olive-100/65 bg-white p-2">
+                            <div className="flex items-center justify-between text-xs text-olive-500">
+                              <span className="font-medium truncate max-w-[200px]" title={answer.questionTitle}>
+                                {answer.questionTitle}
+                              </span>
+                              <span className="bg-olive-50 px-1 rounded text-[10px] font-mono">{answer.questionType}</span>
+                            </div>
+                            <div className="mt-1 font-semibold text-olive-900">
+                              {typeof answer.value === 'object' && answer.value !== null
+                                ? JSON.stringify(answer.value, null, 2)
+                                : String(answer.value)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Metadata & Raw Details */}
+                    <div className="space-y-2">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-olive-800">Telemetry & Context</h4>
+                      <div className="rounded border border-olive-100/65 bg-olive-50/40 p-2.5 space-y-1.5 text-xs text-olive-700">
+                        {response.metadata && Object.keys(response.metadata).length > 0 ? (
+                          Object.entries(response.metadata).map(([key, val]) => (
+                            <div key={key} className="flex justify-between gap-4 py-0.5 border-b border-olive-100 last:border-0">
+                              <span className="font-mono text-olive-500 shrink-0">{key}:</span>
+                              <span className="font-medium text-olive-900 text-right break-all truncate max-w-[240px]" title={String(val)}>
+                                {typeof val === 'object' && val !== null ? JSON.stringify(val) : String(val)}
+                              </span>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-olive-400 italic">No additional telemetry sent.</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end border-t border-olive-100 bg-olive-50/50 px-6 py-3.5">
+          <button
+            onClick={onClose}
+            className="rounded-md bg-olive-700 hover:bg-olive-800 text-white px-4 py-2 text-sm font-bold shadow transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default EngagementPage;

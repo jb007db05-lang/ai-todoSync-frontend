@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import {
   AlertCircle, CheckCircle2, Clock, Copy, EyeOff, Globe,
   KeyRound, Loader2, Plus, RefreshCw, Server,
-  Shield, Trash2, WifiOff, Zap, ChevronDown, ChevronRight, Code2
+  Shield, Trash2, WifiOff, Zap, ChevronDown, ChevronRight, Code2,
+  Settings, BookOpen, Target, Activity
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import type { SdkIntegration, SdkEnvironment } from '@/lib/sdk-integrations/api';
 import {
   listIntegrations, createIntegration, regenerateKey,
@@ -198,9 +200,11 @@ function IntegrationCard({
   integration: SdkIntegration;
   onRefresh: () => Promise<void>;
 }) {
+  const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [newKey, setNewKey] = useState<string | null>(null);
+  const [showDropdown, setShowDropdown] = useState(false);
 
   const act = async (fn: () => Promise<unknown>) => { setBusy(true); try { await fn(); await onRefresh(); } finally { setBusy(false); } };
 
@@ -221,9 +225,47 @@ function IntegrationCard({
             <p className="text-sm text-zinc-500 flex items-center gap-1.5"><Globe size={13} />{integration.domain}</p>
             {integration.description && <p className="text-xs text-zinc-400 mt-1">{integration.description}</p>}
           </div>
-          <button onClick={() => setExpanded(!expanded)} type="button" className="shrink-0 text-zinc-400 hover:text-zinc-700 transition-colors">
-            {expanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-          </button>
+          <div className="relative flex items-center gap-2 shrink-0">
+            <div className="relative">
+              <button
+                onClick={() => setShowDropdown(!showDropdown)}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-olive-50 hover:bg-olive-100 text-xs font-bold text-olive-700 transition-colors"
+                type="button"
+              >
+                Configure
+                <ChevronDown size={14} className={`transition-transform duration-200 ${showDropdown ? 'rotate-180' : ''}`} />
+              </button>
+              {showDropdown && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setShowDropdown(false)} />
+                  <div className="absolute right-0 mt-1.5 w-40 rounded-xl bg-white border border-zinc-200 shadow-lg py-1.5 z-20 min-w-[150px] animate-in fade-in slide-in-from-top-1 duration-100">
+                    {[
+                      { label: 'Overview', icon: <Settings size={13} />, tab: 'overview' },
+                      { label: 'Guides', icon: <BookOpen size={13} />, tab: 'guides' },
+                      { label: 'Surveys', icon: <Target size={13} />, tab: 'surveys' },
+                      { label: 'Events', icon: <Activity size={13} />, tab: 'events' },
+                    ].map((item) => (
+                      <button
+                        key={item.label}
+                        onClick={() => {
+                          setShowDropdown(false);
+                          navigate(`/sdk-integrations/${integration.id}/${item.tab}`);
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs font-medium text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 transition-colors"
+                        type="button"
+                      >
+                        <span className="text-zinc-400">{item.icon}</span>
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+            <button onClick={() => setExpanded(!expanded)} type="button" className="text-zinc-400 hover:text-zinc-700 transition-colors">
+              {expanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+            </button>
+          </div>
         </div>
 
         {/* Quick stats row */}
@@ -275,6 +317,29 @@ function IntegrationCard({
                 </p>
               </div>
             )}
+
+            {/* Scoped Environment Workspace Shortcuts */}
+            <div className="rounded-xl border border-olive-100 bg-olive-50/40 p-4">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-olive-600 mb-2">Integration Workspace Shortcuts</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {[
+                  { label: 'Overview', icon: <Settings size={14} />, tab: 'overview' },
+                  { label: 'Guides', icon: <BookOpen size={14} />, tab: 'guides' },
+                  { label: 'Surveys', icon: <Target size={14} />, tab: 'surveys' },
+                  { label: 'Events', icon: <Activity size={14} />, tab: 'events' },
+                ].map((lnk) => (
+                  <button
+                    key={lnk.label}
+                    onClick={() => navigate(`/sdk-integrations/${integration.id}/${lnk.tab}`)}
+                    className="flex items-center justify-center gap-2 px-3 py-2 bg-white rounded-lg border border-zinc-200 hover:border-olive-300 hover:shadow-sm text-xs font-semibold text-zinc-700 hover:text-olive-700 transition-all duration-200"
+                    type="button"
+                  >
+                    <span className="text-zinc-400">{lnk.icon}</span>
+                    {lnk.label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             <InstallGuide integration={integration} />
 

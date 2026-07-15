@@ -195,12 +195,16 @@ export function GuideRuntimeProvider({ children }: GuideRuntimeProviderProps): J
         onSurveySubmit={async (answers, metadata) => {
           const surveyId = typeof activeGuide.metadata?.surveyId === 'string' ? activeGuide.metadata.surveyId : undefined;
           if (surveyId) {
-            await submitSurveyResponse(surveyId, {
-              userId: user?.id,
-              sessionId: session?.sessionId,
-              answers,
-              metadata
-            });
+            await submitSurveyResponse(
+              activeGuide.sdkIntegrationId || (activeGuide.metadata?.sdkIntegrationId as string) || '',
+              surveyId,
+              {
+                userId: user?.id,
+                sessionId: session?.sessionId,
+                answers,
+                metadata
+              }
+            );
           } else {
             await track('survey_completed', activeGuide, undefined, { answers, ...metadata });
           }
