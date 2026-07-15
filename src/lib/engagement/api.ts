@@ -127,6 +127,35 @@ export const submitSurveyResponse = async (
   await api.post(`/sdk-integrations/${sdkIntegrationId}/surveys/${surveyId}/responses`, payload);
 };
 
+export interface SurveyResponseAnswer {
+  questionId: string;
+  questionTitle: string;
+  questionType: string;
+  value: any;
+}
+
+export interface SurveyResponse {
+  _id: string;
+  tenantId: string;
+  sdkIntegrationId: string;
+  surveyId: string;
+  userId: string;
+  sessionId: string;
+  answers: SurveyResponseAnswer[];
+  npsScore: number | null;
+  category: string;
+  metadata: Record<string, any>;
+  submittedAt: string;
+}
+
+export const listSurveyResponses = async (
+  sdkIntegrationId: string,
+  surveyId: string
+): Promise<SurveyResponse[]> => {
+  const response = await api.get<ApiEnvelope<{ responses: SurveyResponse[] }>>(`/sdk-integrations/${sdkIntegrationId}/surveys/${surveyId}/responses`);
+  return response.data.data.responses;
+};
+
 export const listChecklists = async (): Promise<Guide[]> => {
   const response = await api.get<ApiEnvelope<{ checklists: Guide[] }>>('/checklists');
   return response.data.data.checklists.map((checklist) => normalizeGuide({ ...checklist, type: 'CHECKLIST', steps: checklist.steps ?? (checklist as Guide & { items?: GuideStep[] }).items ?? [] }));
