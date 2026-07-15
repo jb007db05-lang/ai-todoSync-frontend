@@ -9,6 +9,7 @@ import {
   Layers3,
   Link,
   Megaphone,
+  Pencil,
   Plus,
   Radio,
   Save,
@@ -22,11 +23,13 @@ import {
   createChecklist,
   createGuide,
   createSurvey,
+  deleteGuide,
   getGuideAnalyticsSummary,
   listChecklists,
   listGuides,
   listSurveys,
   updateChecklist,
+  updateGuide,
   updateGuideStatus,
   updateSurvey,
   listSurveyResponses,
@@ -160,6 +163,8 @@ function EngagementPage({ sdkIntegrationId: propSdkIntegrationId, defaultTab, hi
   const [message, setMessage] = useState<string | null>(null);
   const [selectedSurveyForResponses, setSelectedSurveyForResponses] = useState<Guide | null>(null);
   const [isResponsesModalOpen, setIsResponsesModalOpen] = useState(false);
+  const [editingExperience, setEditingExperience] = useState<Guide | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   useEffect(() => {
     if (defaultTab) {
@@ -282,6 +287,12 @@ function EngagementPage({ sdkIntegrationId: propSdkIntegrationId, defaultTab, hi
               setMessage(`Guide ${status.toLowerCase()}.`);
               await load();
             }}
+            onEdit={(guide) => { setEditingExperience(guide); setIsEditModalOpen(true); }}
+            onDelete={async (guide) => {
+              await deleteGuide(activeIntegrationId, guide.id);
+              setMessage('Guide deleted.');
+              await load();
+            }}
           />
         )}
         {tab === 'surveys' && (
@@ -301,6 +312,12 @@ function EngagementPage({ sdkIntegrationId: propSdkIntegrationId, defaultTab, hi
             onViewResponses={(survey) => {
               setSelectedSurveyForResponses(survey);
               setIsResponsesModalOpen(true);
+            }}
+            onEdit={(survey) => { setEditingExperience(survey); setIsEditModalOpen(true); }}
+            onDelete={async (survey) => {
+              await updateSurvey(activeIntegrationId, survey.id, { status: 'ARCHIVED' });
+              setMessage('Survey archived.');
+              await load();
             }}
           />
         )}
@@ -333,6 +350,38 @@ function EngagementPage({ sdkIntegrationId: propSdkIntegrationId, defaultTab, hi
           sdkIntegrationId={activeIntegrationId}
         />
       )}
+      {isEditModalOpen && editingExperience && (
+        <EditExperienceModal
+          experience={editingExperience}
+          onClose={() => { setIsEditModalOpen(false); setEditingExperience(null); }}
+          onSave={async (updated) => {
+            if (editingExperience.type === 'SURVEY') {
+              await updateSurvey(activeIntegrationId, editingExperience.id, {
+                title: updated.title,
+                description: updated.description,
+                priority: updated.priority,
+                questions: updated.steps,
+                targetingRules: updated.targetingRules ?? null,
+                frequencyRules: updated.frequencyRules,
+              });
+            } else {
+              await updateGuide(activeIntegrationId, editingExperience.id, {
+                title: updated.title,
+                description: updated.description,
+                type: updated.type,
+                priority: updated.priority,
+                steps: updated.steps,
+                targetingRules: updated.targetingRules ?? null,
+                frequencyRules: updated.frequencyRules,
+              });
+            }
+            setMessage('Experience updated.');
+            setIsEditModalOpen(false);
+            setEditingExperience(null);
+            await load();
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -341,12 +390,16 @@ function GuideBuilder({
   guides,
   loading,
   onCreate,
-  onStatusChange
+  onStatusChange,
+  onEdit,
+  onDelete
 }: {
   guides: Guide[];
   loading: boolean;
   onCreate: (payload: Parameters<typeof createGuide>[1]) => Promise<void>;
   onStatusChange: (guide: Guide, status: 'LIVE' | 'PAUSED' | 'ARCHIVED') => Promise<void>;
+  onEdit: (guide: Guide) => void;
+  onDelete: (guide: Guide) => Promise<void>;
 }): JSX.Element {
   const [title, setTitle] = useState('New onboarding modal');
   const [description, setDescription] = useState('Introduce the next best action.');
@@ -357,7 +410,7 @@ function GuideBuilder({
 
   return (
     <BuilderLayout
-      list={<ExperienceList experiences={guides} loading={loading} onStatusChange={onStatusChange} />}
+      list={<ExperienceList experiences={guides} loading={loading} onStatusChange={onStatusChange} onEdit={onEdit} onDelete={onDelete} />}
       preview={<Preview guide={{ id: 'preview', title, description, type, priority, steps, targetingRules: rules }} />}
     >
       <SectionTitle icon={Megaphone} title="Guide Builder" />
@@ -383,13 +436,17 @@ function SurveyBuilder({
   loading,
   onCreate,
   onStatusChange,
-  onViewResponses
+  onViewResponses,
+  onEdit,
+  onDelete
 }: {
   surveys: Guide[];
   loading: boolean;
   onCreate: (payload: Parameters<typeof createSurvey>[1]) => Promise<void>;
   onStatusChange: (survey: Guide, status: 'LIVE' | 'PAUSED' | 'ARCHIVED') => Promise<void>;
   onViewResponses: (survey: Guide) => void;
+  onEdit: (survey: Guide) => void;
+  onDelete: (survey: Guide) => Promise<void>;
 }): JSX.Element {
   const [title, setTitle] = useState('NPS pulse');
   const [description, setDescription] = useState('Ask users how likely they are to recommend Pristine.');
@@ -399,7 +456,7 @@ function SurveyBuilder({
 
   return (
     <BuilderLayout
-      list={<ExperienceList experiences={surveys} loading={loading} onStatusChange={onStatusChange} onViewResponses={onViewResponses} />}
+      list={<ExperienceList experiences={surveys} loading={loading} onStatusChange={onStatusChange} onViewResponses={onViewResponses} onEdit={onEdit} onDelete={onDelete} />}
       preview={<Preview guide={{ id: 'preview-survey', title, description, type: 'SURVEY', priority, steps: questions, targetingRules: rules }} />}
     >
       <SectionTitle icon={Radio} title="Survey Builder" />
@@ -472,13 +529,23 @@ function ExperienceList({
   experiences,
   loading,
   onStatusChange,
-  onViewResponses
+  onViewResponses,
+  onEdit,
+  onDelete
 }: {
   experiences: Guide[];
   loading: boolean;
   onStatusChange: (experience: Guide, status: 'LIVE' | 'PAUSED' | 'ARCHIVED') => Promise<void>;
   onViewResponses?: (experience: Guide) => void;
+  onEdit?: (experience: Guide) => void;
+  onDelete?: (experience: Guide) => Promise<void>;
 }): JSX.Element {
+  const statusColor: Record<string, string> = {
+    LIVE: 'bg-emerald-100 text-emerald-700',
+    DRAFT: 'bg-amber-100 text-amber-700',
+    PAUSED: 'bg-slate-100 text-slate-600',
+    ARCHIVED: 'bg-red-100 text-red-600',
+  };
   return (
     <div className="rounded-lg border border-olive-200 bg-white p-6 shadow-sm">
       <SectionTitle icon={Layers3} title="Library" />
@@ -486,26 +553,37 @@ function ExperienceList({
         {loading && <p className="text-sm text-olive-500">Loading...</p>}
         {!loading && experiences.length === 0 && <p className="text-sm text-olive-500">No experiences yet.</p>}
         {experiences.map((experience) => (
-          <div className="grid grid-cols-[1fr_auto] items-center gap-4 rounded-md border border-olive-100 px-4 py-3" key={experience.id}>
-            <div>
-              <p className="m-0 text-sm font-bold text-olive-950">{experience.title}</p>
-              <p className="m-0 mt-1 text-xs text-olive-500">{experience.type} · {experience.status ?? 'DRAFT'} · {experience.priority}</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {onViewResponses && experience.type === 'SURVEY' && (
-                <button className="rounded-md border border-olive-200 bg-olive-50 hover:bg-olive-100 px-3 py-1.5 text-xs font-bold text-olive-700" onClick={() => onViewResponses(experience)} type="button">
-                  Responses
-                </button>
-              )}
-              <button className="rounded-md border border-olive-200 px-3 py-1.5 text-xs font-bold text-olive-700" onClick={() => onStatusChange(experience, 'LIVE')} type="button">
-                Publish
-              </button>
-              <button className="rounded-md border border-olive-200 px-3 py-1.5 text-xs font-bold text-olive-700" onClick={() => onStatusChange(experience, 'PAUSED')} type="button">
-                Pause
-              </button>
-              <button className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-bold text-red-600" onClick={() => onStatusChange(experience, 'ARCHIVED')} type="button">
-                Archive
-              </button>
+          <div className="rounded-md border border-olive-100 px-4 py-3" key={experience.id}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="m-0 text-sm font-bold text-olive-950 truncate">{experience.title}</p>
+                <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                  <span className="text-xs text-olive-400">{experience.type}</span>
+                  <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${statusColor[experience.status ?? 'DRAFT'] ?? statusColor.DRAFT}`}>
+                    {experience.status ?? 'DRAFT'}
+                  </span>
+                  <span className="text-xs text-olive-400">{experience.priority}</span>
+                </div>
+              </div>
+              <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+                {onViewResponses && experience.type === 'SURVEY' && (
+                  <button className="rounded border border-olive-200 bg-olive-50 hover:bg-olive-100 px-2.5 py-1 text-xs font-bold text-olive-700" onClick={() => onViewResponses(experience)} type="button">Responses</button>
+                )}
+                {onEdit && (
+                  <button className="rounded border border-blue-200 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 text-xs font-bold text-blue-700 flex items-center gap-1" onClick={() => onEdit(experience)} type="button">
+                    <Pencil size={11} /> Edit
+                  </button>
+                )}
+                <button className="rounded border border-olive-200 px-2.5 py-1 text-xs font-bold text-olive-700 hover:bg-olive-50" onClick={() => onStatusChange(experience, 'LIVE')} type="button">Publish</button>
+                <button className="rounded border border-olive-200 px-2.5 py-1 text-xs font-bold text-olive-700 hover:bg-olive-50" onClick={() => onStatusChange(experience, 'PAUSED')} type="button">Pause</button>
+                {onDelete ? (
+                  <button className="rounded border border-red-200 px-2.5 py-1 text-xs font-bold text-red-600 hover:bg-red-50 flex items-center gap-1" onClick={() => void onDelete(experience)} type="button">
+                    <Trash2 size={11} /> Delete
+                  </button>
+                ) : (
+                  <button className="rounded border border-red-200 px-2.5 py-1 text-xs font-bold text-red-600 hover:bg-red-50" onClick={() => onStatusChange(experience, 'ARCHIVED')} type="button">Archive</button>
+                )}
+              </div>
             </div>
           </div>
         ))}
@@ -1010,3 +1088,68 @@ function SurveyResponsesModal({
 }
 
 export default EngagementPage;
+
+function EditExperienceModal({
+  experience,
+  onClose,
+  onSave,
+}: {
+  experience: Guide;
+  onClose: () => void;
+  onSave: (updated: Guide & { frequencyRules?: FrequencyRules }) => Promise<void>;
+}): JSX.Element {
+  const [title, setTitle] = useState(experience.title);
+  const [description, setDescription] = useState(experience.description ?? '');
+  const [type, setType] = useState<GuideType>(experience.type);
+  const [priority, setPriority] = useState<GuidePriority>(experience.priority ?? 'MEDIUM');
+  const [steps, setSteps] = useState<GuideStep[]>(experience.steps ?? []);
+  const [rules, setRules] = useState<TargetingRuleGroup>(experience.targetingRules ?? defaultRules());
+  const [saving, setSaving] = useState(false);
+
+  const mode = experience.type === 'SURVEY' ? 'survey' : experience.type === 'CHECKLIST' ? 'checklist' : 'guide';
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await onSave({ ...experience, title, description, type, priority, steps, targetingRules: rules, frequencyRules: defaultFrequency });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/50 p-4 backdrop-blur-sm">
+      <div className="my-8 w-full max-w-3xl rounded-xl border border-olive-200 bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-olive-100 px-6 py-4">
+          <h3 className="text-base font-bold text-olive-950">Edit {experience.type === 'SURVEY' ? 'Survey' : 'Guide'}</h3>
+          <button onClick={onClose} className="rounded-full p-1 text-olive-400 hover:bg-olive-100" type="button"><X size={18} /></button>
+        </div>
+        <div className="p-6 space-y-5">
+          <div className="grid grid-cols-2 gap-4">
+            <TextInput label="Title" value={title} onChange={setTitle} />
+            {mode === 'guide' && (
+              <SelectInput label="Type" value={type} values={guideTypes} onChange={(v) => setType(v as GuideType)} />
+            )}
+            <TextInput label="Description" value={description} onChange={setDescription} />
+            <SelectInput label="Priority" value={priority} values={priorities} onChange={(v) => setPriority(v as GuidePriority)} />
+          </div>
+          <StepEditor steps={steps} onChange={setSteps} mode={mode} />
+          <UrlTargeting rules={rules} onChange={setRules} />
+          <RuleBuilder rules={rules} onChange={setRules} />
+        </div>
+        <div className="flex justify-end gap-3 border-t border-olive-100 px-6 py-4">
+          <button onClick={onClose} className="rounded-md border border-olive-200 px-4 py-2 text-sm font-semibold text-olive-700 hover:bg-olive-50" type="button">Cancel</button>
+          <button
+            onClick={() => void handleSave()}
+            disabled={saving}
+            className="flex items-center gap-2 rounded-md bg-olive-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
+            type="button"
+          >
+            <Save size={14} />
+            {saving ? 'Saving…' : 'Save Changes'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
