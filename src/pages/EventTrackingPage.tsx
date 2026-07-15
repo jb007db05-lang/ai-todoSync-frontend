@@ -239,7 +239,7 @@ const EventTrackingPage: React.FC<EventTrackingPageProps> = ({ onOpenDocs, sdkIn
   const loadLogs = async (keyId: string, page: number) => {
     setRefreshing(true);
     try {
-      const queryParams: any = {
+      const queryParams: Record<string, unknown> = {
         page,
         limit: pageSize,
         eventNames: appliedFilters.eventNames.length > 0 ? appliedFilters.eventNames : undefined,

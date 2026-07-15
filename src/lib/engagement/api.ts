@@ -131,7 +131,7 @@ export interface SurveyResponseAnswer {
   questionId: string;
   questionTitle: string;
   questionType: string;
-  value: any;
+  value: unknown;
 }
 
 export interface SurveyResponse {
@@ -144,7 +144,7 @@ export interface SurveyResponse {
   answers: SurveyResponseAnswer[];
   npsScore: number | null;
   category: string;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   submittedAt: string;
 }
 
