@@ -24,7 +24,7 @@ const PROVIDER_PRESETS = {
   gemini: {
     name: 'Google Gemini',
     defaultBaseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
-    models: ['Gemini 2.5 Flash', 'Gemini 2.5 Pro']
+    models: ['Gemini 3.6 Flash', 'Gemini 1.5 Flash', 'Gemini 1.5 Pro']
   }
 };
 
@@ -36,7 +36,7 @@ function ProjectAiSettingsModal({ projectId, isAdmin, onClose }: ProjectAiSettin
     provider: 'gemini',
     apiKey: '',
     baseUrl: '',
-    modelName: 'Gemini 2.5 Flash'
+    modelName: 'Gemini 3.6 Flash'
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

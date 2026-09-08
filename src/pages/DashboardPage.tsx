@@ -20,6 +20,7 @@ import ChatPanel from '@/components/ChatPanel';
 import ActivityHistoryPanel from '@/components/ActivityHistoryPanel';
 import ApprovalSection from '@/components/ApprovalSection';
 import AiPlanningWorkspace from '@/components/AiPlanningWorkspace';
+import { AiProjectPlanModal } from '@/components/AiProjectPlanModal';
 import { getProjectAiConfig } from '@/services/aiPlanning';
 import SdkDocsPanel from '@/components/SdkDocsPanel';
 import EventTrackingPage from '@/pages/EventTrackingPage';
@@ -2577,22 +2578,15 @@ function DashboardPage(): JSX.Element {
         ) : null
       }
       {
-        isAiPlanningWorkspaceOpen && activeProject ? (
-          <Modal
-            bodyClassName="p-6"
-            maxWidth="max-w-[1100px]"
+        isAiPlanningWorkspaceOpen ? (
+          <AiProjectPlanModal
+            isOpen={isAiPlanningWorkspaceOpen}
             onClose={() => setIsAiPlanningWorkspaceOpen(false)}
-            title={`AI Planning Workspace - ${activeProject.name}`}
-          >
-            <AiPlanningWorkspace
-              onArtifactsCreated={() => void loadDashboard()}
-              project={activeProject}
-              onGoToSettings={() => {
-                setIsAiPlanningWorkspaceOpen(false);
-                setActiveView('settings');
-              }}
-            />
-          </Modal>
+            onProjectCreated={() => {
+              setIsAiPlanningWorkspaceOpen(false);
+              void loadDashboard();
+            }}
+          />
         ) : null
       }
       {

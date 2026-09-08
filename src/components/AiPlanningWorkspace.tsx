@@ -26,7 +26,7 @@ const PROVIDER_PRESETS = {
     models: ['Claude Sonnet', 'Claude Opus']
   },
   gemini: {
-    models: ['Gemini 2.5 Flash', 'Gemini 2.5 Pro']
+    models: ['Gemini 3.6 Flash', 'Gemini 1.5 Flash', 'Gemini 1.5 Pro']
   }
 };
 

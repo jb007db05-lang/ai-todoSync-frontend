@@ -19,6 +19,7 @@ import {
   Workflow
 } from 'lucide-react';
 import noDataImg from '@/assets/no_data.png';
+import api from '@/services/api';
 
 import {
   compareMetrics,
@@ -248,6 +249,7 @@ export default function SemanticIntelligencePage({
   const [forecast, setForecast] = useState<OperationalForecast | null>(null);
   const [simulation, setSimulation] = useState<OperationalSimulation | null>(null);
   const [simulating, setSimulating] = useState(false);
+  const [projectReport, setProjectReport] = useState<any | null>(null);
 
   useEffect(() => {
     setActiveProjectId(selectedProjectId);
@@ -322,6 +324,18 @@ export default function SemanticIntelligencePage({
       setLineage(lineageResult);
       setGovernance(governanceResult);
       setForecast(forecastResult);
+
+      if (projectFilter) {
+        try {
+          const reportRes = await api.get<{ report: any }>(`/analytics/projects/${projectFilter}/report`);
+          setProjectReport(reportRes.data.report);
+        } catch {
+          setProjectReport(null);
+        }
+      } else {
+        setProjectReport(null);
+      }
+
       void recordDashboardOpened(projectFilter ?? null).catch(() => undefined);
     } catch {
       setError('Unable to load semantic intelligence metrics.');
