@@ -21,6 +21,7 @@ export type SidebarView =
   | 'settings'
   | 'event-tracking'
   | 'semantic-intelligence'
+  | 'prompts'
   | 'sdk-docs'
   | 'engagement'
   | 'sdk-integrations'
@@ -201,6 +202,10 @@ const Sidebar: React.FC<SidebarProps> = ({
             <NavBtn isActive={activeView === 'semantic-intelligence'} onClick={() => onViewChange('semantic-intelligence')}>
               <BrainCircuit size={14} className={activeView === 'semantic-intelligence' ? 'text-[#e2f2d1]' : 'text-white/50 group-hover:text-white/80'} strokeWidth={1.8} />
               Intelligence
+            </NavBtn>
+            <NavBtn isActive={activeView === 'prompts'} onClick={() => onViewChange('prompts')}>
+              <Sparkles size={14} className={activeView === 'prompts' ? 'text-[#e2f2d1]' : 'text-white/50 group-hover:text-white/80'} strokeWidth={1.8} />
+              Prompt Library
             </NavBtn>
             <NavBtn isActive={activeView === 'sdk-integrations'} onClick={() => onViewChange('sdk-integrations')}>
               <Plug size={14} className={activeView === 'sdk-integrations' ? 'text-[#e2f2d1]' : 'text-white/50 group-hover:text-white/80'} strokeWidth={1.8} />

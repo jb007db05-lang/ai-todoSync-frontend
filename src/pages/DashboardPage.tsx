@@ -28,6 +28,8 @@ import SemanticIntelligencePage from '@/pages/SemanticIntelligencePage';
 import EngagementPage from '@/pages/EngagementPage';
 import SdkIntegrationsPage from '@/pages/SdkIntegrationsPage';
 import SdkIntegrationDetailPage from '@/pages/SdkIntegrationDetailPage';
+import PromptLibraryPage from '@/pages/PromptLibraryPage';
+import { workspaceService } from '@/services/workspaces';
 import { getIntegration } from '@/lib/sdk-integrations/api';
 import Sidebar, { SidebarView } from '@/components/Sidebar';
 import Topbar from '@/components/Topbar';
@@ -264,6 +266,21 @@ function DashboardPage(): JSX.Element {
   const [isEvaluatingPriority, setIsEvaluatingPriority] = useState(false);
   const { lastMessage, clearLastMessage, setActiveProject } = useChat();
   const [activeIntegrationName, setActiveIntegrationName] = useState<string>('');
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string>('');
+
+  useEffect(() => {
+    const fetchWorkspace = async () => {
+      try {
+        const list = await workspaceService.listWorkspaces();
+        if (list && list.length > 0) {
+          setActiveWorkspaceId(list[0].id || (list[0] as any)._id);
+        }
+      } catch (err) {
+        console.error('Failed to load user workspace', err);
+      }
+    };
+    void fetchWorkspace();
+  }, []);
 
   useEffect(() => {
     const fetchIntegrationDetails = async () => {
@@ -288,7 +305,10 @@ function DashboardPage(): JSX.Element {
 
     if (path === '/intelligence') {
       setActiveView('semantic-intelligence');
+    } else if (path === '/prompts') {
+      setActiveView('prompts');
     } else if (path === '/event-tracking') {
+      setActiveView('event-tracking');
       setActiveView('event-tracking');
     } else if (path === '/engagement') {
       setActiveView('engagement');
@@ -1762,6 +1782,7 @@ function DashboardPage(): JSX.Element {
         onViewChange={(view: SidebarView, targetTab?: string) => {
           if (view === 'dashboard') navigate('/dashboard');
           else if (view === 'semantic-intelligence') navigate('/intelligence');
+          else if (view === 'prompts') navigate('/prompts');
           else if (view === 'event-tracking') navigate('/event-tracking');
           else if (view === 'engagement') navigate('/engagement');
           else if (view === 'sdk-integrations') navigate('/sdk-integrations');
@@ -1913,6 +1934,10 @@ function DashboardPage(): JSX.Element {
           ) : activeView === 'sdk-integration-detail' ? (
             <div className="h-full overflow-y-auto">
               <SdkIntegrationDetailPage />
+            </div>
+          ) : activeView === 'prompts' ? (
+            <div className="h-full overflow-y-auto bg-slate-950">
+              <PromptLibraryPage workspaceId={activeWorkspaceId} />
             </div>
           ) : activeView === 'semantic-intelligence' ? (
             <div className="h-full overflow-y-auto">
