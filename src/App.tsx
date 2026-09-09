@@ -24,7 +24,7 @@ function App(): JSX.Element {
     <ToastProvider>
       <LoadingProvider>
         <AuthProvider>
-          <ChatProvider>.
+          <ChatProvider>
             <ConfirmationProvider>
               <BrowserRouter>
                 <GuideRuntimeProvider>
@@ -51,6 +51,7 @@ function App(): JSX.Element {
                     <Route path="/dashboard" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
                     <Route path="/intelligence" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
                     <Route path="/prompts" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
+                    <Route path="/playground" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
                     <Route path="/event-tracking" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
                     <Route path="/engagement" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
                     <Route path="/sdk-integrations" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />

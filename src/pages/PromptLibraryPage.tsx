@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Sparkles,
   Plus,
@@ -10,6 +11,7 @@ import {
   Layers,
   Trash2,
   Edit,
+  Play,
 } from "lucide-react";
 import {
   promptService,
@@ -26,6 +28,7 @@ interface PromptLibraryPageProps {
 export const PromptLibraryPage: React.FC<PromptLibraryPageProps> = ({
   workspaceId,
 }) => {
+  const navigate = useNavigate();
   const [prompts, setPrompts] = useState<PromptItem[]>([]);
   const [folders, setFolders] = useState<PromptFolder[]>([]);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
@@ -137,21 +140,21 @@ export const PromptLibraryPage: React.FC<PromptLibraryPageProps> = ({
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800/80 pb-5">
-        <div className="flex items-center gap-3">
-          <div className="p-3 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white shadow-lg shadow-indigo-500/20">
+    <div className="min-h-full bg-olive-50 text-olive-950 p-6 space-y-6 font-sans">
+      {/* Header Panel */}
+      <div className="bg-white border border-olive-200 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="p-3 rounded-2xl bg-olive-900 text-white shadow-md shadow-olive-900/10">
             <Sparkles className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white flex items-center gap-2">
+            <h1 className="text-xl font-bold text-olive-950 flex items-center gap-2.5">
               Prompt Library & Versioning
-              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-mono">
+              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-olive-100 text-olive-800 border border-olive-200 font-mono">
                 PromptOps v1.0
               </span>
             </h1>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-olive-600 mt-0.5">
               Manage reusable prompt templates, Handlebars variables, SHA-256 canonical version hashes, and folders.
             </p>
           </div>
@@ -159,17 +162,23 @@ export const PromptLibraryPage: React.FC<PromptLibraryPageProps> = ({
 
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setIsCreatingFolder(true)}
-            className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 text-xs font-medium flex items-center gap-2 transition"
+            onClick={() => navigate("/playground")}
+            className="px-4 py-2 rounded-xl bg-olive-100 hover:bg-olive-200 border border-olive-300 text-olive-950 text-xs font-bold flex items-center gap-2 transition shadow-xs cursor-pointer"
           >
-            <FolderPlus className="w-4 h-4 text-indigo-400" /> New Folder
+            <Play className="w-4 h-4 text-emerald-600 fill-current" /> Open Playground
+          </button>
+          <button
+            onClick={() => setIsCreatingFolder(true)}
+            className="px-3.5 py-2 rounded-xl bg-white hover:bg-olive-50 border border-olive-200 text-olive-700 hover:text-olive-950 text-xs font-semibold flex items-center gap-2 transition shadow-sm"
+          >
+            <FolderPlus className="w-4 h-4 text-olive-600" /> New Folder
           </button>
           <button
             onClick={() => {
               setEditingPrompt(null);
               setIsEditorOpen(true);
             }}
-            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition"
+            className="px-4 py-2 rounded-xl bg-olive-900 hover:bg-black text-white text-xs font-semibold shadow-md shadow-olive-900/20 flex items-center gap-2 transition"
           >
             <Plus className="w-4 h-4" /> Create Prompt Template
           </button>
@@ -179,22 +188,22 @@ export const PromptLibraryPage: React.FC<PromptLibraryPageProps> = ({
       {/* Main Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Left Navigation Sidebar */}
-        <div className="lg:col-span-1 space-y-5 bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4">
+        <div className="lg:col-span-1 space-y-5 bg-white border border-olive-200 rounded-2xl p-5 shadow-sm">
           {/* Search Input */}
           <div className="relative">
-            <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+            <Search className="w-4 h-4 text-olive-400 absolute left-3.5 top-2.5" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search prompts or tags..."
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition"
+              className="w-full bg-olive-50/50 border border-olive-200 rounded-xl pl-9 pr-3 py-2 text-xs text-olive-950 placeholder-olive-400 focus:outline-none focus:border-olive-400 focus:ring-4 focus:ring-olive-700/5 transition"
             />
           </div>
 
           {/* Quick Filters */}
           <div className="space-y-1">
-            <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-2 mb-2">
+            <div className="text-[11px] font-semibold text-olive-500 uppercase tracking-wider px-2 mb-2">
               Quick Views
             </div>
             <button
@@ -205,14 +214,18 @@ export const PromptLibraryPage: React.FC<PromptLibraryPageProps> = ({
               }}
               className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium flex items-center justify-between transition ${
                 selectedFolderId === null && !showFavoritesOnly && !showTemplatesOnly
-                  ? "bg-indigo-600/15 text-indigo-400 border border-indigo-500/20"
-                  : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
+                  ? "bg-olive-900 text-white font-semibold shadow-sm"
+                  : "text-olive-600 hover:bg-olive-50 hover:text-olive-950"
               }`}
             >
               <span className="flex items-center gap-2">
                 <Layers className="w-4 h-4" /> All Prompts
               </span>
-              <span className="text-[10px] font-mono bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full">
+              <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
+                selectedFolderId === null && !showFavoritesOnly && !showTemplatesOnly
+                  ? "bg-olive-800 text-olive-100"
+                  : "bg-olive-100 text-olive-700"
+              }`}>
                 {prompts.length}
               </span>
             </button>
@@ -224,44 +237,44 @@ export const PromptLibraryPage: React.FC<PromptLibraryPageProps> = ({
               }}
               className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium flex items-center justify-between transition ${
                 showFavoritesOnly
-                  ? "bg-amber-500/15 text-amber-400 border border-amber-500/20"
-                  : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
+                  ? "bg-amber-100 text-amber-900 border border-amber-300 font-semibold"
+                  : "text-olive-600 hover:bg-olive-50 hover:text-olive-950"
               }`}
             >
               <span className="flex items-center gap-2">
-                <Star className="w-4 h-4 text-amber-400" /> Favorites
+                <Star className="w-4 h-4 text-amber-500 fill-current" /> Favorites
               </span>
             </button>
           </div>
 
           {/* Folders List */}
-          <div className="space-y-1.5 pt-2 border-t border-slate-800/60">
+          <div className="space-y-1.5 pt-3 border-t border-olive-200">
             <div className="flex items-center justify-between px-2 mb-1">
-              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+              <span className="text-[11px] font-semibold text-olive-500 uppercase tracking-wider">
                 Folders ({folders.length})
               </span>
             </div>
 
             {isCreatingFolder && (
-              <div className="p-2 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
+              <div className="p-2.5 bg-olive-50 border border-olive-200 rounded-xl space-y-2">
                 <input
                   type="text"
                   value={newFolderName}
                   onChange={(e) => setNewFolderName(e.target.value)}
                   placeholder="Folder name..."
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none"
+                  className="w-full bg-white border border-olive-200 rounded-lg px-2.5 py-1 text-xs text-olive-950 focus:outline-none focus:border-olive-400"
                   autoFocus
                 />
-                <div className="flex items-center justify-end gap-1">
+                <div className="flex items-center justify-end gap-1.5">
                   <button
                     onClick={() => setIsCreatingFolder(false)}
-                    className="px-2 py-1 text-[10px] text-slate-400 hover:text-white"
+                    className="px-2 py-1 text-[10px] text-olive-600 hover:text-olive-950"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleCreateFolder}
-                    className="px-2 py-1 text-[10px] bg-indigo-600 text-white rounded-md font-medium"
+                    className="px-2.5 py-1 text-[10px] bg-olive-900 text-white rounded-md font-semibold"
                   >
                     Save
                   </button>
@@ -275,17 +288,17 @@ export const PromptLibraryPage: React.FC<PromptLibraryPageProps> = ({
                 onClick={() => setSelectedFolderId(f._id)}
                 className={`group px-3 py-2 rounded-xl text-xs font-medium flex items-center justify-between cursor-pointer transition ${
                   selectedFolderId === f._id
-                    ? "bg-indigo-600/15 text-indigo-400 border border-indigo-500/20"
-                    : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
+                    ? "bg-olive-900 text-white font-semibold shadow-sm"
+                    : "text-olive-600 hover:bg-olive-50 hover:text-olive-950"
                 }`}
               >
                 <span className="flex items-center gap-2 truncate">
-                  <FolderIcon className="w-4 h-4 text-indigo-400 shrink-0" />
+                  <FolderIcon className={`w-4 h-4 shrink-0 ${selectedFolderId === f._id ? "text-olive-200" : "text-olive-500"}`} />
                   <span className="truncate">{f.name}</span>
                 </span>
                 <button
                   onClick={(e) => handleDeleteFolder(f._id, e)}
-                  className="opacity-0 group-hover:opacity-100 p-1 text-slate-500 hover:text-rose-400 transition"
+                  className={`opacity-0 group-hover:opacity-100 p-1 hover:text-rose-600 transition ${selectedFolderId === f._id ? "text-olive-300" : "text-olive-400"}`}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -294,8 +307,8 @@ export const PromptLibraryPage: React.FC<PromptLibraryPageProps> = ({
           </div>
 
           {/* Categories Selector */}
-          <div className="space-y-1.5 pt-2 border-t border-slate-800/60">
-            <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-2 mb-1">
+          <div className="space-y-1.5 pt-3 border-t border-olive-200">
+            <div className="text-[11px] font-semibold text-olive-500 uppercase tracking-wider px-2 mb-1">
               Categories
             </div>
             {categories.map((c) => (
@@ -304,8 +317,8 @@ export const PromptLibraryPage: React.FC<PromptLibraryPageProps> = ({
                 onClick={() => setSelectedCategory(c.id)}
                 className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-medium transition ${
                   selectedCategory === c.id
-                    ? "bg-slate-800 text-white font-semibold"
-                    : "text-slate-400 hover:bg-slate-800/40 hover:text-slate-300"
+                    ? "bg-olive-100 text-olive-950 font-semibold"
+                    : "text-olive-600 hover:bg-olive-50 hover:text-olive-950"
                 }`}
               >
                 {c.label}
@@ -317,16 +330,16 @@ export const PromptLibraryPage: React.FC<PromptLibraryPageProps> = ({
         {/* Right Content Area */}
         <div className="lg:col-span-3 space-y-4">
           {isLoading ? (
-            <div className="text-center py-20 text-slate-500 text-xs">
+            <div className="text-center py-20 text-olive-500 text-xs">
               Loading prompt library...
             </div>
           ) : prompts.length === 0 ? (
-            <div className="p-12 text-center rounded-2xl bg-slate-900/40 border border-slate-800/80 space-y-3">
-              <div className="p-3 w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 mx-auto flex items-center justify-center">
+            <div className="p-12 text-center rounded-2xl bg-white border border-olive-200 shadow-sm space-y-3">
+              <div className="p-3.5 w-12 h-12 rounded-2xl bg-olive-100 text-olive-800 border border-olive-200 mx-auto flex items-center justify-center">
                 <Sparkles className="w-6 h-6" />
               </div>
-              <h3 className="text-base font-semibold text-white">No Prompts Found</h3>
-              <p className="text-xs text-slate-400 max-w-sm mx-auto">
+              <h3 className="text-base font-bold text-olive-950">No Prompts Found</h3>
+              <p className="text-xs text-olive-600 max-w-sm mx-auto">
                 No prompts match your filter parameters. Create a new prompt template to start managing versions.
               </p>
               <button
@@ -334,7 +347,7 @@ export const PromptLibraryPage: React.FC<PromptLibraryPageProps> = ({
                   setEditingPrompt(null);
                   setIsEditorOpen(true);
                 }}
-                className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-medium shadow-lg shadow-indigo-600/30 hover:bg-indigo-500 transition inline-flex items-center gap-2"
+                className="px-4 py-2 rounded-xl bg-olive-900 text-white text-xs font-semibold shadow-md shadow-olive-900/20 hover:bg-black transition inline-flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" /> Create Prompt Template
               </button>
@@ -344,21 +357,21 @@ export const PromptLibraryPage: React.FC<PromptLibraryPageProps> = ({
               {prompts.map((p) => (
                 <div
                   key={p._id}
-                  className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800/80 hover:border-slate-700 transition flex flex-col justify-between group space-y-4 shadow-lg shadow-slate-950/40"
+                  className="p-5 rounded-2xl bg-white border border-olive-200 hover:border-olive-300 transition flex flex-col justify-between group space-y-4 shadow-sm hover:shadow-md"
                 >
                   <div className="space-y-2">
                     {/* Header bar */}
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <div className="flex items-center gap-2">
-                          <h3 className="text-sm font-semibold text-white group-hover:text-indigo-300 transition">
+                          <h3 className="text-sm font-bold text-olive-950 group-hover:text-olive-700 transition">
                             {p.name}
                           </h3>
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-400 border border-indigo-500/20 font-bold">
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-olive-100 text-olive-800 border border-olive-200 font-bold">
                             v{p.version}
                           </span>
                         </div>
-                        <p className="text-xs text-slate-400 line-clamp-2 mt-1">
+                        <p className="text-xs text-olive-600 line-clamp-2 mt-1">
                           {p.description || "No description provided."}
                         </p>
                       </div>
@@ -367,26 +380,26 @@ export const PromptLibraryPage: React.FC<PromptLibraryPageProps> = ({
                         onClick={(e) => handleToggleFavorite(p._id, e)}
                         className={`p-1.5 rounded-lg transition ${
                           p.isFavorite
-                            ? "text-amber-400 bg-amber-500/10"
-                            : "text-slate-600 hover:text-slate-300"
+                            ? "text-amber-500 bg-amber-50"
+                            : "text-olive-300 hover:text-olive-600"
                         }`}
                       >
-                        <Star className="w-4 h-4 fill-current" />
+                        <Star className={`w-4 h-4 ${p.isFavorite ? "fill-current" : ""}`} />
                       </button>
                     </div>
 
                     {/* Metadata & Tag Badges */}
                     <div className="flex flex-wrap items-center gap-2 pt-1">
-                      <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-md bg-olive-100 text-olive-800 border border-olive-200">
                         {p.category}
                       </span>
                       {p.hash && (
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200">
                           {p.hash.slice(0, 8)}
                         </span>
                       )}
                       {(p.variables || []).length > 0 && (
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-violet-500/10 text-violet-400 border border-violet-500/20">
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-teal-50 text-teal-800 border border-teal-200">
                           {p.variables.length} vars
                         </span>
                       )}
@@ -394,26 +407,37 @@ export const PromptLibraryPage: React.FC<PromptLibraryPageProps> = ({
                   </div>
 
                   {/* Body Snippet */}
-                  <div className="p-3 rounded-xl bg-slate-950 border border-slate-800/80 font-mono text-xs text-slate-300 line-clamp-3">
+                  <div className="p-3 rounded-xl bg-olive-50/70 border border-olive-200/80 font-mono text-xs text-olive-800 line-clamp-3">
                     {p.body}
                   </div>
 
                   {/* Footer Actions */}
-                  <div className="flex items-center justify-between border-t border-slate-800/60 pt-3 text-xs text-slate-400">
-                    <span className="text-[11px] text-slate-500">
+                  <div className="flex items-center justify-between border-t border-olive-200 pt-3 text-xs text-olive-500">
+                    <span className="text-[11px] text-olive-600">
                       By {p.createdBy?.name || "System"}
                     </span>
 
                     <div className="flex items-center gap-2">
                       <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/playground?promptId=${p._id}&version=${p.version}`);
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-olive-900 hover:bg-black text-white text-xs font-bold flex items-center gap-1.5 transition shadow-xs cursor-pointer"
+                        title="Open in Playground"
+                      >
+                        <Play className="w-3.5 h-3.5 text-emerald-400 fill-current" /> Open in Playground
+                      </button>
+
+                      <button
                         onClick={() => {
                           setComparePrompt(p);
                           setIsCompareOpen(true);
                         }}
-                        className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium flex items-center gap-1.5 transition"
-                        title="Compare 5-tab versions"
+                        className="p-1.5 rounded-lg bg-olive-50 hover:bg-olive-100 text-olive-800 border border-olive-200 transition"
+                        title="Compare versions"
                       >
-                        <GitBranch className="w-3.5 h-3.5 text-indigo-400" /> Compare
+                        <GitBranch className="w-3.5 h-3.5 text-olive-700" />
                       </button>
 
                       <button
@@ -421,7 +445,7 @@ export const PromptLibraryPage: React.FC<PromptLibraryPageProps> = ({
                           setEditingPrompt(p);
                           setIsEditorOpen(true);
                         }}
-                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white transition"
+                        className="p-1.5 rounded-lg bg-olive-50 hover:bg-olive-100 text-olive-700 hover:text-olive-950 border border-olive-200 transition"
                         title="Edit prompt"
                       >
                         <Edit className="w-3.5 h-3.5" />
@@ -429,7 +453,7 @@ export const PromptLibraryPage: React.FC<PromptLibraryPageProps> = ({
 
                       <button
                         onClick={(e) => handleDeletePrompt(p._id, e)}
-                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-900/40 text-slate-400 hover:text-rose-300 transition"
+                        className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-800 border border-rose-200 transition"
                         title="Archive prompt"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -453,6 +477,9 @@ export const PromptLibraryPage: React.FC<PromptLibraryPageProps> = ({
         onSaved={() => {
           loadData();
         }}
+        onOpenPlayground={(p) => {
+          navigate(`/playground?promptId=${p._id}&version=${p.version}`);
+        }}
       />
 
       {/* Compare Modal */}
@@ -462,6 +489,9 @@ export const PromptLibraryPage: React.FC<PromptLibraryPageProps> = ({
           onClose={() => setIsCompareOpen(false)}
           workspaceId={workspaceId}
           prompt={comparePrompt}
+          onOpenPlayground={(p, ver) => {
+            navigate(`/playground?promptId=${p._id}&version=${ver || p.version}`);
+          }}
         />
       )}
     </div>

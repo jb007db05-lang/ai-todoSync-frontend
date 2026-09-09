@@ -226,4 +226,50 @@ export const promptService = {
     }>(`/workspaces/${workspaceId}/prompts/${promptId}`);
     return res.data.data;
   },
+
+  async runPlayground(
+    workspaceId: string,
+    payload: PlaygroundRunPayload,
+  ): Promise<PlaygroundRunResult> {
+    const endpoint = payload.promptId
+      ? `/workspaces/${workspaceId}/prompts/${payload.promptId}/playground/run`
+      : `/workspaces/${workspaceId}/prompts/playground/run`;
+    const res = await api.post<{ status: string; data: PlaygroundRunResult }>(
+      endpoint,
+      payload,
+    );
+    return res.data.data;
+  },
 };
+
+export interface PlaygroundRunPayload {
+  promptId?: string;
+  versionNumber?: number;
+  body?: string;
+  messages?: IPromptMessage[];
+  variables?: Record<string, any>;
+  provider?: string;
+  modelName?: string;
+  parameters?: {
+    temperature?: number;
+    maxTokens?: number;
+    topP?: number;
+  };
+}
+
+export interface PlaygroundRunResult {
+  output: string;
+  resolvedPrompt: string | IPromptMessage[];
+  metadata: {
+    modelName: string;
+    provider: string;
+    latencyMs: number;
+    inputTokens?: number;
+    outputTokens?: number;
+    totalTokens?: number;
+    timestamp: string;
+    promptId?: string;
+    versionNumber?: number;
+  };
+}
+

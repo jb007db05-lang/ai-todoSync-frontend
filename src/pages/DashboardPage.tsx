@@ -28,6 +28,7 @@ import EngagementPage from '@/pages/EngagementPage';
 import SdkIntegrationsPage from '@/pages/SdkIntegrationsPage';
 import SdkIntegrationDetailPage from '@/pages/SdkIntegrationDetailPage';
 import PromptLibraryPage from '@/pages/PromptLibraryPage';
+import PromptPlaygroundPage from '@/pages/PromptPlaygroundPage';
 import { workspaceService } from '@/services/workspaces';
 import { getIntegration } from '@/lib/sdk-integrations/api';
 import Sidebar, { SidebarView } from '@/components/Sidebar';
@@ -309,6 +310,8 @@ function DashboardPage(): JSX.Element {
       setActiveView('semantic-intelligence');
     } else if (path === '/prompts') {
       setActiveView('prompts');
+    } else if (path === '/playground') {
+      setActiveView('playground');
     } else if (path === '/event-tracking') {
       setActiveView('event-tracking');
       setActiveView('event-tracking');
@@ -1785,6 +1788,7 @@ function DashboardPage(): JSX.Element {
           if (view === 'dashboard') navigate('/dashboard');
           else if (view === 'semantic-intelligence') navigate('/intelligence');
           else if (view === 'prompts') navigate('/prompts');
+          else if (view === 'playground') navigate('/playground');
           else if (view === 'event-tracking') navigate('/event-tracking');
           else if (view === 'engagement') navigate('/engagement');
           else if (view === 'sdk-integrations') navigate('/sdk-integrations');
@@ -1815,11 +1819,15 @@ function DashboardPage(): JSX.Element {
                 ? 'Event Tracking'
                 : activeView === 'engagement'
                   ? 'Engagement'
-                  : activeView === 'sdk-integrations'
-                    ? 'SDK Integrations'
-                    : activeView === 'semantic-intelligence'
-                      ? 'Semantic Intelligence'
-                      : (activeProject ? activeProject.name : 'All Projects')}
+                  : activeView === 'prompts'
+                    ? 'Prompt Library'
+                    : activeView === 'playground'
+                      ? 'Prompt Playground'
+                      : activeView === 'sdk-integrations'
+                        ? 'SDK Integrations'
+                        : activeView === 'semantic-intelligence'
+                          ? 'Semantic Intelligence'
+                          : (activeProject ? activeProject.name : 'All Projects')}
           user={{ name: user?.name || null, email: user?.email || '' }}
           notifications={notifications}
           isNotificationsOpen={isNotificationsOpen}
@@ -1862,6 +1870,10 @@ function DashboardPage(): JSX.Element {
                   <span className="text-slate-300 ">/</span>
                   <span className="text-slate-600 ">Integration Detail</span>
                 </>
+              ) : activeView === 'prompts' ? (
+                <span className="text-slate-600 ">Prompt Library</span>
+              ) : activeView === 'playground' ? (
+                <span className="text-slate-600 ">Prompt Playground</span>
               ) : activeView === 'semantic-intelligence' ? (
                 <span className="text-slate-600 ">Semantic Intelligence</span>
               ) : activeProject ? (
@@ -1940,6 +1952,10 @@ function DashboardPage(): JSX.Element {
           ) : activeView === 'prompts' ? (
             <div className="h-full overflow-y-auto bg-slate-950">
               <PromptLibraryPage workspaceId={activeWorkspaceId} />
+            </div>
+          ) : activeView === 'playground' ? (
+            <div className="h-full overflow-y-auto">
+              <PromptPlaygroundPage workspaceId={activeWorkspaceId} />
             </div>
           ) : activeView === 'semantic-intelligence' ? (
             <div className="h-full overflow-y-auto">

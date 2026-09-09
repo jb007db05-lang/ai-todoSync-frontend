@@ -292,14 +292,14 @@ export const AiProjectPlanModal: React.FC<AiProjectPlanModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-olive-900/40 backdrop-blur-sm flex items-center justify-center z-[1000] p-4 overflow-y-auto">
-      <div className="bg-white border border-olive-200 rounded-xl w-full max-w-5xl h-[90vh] flex shadow-xl overflow-hidden animate-modalIn">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[1000] p-4 overflow-y-auto">
+      <div className="bg-slate-950/95 border border-slate-800/90 rounded-2xl w-full max-w-5xl h-[90vh] flex shadow-2xl shadow-black/80 overflow-hidden text-slate-100 backdrop-blur-xl animate-modalIn">
         {/* Left History Sidebar */}
-        <div className="w-64 border-r border-olive-200 bg-olive-50/70 p-4 flex flex-col justify-between shrink-0">
+        <div className="w-64 border-r border-slate-800/80 bg-slate-950/80 p-4 flex flex-col justify-between shrink-0">
           <div className="space-y-4 flex-1 overflow-y-auto pr-1">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-olive-800 uppercase tracking-wider flex items-center space-x-1.5">
-                <History className="w-3.5 h-3.5 text-olive-700" />
+              <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center space-x-1.5">
+                <History className="w-3.5 h-3.5 text-emerald-400" />
                 <span>Conversation History</span>
               </span>
             </div>
@@ -307,7 +307,7 @@ export const AiProjectPlanModal: React.FC<AiProjectPlanModalProps> = ({
             {/* New Chat Button */}
             <button
               onClick={startNewSession}
-              className="w-full py-2 px-3 bg-olive-700 hover:bg-olive-800 text-white rounded-lg text-xs font-semibold flex items-center justify-center space-x-2 shadow-sm transition"
+              className="w-full py-2 px-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-semibold flex items-center justify-center space-x-2 shadow-lg shadow-emerald-950/50 transition"
             >
               <Plus className="w-4 h-4" />
               <span>+ New Planning Chat</span>
@@ -319,21 +319,21 @@ export const AiProjectPlanModal: React.FC<AiProjectPlanModalProps> = ({
                 <div
                   key={sess.id}
                   onClick={() => handleSelectSession(sess)}
-                  className={`w-full group flex items-center justify-between p-2.5 rounded-lg border text-xs cursor-pointer transition ${
+                  className={`w-full group flex items-center justify-between p-2.5 rounded-xl border text-xs cursor-pointer transition ${
                     sess.id === activeSessionId
-                      ? "bg-olive-100 border-olive-400 text-olive-950 font-semibold shadow-sm"
-                      : "bg-white border-olive-200 text-olive-800 hover:bg-olive-100/60"
+                      ? "bg-slate-800/90 border-emerald-500/50 text-emerald-300 font-semibold shadow-inner"
+                      : "bg-slate-900/50 border-slate-800/80 text-slate-300 hover:bg-slate-800/40 hover:text-white"
                   }`}
                 >
                   <div className="flex-1 min-w-0 pr-2">
-                    <div className="truncate font-medium text-olive-950">{sess.title}</div>
-                    <div className="text-[10px] text-olive-500 mt-0.5">{sess.createdAt}</div>
+                    <div className="truncate font-medium text-slate-200">{sess.title}</div>
+                    <div className="text-[10px] text-slate-500 mt-0.5">{sess.createdAt}</div>
                   </div>
                   <button
                     type="button"
                     onClick={(e) => handleDeleteSession(e, sess.id)}
                     title="Delete Session"
-                    className="p-1 rounded text-olive-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                    className="p-1 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 opacity-0 group-hover:opacity-100 transition-all shrink-0"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -342,31 +342,31 @@ export const AiProjectPlanModal: React.FC<AiProjectPlanModalProps> = ({
             </div>
           </div>
 
-          <div className="pt-3 border-t border-olive-200 text-[11px] text-olive-600 flex items-center justify-between font-medium">
+          <div className="pt-3 border-t border-slate-800/80 text-[11px] text-slate-500 flex items-center justify-between font-medium">
             <span>Workspace AI Planner</span>
-            <span className="w-2 h-2 rounded-full bg-olive-600"></span>
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
           </div>
         </div>
 
         {/* Right Main Content */}
-        <div className="flex-1 flex flex-col bg-white overflow-hidden">
+        <div className="flex-1 flex flex-col bg-slate-900/70 overflow-hidden">
           {/* Header & Main Tabs */}
-          <div className="px-6 py-4 bg-olive-50 border-b border-olive-200 flex items-center justify-between shrink-0">
+          <div className="px-6 py-4 bg-slate-950/80 border-b border-slate-800/80 flex items-center justify-between shrink-0">
             <div className="flex items-center space-x-3">
-              <div className="w-9 h-9 rounded-lg bg-olive-700 flex items-center justify-center text-white shadow-sm">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
                 <Sparkles className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-olive-950">AI Project Architect & Master Planner</h3>
-                <p className="text-xs text-olive-600">Transform high-level system ideas into reviewable blueprints & PRDs</p>
+                <h3 className="text-base font-bold text-white">AI Project Architect & Master Planner</h3>
+                <p className="text-xs text-slate-400">Transform high-level system ideas into reviewable blueprints & PRDs</p>
               </div>
             </div>
 
             <div className="flex items-center space-x-3">
               {/* Model Selector Dropdown */}
-              <div className="flex items-center bg-white px-3 py-1.5 rounded-lg border border-olive-200 shadow-sm space-x-2 text-xs">
-                <Sparkles className="w-3.5 h-3.5 text-olive-700 shrink-0" />
-                <span className="font-semibold text-olive-700 hidden sm:inline">Model:</span>
+              <div className="flex items-center bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800 shadow-inner space-x-2 text-xs">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span className="font-semibold text-slate-300 hidden sm:inline">Model:</span>
                 <select
                   value={`${selectedProvider}:${selectedModel}`}
                   onChange={(e) => {
@@ -374,24 +374,24 @@ export const AiProjectPlanModal: React.FC<AiProjectPlanModalProps> = ({
                     setSelectedProvider(p as "gemini" | "openai" | "anthropic");
                     setSelectedModel(m);
                   }}
-                  className="bg-transparent text-olive-950 font-bold text-xs focus:outline-none cursor-pointer pr-1"
+                  className="bg-transparent text-slate-100 font-bold text-xs focus:outline-none cursor-pointer pr-1"
                 >
-                  <option value="gemini:gemini-3.6-flash">✨ Google Gemini 3.6 Flash (Default)</option>
-                  <option value="gemini:gemini-2.5-pro">🧠 Google Gemini 2.5 Pro</option>
-                  <option value="openai:gpt-4o">🚀 OpenAI GPT-4o</option>
-                  <option value="openai:gpt-4o-mini">⚡ OpenAI GPT-4o Mini</option>
-                  <option value="anthropic:claude-3-5-sonnet">🎭 Anthropic Claude 3.5 Sonnet</option>
+                  <option value="gemini:gemini-3.6-flash" className="bg-slate-900 text-slate-100">✨ Google Gemini 3.6 Flash (Default)</option>
+                  <option value="gemini:gemini-2.5-pro" className="bg-slate-900 text-slate-100">🧠 Google Gemini 2.5 Pro</option>
+                  <option value="openai:gpt-4o" className="bg-slate-900 text-slate-100">🚀 OpenAI GPT-4o</option>
+                  <option value="openai:gpt-4o-mini" className="bg-slate-900 text-slate-100">⚡ OpenAI GPT-4o Mini</option>
+                  <option value="anthropic:claude-3-5-sonnet" className="bg-slate-900 text-slate-100">🎭 Anthropic Claude 3.5 Sonnet</option>
                 </select>
               </div>
 
               {/* Main Tabs: Chat vs Artifacts */}
-              <div className="flex items-center bg-white p-1 rounded-lg border border-olive-200 space-x-1">
+              <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 space-x-1">
                 <button
                   onClick={() => setActiveMainTab("chat")}
-                  className={`flex items-center space-x-1.5 px-3.5 py-1.5 rounded-md text-xs font-semibold transition ${
+                  className={`flex items-center space-x-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
                     activeMainTab === "chat"
-                      ? "bg-olive-700 text-white shadow-sm"
-                      : "text-olive-700 hover:bg-olive-50"
+                      ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30"
+                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                   }`}
                 >
                   <MessageSquare className="w-3.5 h-3.5" />
@@ -399,10 +399,10 @@ export const AiProjectPlanModal: React.FC<AiProjectPlanModalProps> = ({
                 </button>
                 <button
                   onClick={() => setActiveMainTab("artifacts")}
-                  className={`flex items-center space-x-1.5 px-3.5 py-1.5 rounded-md text-xs font-semibold transition ${
+                  className={`flex items-center space-x-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
                     activeMainTab === "artifacts"
-                      ? "bg-olive-700 text-white shadow-sm"
-                      : "text-olive-700 hover:bg-olive-50"
+                      ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30"
+                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                   }`}
                 >
                   <BookOpen className="w-3.5 h-3.5" />
@@ -410,7 +410,7 @@ export const AiProjectPlanModal: React.FC<AiProjectPlanModalProps> = ({
                 </button>
               </div>
 
-              <button onClick={onClose} className="h-8 px-3 text-[0.8rem] bg-white border border-olive-200 rounded text-olive-700 hover:bg-olive-50 transition-colors">
+              <button onClick={onClose} className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -420,13 +420,13 @@ export const AiProjectPlanModal: React.FC<AiProjectPlanModalProps> = ({
           {activeMainTab === "chat" ? (
             <div className="flex-1 p-6 overflow-y-auto space-y-6">
               {error && (
-                <div className="p-3.5 bg-red-50 border border-red-200 text-red-800 rounded-lg text-xs space-y-1.5 shadow-sm">
-                  <div className="flex items-center space-x-2 font-bold text-red-900">
-                    <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                <div className="p-3.5 bg-rose-950/40 border border-rose-800/80 text-rose-200 rounded-xl text-xs space-y-1.5 shadow-sm">
+                  <div className="flex items-center space-x-2 font-bold text-rose-300">
+                    <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
                     <span>{error}</span>
                   </div>
                   {(error.includes("429") || error.includes("quota") || error.includes("RESOURCE_EXHAUSTED")) && (
-                    <div className="pt-1.5 text-[11px] text-red-700 border-t border-red-200 flex items-center justify-between">
+                    <div className="pt-1.5 text-[11px] text-rose-300/80 border-t border-rose-800/60 flex items-center justify-between">
                       <span>💡 Quota limit reached on {selectedModel}. Switch to another AI Model using the dropdown in the top header above!</span>
                     </div>
                   )}
@@ -435,14 +435,14 @@ export const AiProjectPlanModal: React.FC<AiProjectPlanModalProps> = ({
 
               {!generatedPlan ? (
                 /* System Prompt Input */
-                <form onSubmit={handleGenerate} className="space-y-4 max-w-2xl mx-auto pt-6">
-                  <div className="text-center space-y-1 mb-6">
-                    <h4 className="text-lg font-bold text-olive-950">Describe Your System or Product Idea</h4>
-                    <p className="text-xs text-olive-600">Describe the basic workflow in simple language. The AI will decompose actors, system modules, feature specs, effort, and risks without writing source code.</p>
+                <form onSubmit={handleGenerate} className="space-y-5 max-w-2xl mx-auto pt-6">
+                  <div className="text-center space-y-2 mb-6">
+                    <h4 className="text-xl font-bold text-white tracking-tight">Describe Your System or Product Idea</h4>
+                    <p className="text-xs text-slate-400 leading-relaxed max-w-lg mx-auto">Describe the basic workflow in simple language. The AI will decompose actors, system modules, feature specs, effort, and risks without writing source code.</p>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-olive-800 uppercase tracking-wider mb-2">
+                    <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
                       High-Level System Requirement
                     </label>
                     <textarea
@@ -450,13 +450,13 @@ export const AiProjectPlanModal: React.FC<AiProjectPlanModalProps> = ({
                       value={prompt}
                       onChange={(e) => setPrompt(e.target.value)}
                       placeholder="e.g. I want to build a SaaS CRM where sales reps manage leads and opportunities, managers monitor team pipelines and metrics, and admins configure user permissions."
-                      className="w-full bg-white border border-olive-200 rounded-lg p-4 text-sm text-olive-950 focus:outline-none focus:border-olive-600 leading-relaxed font-sans"
+                      className="w-full bg-slate-950/90 border border-slate-800 rounded-xl p-4 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500/80 focus:ring-1 focus:ring-emerald-500/40 leading-relaxed font-sans transition"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-olive-800 uppercase tracking-wider mb-2">
+                    <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
                       Technical Stack / Constraints (Optional)
                     </label>
                     <textarea
@@ -464,31 +464,31 @@ export const AiProjectPlanModal: React.FC<AiProjectPlanModalProps> = ({
                       value={context}
                       onChange={(e) => setContext(e.target.value)}
                       placeholder="e.g. Stack: Node, React, Mongoose. Target: Launch MVP in 6 weeks."
-                      className="w-full bg-white border border-olive-200 rounded-lg p-3 text-sm text-olive-950 focus:outline-none focus:border-olive-600"
+                      className="w-full bg-slate-950/90 border border-slate-800 rounded-xl p-3 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500/80 focus:ring-1 focus:ring-emerald-500/40 transition"
                     />
                   </div>
 
                   {loading && (
-                    <div className="p-4 bg-olive-50 border border-olive-300 rounded-xl space-y-3">
-                      <div className="flex items-center space-x-3 text-olive-950 font-bold text-xs">
-                        <Sparkles className="w-4 h-4 text-olive-700 animate-spin shrink-0" />
+                    <div className="p-4 bg-slate-950/90 border border-slate-800 rounded-2xl space-y-3 shadow-inner">
+                      <div className="flex items-center space-x-3 text-white font-bold text-xs">
+                        <Sparkles className="w-4 h-4 text-emerald-400 animate-spin shrink-0" />
                         <span>AI Architect is synthesizing your technical blueprint...</span>
                       </div>
-                      <div className="space-y-1.5 text-[11px] text-olive-800">
+                      <div className="space-y-1.5 text-[11px] text-slate-300">
                         <div className="flex items-center space-x-2">
-                          <span className="w-2 h-2 rounded-full bg-olive-600 animate-ping shrink-0" />
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping shrink-0" />
                           <span>Decomposing user workflows, actors, permissions, and core modules</span>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <span className="w-2 h-2 rounded-full bg-olive-500 shrink-0" />
+                          <span className="w-2 h-2 rounded-full bg-teal-400 shrink-0" />
                           <span>Generating frontend, backend, database schema & API specifications</span>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <span className="w-2 h-2 rounded-full bg-olive-400 shrink-0" />
+                          <span className="w-2 h-2 rounded-full bg-emerald-600 shrink-0" />
                           <span>Estimating engineering effort, risk mitigations & milestone roadmap</span>
                         </div>
                       </div>
-                      <div className="text-[10px] text-olive-600 italic">
+                      <div className="text-[10px] text-slate-400 italic">
                         Detailed production engineering blueprints take ~30–60 seconds to synthesize.
                       </div>
                     </div>
@@ -498,7 +498,7 @@ export const AiProjectPlanModal: React.FC<AiProjectPlanModalProps> = ({
                     <button
                       type="submit"
                       disabled={loading}
-                      className="inline-flex items-center space-x-2 px-6 py-2.5 bg-olive-700 hover:bg-olive-800 text-white font-bold rounded-lg text-xs shadow-sm transition disabled:opacity-50"
+                      className="inline-flex items-center space-x-2 px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-xl text-xs shadow-lg shadow-emerald-950/50 transition disabled:opacity-50"
                     >
                       <Sparkles className="w-4 h-4" />
                       <span>{loading ? "Architecting System Blueprint..." : "Generate Technical Blueprint"}</span>
@@ -510,49 +510,49 @@ export const AiProjectPlanModal: React.FC<AiProjectPlanModalProps> = ({
                 <div className="space-y-6">
                   {/* Delta Banner if modified */}
                   {lastDelta && (
-                    <div className="bg-olive-100/70 border border-olive-300 p-4 rounded-lg space-y-2 text-xs">
-                      <div className="flex items-center justify-between text-olive-900 font-bold">
+                    <div className="bg-emerald-950/40 border border-emerald-800/80 p-4 rounded-xl space-y-2 text-xs">
+                      <div className="flex items-center justify-between text-emerald-300 font-bold">
                         <span>✨ Applied Plan Delta Revisions</span>
                         <span>Timeline Adjustment: {lastDelta.timelineDeltaHours > 0 ? `+${lastDelta.timelineDeltaHours}` : lastDelta.timelineDeltaHours}h</span>
                       </div>
-                      <p className="text-olive-800">{lastDelta.summary}</p>
+                      <p className="text-emerald-200/80">{lastDelta.summary}</p>
                     </div>
                   )}
 
                   {/* Project Goal Header */}
-                  <div className="bg-olive-50 p-5 rounded-lg border border-olive-200">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-lg font-bold text-olive-950">{generatedPlan.name}</h4>
-                      <span className="px-3 py-1 bg-olive-200 text-olive-900 border border-olive-300 rounded-full text-xs font-semibold">
+                  <div className="bg-slate-950/80 p-5 rounded-xl border border-slate-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-lg font-bold text-white">{generatedPlan.name}</h4>
+                      <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full text-xs font-semibold">
                         Technical Blueprint Review
                       </span>
                     </div>
-                    <p className="text-xs text-olive-700 mb-3">{generatedPlan.systemGoal || generatedPlan.description}</p>
+                    <p className="text-xs text-slate-300">{generatedPlan.systemGoal || generatedPlan.description}</p>
                   </div>
 
                   {/* Blueprint Sub-Tabs */}
-                  <div className="flex border-b border-olive-200 space-x-6 text-xs font-semibold text-olive-600">
+                  <div className="flex border-b border-slate-800 space-x-6 text-xs font-semibold text-slate-400">
                     <button
                       onClick={() => setActiveBlueprintSubTab("blueprint")}
-                      className={`pb-2 transition ${activeBlueprintSubTab === "blueprint" ? "text-olive-900 border-b-2 border-olive-700 font-bold" : "hover:text-olive-950"}`}
+                      className={`pb-2.5 transition ${activeBlueprintSubTab === "blueprint" ? "text-emerald-400 border-b-2 border-emerald-500 font-bold" : "hover:text-slate-200"}`}
                     >
                       Actors & Modules ({generatedPlan.modules?.length || 0})
                     </button>
                     <button
                       onClick={() => setActiveBlueprintSubTab("features")}
-                      className={`pb-2 transition ${activeBlueprintSubTab === "features" ? "text-olive-900 border-b-2 border-olive-700 font-bold" : "hover:text-olive-950"}`}
+                      className={`pb-2.5 transition ${activeBlueprintSubTab === "features" ? "text-emerald-400 border-b-2 border-emerald-500 font-bold" : "hover:text-slate-200"}`}
                     >
                       Feature Specs ({generatedPlan.tasks?.length || 0})
                     </button>
                     <button
                       onClick={() => setActiveBlueprintSubTab("risks")}
-                      className={`pb-2 transition ${activeBlueprintSubTab === "risks" ? "text-olive-900 border-b-2 border-olive-700 font-bold" : "hover:text-olive-950"}`}
+                      className={`pb-2.5 transition ${activeBlueprintSubTab === "risks" ? "text-emerald-400 border-b-2 border-emerald-500 font-bold" : "hover:text-slate-200"}`}
                     >
                       Risks ({generatedPlan.risks?.length || 0})
                     </button>
                     <button
                       onClick={() => setActiveBlueprintSubTab("timeline")}
-                      className={`pb-2 transition ${activeBlueprintSubTab === "timeline" ? "text-olive-900 border-b-2 border-olive-700 font-bold" : "hover:text-olive-950"}`}
+                      className={`pb-2.5 transition ${activeBlueprintSubTab === "timeline" ? "text-emerald-400 border-b-2 border-emerald-500 font-bold" : "hover:text-slate-200"}`}
                     >
                       Timeline ({generatedPlan.timeline?.totalEngineeringHours || 0}h)
                     </button>
@@ -563,20 +563,20 @@ export const AiProjectPlanModal: React.FC<AiProjectPlanModalProps> = ({
                     <div className="space-y-4">
                       <div className="grid grid-cols-2 gap-3">
                         {generatedPlan.actors?.map((actor, i) => (
-                          <div key={i} className="bg-olive-50/50 border border-olive-200 p-3 rounded-lg text-xs space-y-1">
-                            <div className="flex items-center justify-between font-bold text-olive-950">
+                          <div key={i} className="bg-slate-950/60 border border-slate-800/80 p-3.5 rounded-xl text-xs space-y-1.5">
+                            <div className="flex items-center justify-between font-bold text-white">
                               <span>{actor.name}</span>
-                              <span className="px-2 py-0.5 bg-olive-100 text-olive-800 rounded text-[10px]">{actor.type}</span>
+                              <span className="px-2 py-0.5 bg-slate-800 text-slate-300 rounded text-[10px] font-mono">{actor.type}</span>
                             </div>
-                            <div className="text-olive-700 text-[11px]">{actor.responsibilities?.join(" • ")}</div>
+                            <div className="text-slate-400 text-[11px] leading-relaxed">{actor.responsibilities?.join(" • ")}</div>
                           </div>
                         ))}
                       </div>
                       <div className="space-y-2">
                         {generatedPlan.modules?.map((mod, i) => (
-                          <div key={i} className="bg-olive-50/50 border border-olive-200 p-3.5 rounded-lg text-xs">
-                            <div className="font-bold text-olive-950 text-sm mb-0.5">{mod.name}</div>
-                            <p className="text-olive-700 text-[11px]">{mod.purpose}</p>
+                          <div key={i} className="bg-slate-950/60 border border-slate-800/80 p-4 rounded-xl text-xs space-y-1">
+                            <div className="font-bold text-white text-sm mb-0.5">{mod.name}</div>
+                            <p className="text-slate-400 text-[11px] leading-relaxed">{mod.purpose}</p>
                           </div>
                         ))}
                       </div>
@@ -586,12 +586,12 @@ export const AiProjectPlanModal: React.FC<AiProjectPlanModalProps> = ({
                   {activeBlueprintSubTab === "features" && (
                     <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
                       {generatedPlan.tasks?.map((t, i) => (
-                        <div key={i} className="bg-white border border-olive-200 p-3.5 rounded-lg text-xs space-y-1">
-                          <div className="flex items-center justify-between font-bold text-olive-950">
+                        <div key={i} className="bg-slate-950/70 border border-slate-800 p-3.5 rounded-xl text-xs space-y-1">
+                          <div className="flex items-center justify-between font-bold text-slate-100">
                             <span>{t.title}</span>
-                            <span className="text-olive-600 text-[11px]">{t.estimatedHours}h</span>
+                            <span className="text-emerald-400 font-mono text-[11px]">{t.estimatedHours}h</span>
                           </div>
-                          <p className="text-olive-700 text-[11px]">{t.description}</p>
+                          <p className="text-slate-400 text-[11px]">{t.description}</p>
                         </div>
                       ))}
                     </div>
@@ -600,36 +600,36 @@ export const AiProjectPlanModal: React.FC<AiProjectPlanModalProps> = ({
                   {activeBlueprintSubTab === "risks" && (
                     <div className="space-y-2">
                       {generatedPlan.risks?.map((r, i) => (
-                        <div key={i} className="bg-amber-50 border border-amber-200 p-3 rounded-lg text-xs text-amber-900">
-                          <div className="font-bold">{r.title} ({r.severity})</div>
-                          <div className="text-amber-800 text-[11px] mt-0.5">Mitigation: {r.mitigation}</div>
+                        <div key={i} className="bg-amber-950/30 border border-amber-800/60 p-3.5 rounded-xl text-xs text-amber-200 space-y-1">
+                          <div className="font-bold text-amber-300">{r.title} ({r.severity})</div>
+                          <div className="text-amber-200/80 text-[11px]">Mitigation: {r.mitigation}</div>
                         </div>
                       ))}
                     </div>
                   )}
 
                   {activeBlueprintSubTab === "timeline" && generatedPlan.timeline && (
-                    <div className="bg-olive-50 p-4 rounded-lg border border-olive-200 text-xs space-y-2">
+                    <div className="bg-slate-950/80 p-4 rounded-xl border border-slate-800 text-xs space-y-2">
                       <div className="grid grid-cols-3 gap-3 text-center">
-                        <div className="p-2.5 bg-white border border-olive-200 rounded-lg">
-                          <span className="text-olive-600 block text-[10px]">Total Hours</span>
-                          <span className="font-bold text-olive-950 text-base">{generatedPlan.timeline.totalEngineeringHours}h</span>
+                        <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl">
+                          <span className="text-slate-400 block text-[10px] uppercase font-semibold">Total Hours</span>
+                          <span className="font-bold text-white text-base mt-1 block">{generatedPlan.timeline.totalEngineeringHours}h</span>
                         </div>
-                        <div className="p-2.5 bg-white border border-olive-200 rounded-lg">
-                          <span className="text-olive-600 block text-[10px]">Dev Days</span>
-                          <span className="font-bold text-olive-950 text-base">{generatedPlan.timeline.totalEngineeringDays}d</span>
+                        <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl">
+                          <span className="text-slate-400 block text-[10px] uppercase font-semibold">Dev Days</span>
+                          <span className="font-bold text-white text-base mt-1 block">{generatedPlan.timeline.totalEngineeringDays}d</span>
                         </div>
-                        <div className="p-2.5 bg-white border border-olive-200 rounded-lg">
-                          <span className="text-olive-600 block text-[10px]">Calendar Duration</span>
-                          <span className="font-bold text-olive-950 text-base">~{generatedPlan.timeline.estimatedCalendarWeeks}w</span>
+                        <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl">
+                          <span className="text-slate-400 block text-[10px] uppercase font-semibold">Calendar Duration</span>
+                          <span className="font-bold text-white text-base mt-1 block">~{generatedPlan.timeline.estimatedCalendarWeeks}w</span>
                         </div>
                       </div>
                     </div>
                   )}
 
                   {/* Revision Form */}
-                  <form onSubmit={handleApplyChangeRequest} className="pt-3 border-t border-olive-200 space-y-2">
-                    <label className="block text-xs font-semibold text-olive-800 uppercase tracking-wider">
+                  <form onSubmit={handleApplyChangeRequest} className="pt-3 border-t border-slate-800 space-y-2">
+                    <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
                       Request Plan Revisions / Scope Changes
                     </label>
                     <div className="flex space-x-2">
@@ -638,12 +638,12 @@ export const AiProjectPlanModal: React.FC<AiProjectPlanModalProps> = ({
                         value={changeRequest}
                         onChange={(e) => setChangeRequest(e.target.value)}
                         placeholder="e.g. Remove delivery module, or Add Google SSO support"
-                        className="flex-1 bg-white border border-olive-200 rounded-lg px-4 py-2.5 text-xs text-olive-950 focus:outline-none focus:border-olive-600"
+                        className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500/80"
                       />
                       <button
                         type="submit"
                         disabled={modifying || !changeRequest.trim()}
-                        className="px-4 py-2.5 bg-olive-100 hover:bg-olive-200 text-olive-900 border border-olive-300 font-semibold rounded-lg text-xs transition disabled:opacity-50 flex items-center space-x-1"
+                        className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold rounded-xl text-xs transition disabled:opacity-50 flex items-center space-x-1"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
                         <span>{modifying ? "Updating..." : "Update Plan"}</span>
@@ -652,18 +652,18 @@ export const AiProjectPlanModal: React.FC<AiProjectPlanModalProps> = ({
                   </form>
 
                   {/* Confirm & Materialize Trigger */}
-                  <div className="flex items-center justify-between pt-4 border-t border-olive-200">
+                  <div className="flex items-center justify-between pt-4 border-t border-slate-800">
                     <button
                       type="button"
                       onClick={() => setGeneratedPlan(null)}
-                      className="text-xs text-olive-600 hover:text-olive-950"
+                      className="text-xs text-slate-400 hover:text-white transition"
                     >
                       ← Start Over
                     </button>
                     <button
                       type="button"
                       onClick={() => setShowApprovalDialog(true)}
-                      className="inline-flex items-center space-x-2 px-6 py-2.5 bg-olive-700 hover:bg-olive-800 text-white font-bold rounded-lg text-xs shadow-sm transition"
+                      className="inline-flex items-center space-x-2 px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-xl text-xs shadow-lg shadow-emerald-950/50 transition"
                     >
                       <Check className="w-4 h-4" />
                       <span>Approve & Create Project</span>
@@ -675,8 +675,8 @@ export const AiProjectPlanModal: React.FC<AiProjectPlanModalProps> = ({
           ) : (
             /* TAB 2: Dedicated Saved Artifacts Tab */
             <div className="flex-1 p-6 overflow-y-auto space-y-4">
-              <div className="flex items-center justify-between border-b border-olive-200 pb-3">
-                <h4 className="font-bold text-olive-950 text-sm">Generated Planning Artifacts & PRD Specifications</h4>
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h4 className="font-bold text-white text-sm">Generated Planning Artifacts & PRD Specifications</h4>
                 <div className="flex space-x-2">
                   {(["project_plan", "prd", "tech_spec", "timeline", "risks"] as const).map((type) => (
                     <button
@@ -684,8 +684,8 @@ export const AiProjectPlanModal: React.FC<AiProjectPlanModalProps> = ({
                       onClick={() => setSelectedArtifactType(type)}
                       className={`px-2.5 py-1 rounded-lg text-xs font-medium transition ${
                         selectedArtifactType === type
-                          ? "bg-olive-700 text-white font-semibold"
-                          : "bg-white text-olive-700 border border-olive-200 hover:bg-olive-50"
+                          ? "bg-emerald-600 text-white font-semibold shadow-md shadow-emerald-600/30"
+                          : "bg-slate-950 text-slate-400 border border-slate-800 hover:bg-slate-800 hover:text-slate-200"
                       }`}
                     >
                       {type.replace("_", " ").toUpperCase()}
@@ -695,22 +695,22 @@ export const AiProjectPlanModal: React.FC<AiProjectPlanModalProps> = ({
               </div>
 
               {generatedPlan ? (
-                <div className="bg-olive-50/60 border border-olive-200 p-5 rounded-lg space-y-4">
+                <div className="bg-slate-950/80 border border-slate-800 p-5 rounded-xl space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h5 className="font-bold text-olive-950 text-sm">{generatedPlan.name}</h5>
-                      <span className="text-xs text-olive-600">Canonical {selectedArtifactType.replace("_", " ").toUpperCase()} Specification</span>
+                      <h5 className="font-bold text-white text-sm">{generatedPlan.name}</h5>
+                      <span className="text-xs text-slate-400">Canonical {selectedArtifactType.replace("_", " ").toUpperCase()} Specification</span>
                     </div>
                     <button
                       onClick={() => copyArtifactToClipboard(JSON.stringify(generatedPlan, null, 2))}
-                      className="inline-flex items-center space-x-1 px-3 py-1.5 bg-white border border-olive-200 hover:bg-olive-50 text-olive-800 rounded-lg text-xs transition"
+                      className="inline-flex items-center space-x-1 px-3 py-1.5 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-200 rounded-xl text-xs transition"
                     >
                       <Copy className="w-3.5 h-3.5" />
                       <span>{copiedText ? "Copied!" : "Copy Specification"}</span>
                     </button>
                   </div>
 
-                  <div className="bg-white p-4 rounded-lg border border-olive-200 text-xs font-mono leading-relaxed text-olive-900 max-h-96 overflow-y-auto">
+                  <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs font-mono leading-relaxed text-slate-200 max-h-96 overflow-y-auto">
                     {selectedArtifactType === "project_plan" && (
                       <pre className="whitespace-pre-wrap font-sans space-y-2">
                         <strong>Goal:</strong> {generatedPlan.systemGoal}
@@ -756,7 +756,7 @@ export const AiProjectPlanModal: React.FC<AiProjectPlanModalProps> = ({
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-12 text-olive-500 text-xs">
+                <div className="text-center py-12 text-slate-500 text-xs">
                   No active artifact generated for this conversation yet. Enter your system prompt in the Planner Chat tab to generate artifacts.
                 </div>
               )}
@@ -767,52 +767,52 @@ export const AiProjectPlanModal: React.FC<AiProjectPlanModalProps> = ({
 
       {/* Explicit Approval Safety Confirmation Modal */}
       {showApprovalDialog && generatedPlan && (
-        <div className="fixed inset-0 bg-olive-900/50 backdrop-blur-sm flex items-center justify-center z-[1100] p-4">
-          <div className="bg-white border border-olive-200 rounded-lg max-w-md w-full p-6 space-y-4 shadow-xl">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[1100] p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl text-slate-100">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-lg bg-olive-100 border border-olive-200 flex items-center justify-center text-olive-800 shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-emerald-400 shrink-0">
                 <FolderPlus className="w-5 h-5" />
               </div>
               <div>
-                <h4 className="font-bold text-olive-950 text-base">Approve & Create Project</h4>
-                <p className="text-xs text-olive-600">Confirm project materialization from approved plan</p>
+                <h4 className="font-bold text-white text-base">Approve & Create Project</h4>
+                <p className="text-xs text-slate-400">Confirm project materialization from approved plan</p>
               </div>
             </div>
 
-            <div className="bg-olive-50/70 p-4 rounded-lg border border-olive-200 text-xs space-y-2">
-              <div className="flex justify-between text-olive-800">
+            <div className="bg-slate-950/80 p-4 rounded-xl border border-slate-800 text-xs space-y-2">
+              <div className="flex justify-between text-slate-300">
                 <span>Project Name:</span>
-                <span className="font-bold text-olive-950">{generatedPlan.name}</span>
+                <span className="font-bold text-white">{generatedPlan.name}</span>
               </div>
-              <div className="flex justify-between text-olive-800">
+              <div className="flex justify-between text-slate-300">
                 <span>Modules & Epics:</span>
-                <span className="font-bold text-olive-950">{generatedPlan.modules?.length || 0} Modules</span>
+                <span className="font-bold text-white">{generatedPlan.modules?.length || 0} Modules</span>
               </div>
-              <div className="flex justify-between text-olive-800">
+              <div className="flex justify-between text-slate-300">
                 <span>Tasks & Subtasks:</span>
-                <span className="font-bold text-olive-950">{generatedPlan.tasks?.length || 0} Tasks</span>
+                <span className="font-bold text-white">{generatedPlan.tasks?.length || 0} Tasks</span>
               </div>
-              <div className="flex justify-between text-olive-800">
+              <div className="flex justify-between text-slate-300">
                 <span>Estimated Duration:</span>
-                <span className="font-bold text-olive-950">~{generatedPlan.timeline?.estimatedCalendarWeeks || 4} Weeks</span>
+                <span className="font-bold text-white">~{generatedPlan.timeline?.estimatedCalendarWeeks || 4} Weeks</span>
               </div>
             </div>
 
-            <p className="text-[11px] text-olive-600">
+            <p className="text-[11px] text-slate-400 leading-relaxed">
               Clicking Confirm will create the Project, Custom Workflow States, Epics, Tasks, Subtasks, Dependencies, and canonical PRD Document.
             </p>
 
             <div className="flex justify-end space-x-2 pt-2">
               <button
                 onClick={() => setShowApprovalDialog(false)}
-                className="px-4 py-2 bg-white border border-olive-200 text-olive-700 hover:bg-olive-50 rounded-lg text-xs font-semibold transition"
+                className="px-4 py-2 bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white rounded-xl text-xs font-semibold transition"
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirmPlanExecution}
                 disabled={confirming}
-                className="px-5 py-2 bg-olive-700 hover:bg-olive-800 text-white rounded-lg text-xs font-bold shadow-sm transition disabled:opacity-50 flex items-center space-x-1.5"
+                className="px-5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-950/50 transition disabled:opacity-50 flex items-center space-x-1.5"
               >
                 <Check className="w-3.5 h-3.5" />
                 <span>{confirming ? "Creating Project..." : "Confirm & Create"}</span>

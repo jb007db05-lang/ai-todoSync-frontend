@@ -9,7 +9,8 @@ import {
   BookOpen,
   Target,
   Plug,
-  Sparkles
+  Sparkles,
+  Play,
 } from 'lucide-react';
 import logoImg from '@/assets/logo.png';
 import { Workspace } from '../services/workspaces';
@@ -20,6 +21,7 @@ export type SidebarView =
   | 'event-tracking'
   | 'semantic-intelligence'
   | 'prompts'
+  | 'playground'
   | 'sdk-docs'
   | 'engagement'
   | 'sdk-integrations'
@@ -200,6 +202,10 @@ const Sidebar: React.FC<SidebarProps> = ({
             <NavBtn isActive={activeView === 'prompts'} onClick={() => onViewChange('prompts')}>
               <Sparkles size={14} className={activeView === 'prompts' ? 'text-[#e2f2d1]' : 'text-white/50 group-hover:text-white/80'} strokeWidth={1.8} />
               Prompt Library
+            </NavBtn>
+            <NavBtn isActive={activeView === 'playground'} onClick={() => onViewChange('playground')}>
+              <Play size={14} className={activeView === 'playground' ? 'text-[#e2f2d1]' : 'text-white/50 group-hover:text-white/80'} strokeWidth={1.8} />
+              Prompt Playground
             </NavBtn>
             <NavBtn isActive={activeView === 'sdk-integrations'} onClick={() => onViewChange('sdk-integrations')}>
               <Plug size={14} className={activeView === 'sdk-integrations' ? 'text-[#e2f2d1]' : 'text-white/50 group-hover:text-white/80'} strokeWidth={1.8} />
