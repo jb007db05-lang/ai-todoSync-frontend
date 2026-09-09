@@ -1717,7 +1717,7 @@ function DashboardPage(): JSX.Element {
   ].filter(Boolean);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-olive-100 ">
+    <div className="flex h-screen overflow-hidden bg-slate-100  text-slate-900  transition-colors duration-250">
       {/* Toast Notification */}
       {allMutationMessages.length > 0 && (
         <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2">
@@ -1809,49 +1809,49 @@ function DashboardPage(): JSX.Element {
             <>
               <button
                 onClick={() => handleProjectSelect(ALL_PROJECTS_VALUE)}
-                className="hover:text-olive-600  transition-colors"
+                className="hover:text-slate-600  transition-colors"
                 type="button"
               >
                 Dashboard
               </button>
 
-              <span className="text-olive-300 ">/</span>
+              <span className="text-slate-300 ">/</span>
 
               {activeView === 'settings' ? (
-                <span className="text-olive-600 ">Settings</span>
+                <span className="text-slate-600 ">Settings</span>
               ) : activeView === 'sdk-docs' ? (
-                <span className="text-olive-600 ">SDK Documentation</span>
+                <span className="text-slate-600 ">SDK Documentation</span>
               ) : activeView === 'event-tracking' ? (
-                <span className="text-olive-600 ">Event Tracking</span>
+                <span className="text-slate-600 ">Event Tracking</span>
               ) : activeView === 'engagement' ? (
-                <span className="text-olive-600 ">Engagement</span>
+                <span className="text-slate-600 ">Engagement</span>
               ) : activeView === 'sdk-integrations' ? (
-                <span className="text-olive-600 ">SDK Integrations</span>
+                <span className="text-slate-600 ">SDK Integrations</span>
               ) : activeView === 'sdk-integration-detail' ? (
                 <>
                   <button
                     onClick={() => navigate('/sdk-integrations')}
-                    className="hover:text-olive-600  transition-colors"
+                    className="hover:text-slate-600  transition-colors"
                     type="button"
                   >
                     SDK Integrations
                   </button>
-                  <span className="text-olive-300 ">/</span>
-                  <span className="text-olive-600 ">Integration Detail</span>
+                  <span className="text-slate-300 ">/</span>
+                  <span className="text-slate-600 ">Integration Detail</span>
                 </>
               ) : activeView === 'semantic-intelligence' ? (
-                <span className="text-olive-600 ">Semantic Intelligence</span>
+                <span className="text-slate-600 ">Semantic Intelligence</span>
               ) : activeProject ? (
                 <>
                   <button
                     onClick={() => handleProjectSelect(ALL_PROJECTS_VALUE)}
-                    className="hover:text-olive-600  transition-colors"
+                    className="hover:text-slate-600  transition-colors"
                     type="button"
                   >
                     Projects
                   </button>
-                  <span className="text-olive-300 ">/</span>
-                  <span className="text-olive-600 ">{activeProject.name}</span>
+                  <span className="text-slate-300 ">/</span>
+                  <span className="text-slate-600 ">{activeProject.name}</span>
                   {activeProjectAiEnabled ? (
                     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-green-50 text-green-700 border border-green-200/50 uppercase tracking-wider font-bold text-[9px] select-none ml-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
