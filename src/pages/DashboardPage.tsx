@@ -19,7 +19,7 @@ import SubtaskForm from '@/components/SubtaskForm';
 import ChatPanel from '@/components/ChatPanel';
 import ActivityHistoryPanel from '@/components/ActivityHistoryPanel';
 import ApprovalSection from '@/components/ApprovalSection';
-import AiPlanningWorkspace from '@/components/AiPlanningWorkspace';
+import { AiProjectPlanModal } from '@/components/AiProjectPlanModal';
 import { getProjectAiConfig } from '@/services/aiPlanning';
 import SdkDocsPanel from '@/components/SdkDocsPanel';
 import EventTrackingPage from '@/pages/EventTrackingPage';
@@ -27,6 +27,8 @@ import SemanticIntelligencePage from '@/pages/SemanticIntelligencePage';
 import EngagementPage from '@/pages/EngagementPage';
 import SdkIntegrationsPage from '@/pages/SdkIntegrationsPage';
 import SdkIntegrationDetailPage from '@/pages/SdkIntegrationDetailPage';
+import PromptLibraryPage from '@/pages/PromptLibraryPage';
+import { workspaceService } from '@/services/workspaces';
 import { getIntegration } from '@/lib/sdk-integrations/api';
 import Sidebar, { SidebarView } from '@/components/Sidebar';
 import Topbar from '@/components/Topbar';
@@ -263,6 +265,24 @@ function DashboardPage(): JSX.Element {
   const [isEvaluatingPriority, setIsEvaluatingPriority] = useState(false);
   const { lastMessage, clearLastMessage, setActiveProject } = useChat();
   const [activeIntegrationName, setActiveIntegrationName] = useState<string>('');
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string>('');
+
+  useEffect(() => {
+    const fetchWorkspace = async () => {
+      try {
+        const list = await workspaceService.listWorkspaces();
+        if (list && list.length > 0) {
+          const wsId = list[0].id || (list[0] as { id?: string; _id?: string })._id;
+          if (wsId) {
+            setActiveWorkspaceId(wsId);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load user workspace', err);
+      }
+    };
+    void fetchWorkspace();
+  }, []);
 
   useEffect(() => {
     const fetchIntegrationDetails = async () => {
@@ -287,7 +307,10 @@ function DashboardPage(): JSX.Element {
 
     if (path === '/intelligence') {
       setActiveView('semantic-intelligence');
+    } else if (path === '/prompts') {
+      setActiveView('prompts');
     } else if (path === '/event-tracking') {
+      setActiveView('event-tracking');
       setActiveView('event-tracking');
     } else if (path === '/engagement') {
       setActiveView('engagement');
@@ -1716,7 +1739,7 @@ function DashboardPage(): JSX.Element {
   ].filter(Boolean);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-olive-100 ">
+    <div className="flex h-screen overflow-hidden bg-slate-100  text-slate-900  transition-colors duration-250">
       {/* Toast Notification */}
       {allMutationMessages.length > 0 && (
         <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2">
@@ -1761,6 +1784,7 @@ function DashboardPage(): JSX.Element {
         onViewChange={(view: SidebarView, targetTab?: string) => {
           if (view === 'dashboard') navigate('/dashboard');
           else if (view === 'semantic-intelligence') navigate('/intelligence');
+          else if (view === 'prompts') navigate('/prompts');
           else if (view === 'event-tracking') navigate('/event-tracking');
           else if (view === 'engagement') navigate('/engagement');
           else if (view === 'sdk-integrations') navigate('/sdk-integrations');
@@ -1808,49 +1832,49 @@ function DashboardPage(): JSX.Element {
             <>
               <button
                 onClick={() => handleProjectSelect(ALL_PROJECTS_VALUE)}
-                className="hover:text-olive-600  transition-colors"
+                className="hover:text-slate-600  transition-colors"
                 type="button"
               >
                 Dashboard
               </button>
 
-              <span className="text-olive-300 ">/</span>
+              <span className="text-slate-300 ">/</span>
 
               {activeView === 'settings' ? (
-                <span className="text-olive-600 ">Settings</span>
+                <span className="text-slate-600 ">Settings</span>
               ) : activeView === 'sdk-docs' ? (
-                <span className="text-olive-600 ">SDK Documentation</span>
+                <span className="text-slate-600 ">SDK Documentation</span>
               ) : activeView === 'event-tracking' ? (
-                <span className="text-olive-600 ">Event Tracking</span>
+                <span className="text-slate-600 ">Event Tracking</span>
               ) : activeView === 'engagement' ? (
-                <span className="text-olive-600 ">Engagement</span>
+                <span className="text-slate-600 ">Engagement</span>
               ) : activeView === 'sdk-integrations' ? (
-                <span className="text-olive-600 ">SDK Integrations</span>
+                <span className="text-slate-600 ">SDK Integrations</span>
               ) : activeView === 'sdk-integration-detail' ? (
                 <>
                   <button
                     onClick={() => navigate('/sdk-integrations')}
-                    className="hover:text-olive-600  transition-colors"
+                    className="hover:text-slate-600  transition-colors"
                     type="button"
                   >
                     SDK Integrations
                   </button>
-                  <span className="text-olive-300 ">/</span>
-                  <span className="text-olive-600 ">Integration Detail</span>
+                  <span className="text-slate-300 ">/</span>
+                  <span className="text-slate-600 ">Integration Detail</span>
                 </>
               ) : activeView === 'semantic-intelligence' ? (
-                <span className="text-olive-600 ">Semantic Intelligence</span>
+                <span className="text-slate-600 ">Semantic Intelligence</span>
               ) : activeProject ? (
                 <>
                   <button
                     onClick={() => handleProjectSelect(ALL_PROJECTS_VALUE)}
-                    className="hover:text-olive-600  transition-colors"
+                    className="hover:text-slate-600  transition-colors"
                     type="button"
                   >
                     Projects
                   </button>
-                  <span className="text-olive-300 ">/</span>
-                  <span className="text-olive-600 ">{activeProject.name}</span>
+                  <span className="text-slate-300 ">/</span>
+                  <span className="text-slate-600 ">{activeProject.name}</span>
                   {activeProjectAiEnabled ? (
                     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-green-50 text-green-700 border border-green-200/50 uppercase tracking-wider font-bold text-[9px] select-none ml-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
@@ -1912,6 +1936,10 @@ function DashboardPage(): JSX.Element {
           ) : activeView === 'sdk-integration-detail' ? (
             <div className="h-full overflow-y-auto">
               <SdkIntegrationDetailPage />
+            </div>
+          ) : activeView === 'prompts' ? (
+            <div className="h-full overflow-y-auto bg-slate-950">
+              <PromptLibraryPage workspaceId={activeWorkspaceId} />
             </div>
           ) : activeView === 'semantic-intelligence' ? (
             <div className="h-full overflow-y-auto">
@@ -2577,22 +2605,15 @@ function DashboardPage(): JSX.Element {
         ) : null
       }
       {
-        isAiPlanningWorkspaceOpen && activeProject ? (
-          <Modal
-            bodyClassName="p-6"
-            maxWidth="max-w-[1100px]"
+        isAiPlanningWorkspaceOpen ? (
+          <AiProjectPlanModal
+            isOpen={isAiPlanningWorkspaceOpen}
             onClose={() => setIsAiPlanningWorkspaceOpen(false)}
-            title={`AI Planning Workspace - ${activeProject.name}`}
-          >
-            <AiPlanningWorkspace
-              onArtifactsCreated={() => void loadDashboard()}
-              project={activeProject}
-              onGoToSettings={() => {
-                setIsAiPlanningWorkspaceOpen(false);
-                setActiveView('settings');
-              }}
-            />
-          </Modal>
+            onProjectCreated={() => {
+              setIsAiPlanningWorkspaceOpen(false);
+              void loadDashboard();
+            }}
+          />
         ) : null
       }
       {

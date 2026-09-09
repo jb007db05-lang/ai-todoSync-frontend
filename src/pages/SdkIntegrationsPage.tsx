@@ -15,29 +15,34 @@ import {
 // ---------- helpers ----------
 const ENV_LABELS: Record<SdkEnvironment, string> = { development: 'Development', staging: 'Staging', production: 'Production' };
 const ENV_COLORS: Record<SdkEnvironment, string> = {
-  development: 'bg-sky-100 text-sky-700 border-sky-200',
-  staging: 'bg-amber-100 text-amber-700 border-amber-200',
-  production: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  development: 'bg-emerald-50 text-emerald-700',
+  staging: 'bg-amber-50 text-amber-700',
+  production: 'bg-indigo-50 text-indigo-700',
+};
+const ENV_BORDER: Record<SdkEnvironment, string> = {
+  development: 'border-t-emerald-400',
+  staging: 'border-t-amber-400',
+  production: 'border-t-indigo-500',
 };
 const STATUS_META: Record<SdkIntegration['status'], { label: string; icon: JSX.Element; cls: string }> = {
-  pending: { label: 'Pending', icon: <Clock size={13} />, cls: 'bg-zinc-100 text-zinc-600 border-zinc-200' },
-  connected: { label: 'Connected', icon: <CheckCircle2 size={13} />, cls: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-  disabled: { label: 'Disabled', icon: <WifiOff size={13} />, cls: 'bg-orange-100 text-orange-700 border-orange-200' },
-  revoked: { label: 'Revoked', icon: <AlertCircle size={13} />, cls: 'bg-red-100 text-red-700 border-red-200' },
+  pending: { label: 'Pending', icon: <Clock size={13} />, cls: 'bg-zinc-50 text-zinc-600 shadow-xs' },
+  connected: { label: 'Connected', icon: <CheckCircle2 size={13} />, cls: 'bg-emerald-50 text-emerald-700 shadow-xs' },
+  disabled: { label: 'Disabled', icon: <WifiOff size={13} />, cls: 'bg-orange-50 text-orange-700 shadow-xs' },
+  revoked: { label: 'Revoked', icon: <AlertCircle size={13} />, cls: 'bg-red-50 text-red-700 shadow-xs' },
 };
 
 const fmtDate = (d?: string | null) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
 const fmtTime = (d?: string | null) => d ? new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Never';
 
 function Badge({ children, cls }: { children: React.ReactNode; cls: string }) {
-  return <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${cls}`}>{children}</span>;
+  return <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${cls}`}>{children}</span>;
 }
 
 function CopyBtn({ text }: { text: string }) {
   const [done, setDone] = useState(false);
   const copy = () => { void navigator.clipboard.writeText(text); setDone(true); setTimeout(() => setDone(false), 1500); };
   return (
-    <button onClick={copy} type="button" className="flex items-center gap-1 text-xs font-semibold text-olive-600 hover:text-olive-800 transition-colors">
+    <button onClick={copy} type="button" className="flex items-center gap-1 text-xs font-semibold text-slate-650 hover:text-slate-900 transition-colors">
       {done ? <CheckCircle2 size={13} className="text-emerald-500" /> : <Copy size={13} />}
       {done ? 'Copied' : 'Copy'}
     </button>
@@ -74,42 +79,42 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-zinc-200 overflow-hidden">
-        <div className="bg-gradient-to-r from-olive-700 to-olive-600 px-6 py-5">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 backdrop-blur-xs px-4">
+      <div className="w-full max-w-lg rounded-md bg-white shadow-sm overflow-hidden">
+        <div className="bg-gradient-to-r from-slate-900 to-slate-800 px-6 py-5">
           <h2 className="text-lg font-bold text-white flex items-center gap-2"><Globe size={18} /> New SDK Integration</h2>
-          <p className="text-sm text-olive-200 mt-0.5">Connect an external website to the Engagement Platform</p>
+          <p className="text-sm text-slate-300 mt-0.5">Connect an external website to the Engagement Platform</p>
         </div>
         <div className="p-6 grid gap-4 overflow-y-auto max-h-[70vh]">
-          {err && <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-2.5 text-sm text-red-700"><AlertCircle size={15} />{err}</div>}
+          {err && <div className="flex items-center gap-2 rounded bg-red-50 px-4 py-2.5 text-sm text-red-700 shadow-sm"><AlertCircle size={15} />{err}</div>}
           <label className="grid gap-1.5">
-            <span className="text-xs font-bold uppercase tracking-widest text-zinc-500">Integration Name *</span>
-            <input className="rounded-lg border border-zinc-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-olive-400" placeholder="e.g. Production Website" value={name} onChange={e => setName(e.target.value)} />
+            <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Integration Name *</span>
+            <input className="rounded bg-slate-50 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500/10 shadow-sm focus:shadow-sm transition-shadow" placeholder="e.g. Production Website" value={name} onChange={e => setName(e.target.value)} />
           </label>
           <label className="grid gap-1.5">
-            <span className="text-xs font-bold uppercase tracking-widest text-zinc-500">Environment *</span>
-            <select className="rounded-lg border border-zinc-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-olive-400" value={env} onChange={e => setEnv(e.target.value as SdkEnvironment)}>
+            <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Environment *</span>
+            <select className="rounded bg-slate-50 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500/10 shadow-sm focus:shadow-sm transition-shadow" value={env} onChange={e => setEnv(e.target.value as SdkEnvironment)}>
               <option value="production">Production</option>
               <option value="staging">Staging</option>
               <option value="development">Development</option>
             </select>
           </label>
           <label className="grid gap-1.5">
-            <span className="text-xs font-bold uppercase tracking-widest text-zinc-500">Application URL *</span>
-            <input className="rounded-lg border border-zinc-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-olive-400" placeholder="https://app.company.com" value={domain} onChange={e => setDomain(e.target.value)} />
+            <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Application URL *</span>
+            <input className="rounded bg-slate-50 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500/10 shadow-sm focus:shadow-sm transition-shadow" placeholder="https://app.company.com" value={domain} onChange={e => setDomain(e.target.value)} />
           </label>
           <label className="grid gap-1.5">
-            <span className="text-xs font-bold uppercase tracking-widest text-zinc-500">Additional Allowed Origins (optional, comma-separated)</span>
-            <input className="rounded-lg border border-zinc-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-olive-400" placeholder="https://origin2.com, http://localhost:5173" value={origins} onChange={e => setOrigins(e.target.value)} />
+            <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Additional Allowed Origins (optional, comma-separated)</span>
+            <input className="rounded bg-slate-50 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500/10 shadow-sm focus:shadow-sm transition-shadow" placeholder="https://origin2.com, http://localhost:5173" value={origins} onChange={e => setOrigins(e.target.value)} />
           </label>
           <label className="grid gap-1.5">
-            <span className="text-xs font-bold uppercase tracking-widest text-zinc-500">Description (optional)</span>
-            <textarea className="rounded-lg border border-zinc-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-olive-400 resize-none h-20" placeholder="Brief description of this integration" value={desc} onChange={e => setDesc(e.target.value)} />
+            <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Description (optional)</span>
+            <textarea className="rounded bg-slate-50 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500/10 resize-none h-20 shadow-sm focus:shadow-sm transition-shadow" placeholder="Brief description of this integration" value={desc} onChange={e => setDesc(e.target.value)} />
           </label>
         </div>
-        <div className="flex justify-end gap-3 px-6 pb-6">
-          <button onClick={onClose} type="button" className="px-4 py-2 rounded-lg border border-zinc-200 text-sm font-semibold text-zinc-600 hover:bg-zinc-50">Cancel</button>
-          <button onClick={() => void submit()} type="button" disabled={loading} className="px-5 py-2 rounded-lg bg-olive-700 text-white text-sm font-bold hover:bg-olive-800 disabled:opacity-60 flex items-center gap-2">
+        <div className="flex justify-end gap-3 px-6 pb-6 pt-2">
+          <button onClick={onClose} type="button" className="px-4 py-2 rounded text-sm font-semibold text-slate-600 hover:bg-slate-50 shadow-xs">Cancel</button>
+          <button onClick={() => void submit()} type="button" disabled={loading} className="px-5 py-2 rounded bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 disabled:opacity-60 flex items-center gap-2 shadow-sm hover:shadow-sm transition-all">
             {loading && <Loader2 size={14} className="animate-spin" />} Create Integration
           </button>
         </div>
@@ -122,30 +127,30 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
 function KeyRevealModal({ sdkKey, name, onClose }: { sdkKey: string; name: string; onClose: () => void }) {
   const [visible, setVisible] = useState(false);
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl border border-zinc-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 backdrop-blur-xs px-4">
+      <div className="w-full max-w-md rounded-md bg-white shadow-sm">
         <div className="bg-gradient-to-r from-emerald-600 to-emerald-500 px-6 py-5 rounded-t-2xl">
           <h2 className="text-lg font-bold text-white flex items-center gap-2"><KeyRound size={18} /> SDK Key Generated</h2>
           <p className="text-sm text-emerald-100 mt-0.5">For <span className="font-bold">{name}</span></p>
         </div>
         <div className="p-6 grid gap-4">
-          <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800 flex items-start gap-2">
+          <div className="rounded bg-amber-50 px-4 py-3 text-sm text-amber-800 flex items-start gap-2 shadow-xs">
             <AlertCircle size={15} className="mt-0.5 shrink-0" />
             <span>This key will not be shown again. Copy it now and store it securely.</span>
           </div>
-          <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3">
+          <div className="rounded bg-slate-50 px-4 py-3 shadow-inner">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold uppercase tracking-widest text-zinc-400">Public SDK Key</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Public SDK Key</span>
               <div className="flex items-center gap-3">
-                <button onClick={() => setVisible(!visible)} type="button" className="text-zinc-400 hover:text-zinc-600"><EyeOff size={14} /></button>
+                <button onClick={() => setVisible(!visible)} type="button" className="text-slate-400 hover:text-slate-600"><EyeOff size={14} /></button>
                 <CopyBtn text={sdkKey} />
               </div>
             </div>
-            <code className="text-xs font-mono text-olive-800 break-all">{visible ? sdkKey : `${sdkKey.slice(0, 8)}${'•'.repeat(32)}`}</code>
+            <code className="text-xs font-mono text-slate-800 break-all">{visible ? sdkKey : `${sdkKey.slice(0, 8)}${'•'.repeat(32)}`}</code>
           </div>
         </div>
         <div className="flex justify-end px-6 pb-6">
-          <button onClick={onClose} type="button" className="px-5 py-2 rounded-lg bg-olive-700 text-white text-sm font-bold hover:bg-olive-800">Done</button>
+          <button onClick={onClose} type="button" className="px-5 py-2 rounded bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 shadow-sm">Done</button>
         </div>
       </div>
     </div>
@@ -157,34 +162,33 @@ function InstallGuide({ integration }: { integration: SdkIntegration }) {
   const [open, setOpen] = useState(false);
   const masked = integration.sdkKeyMasked;
   return (
-    <div className="rounded-xl border border-zinc-200 overflow-hidden">
+    <div className="rounded bg-slate-50/60 overflow-hidden shadow-sm">
       <button
-        className="w-full flex items-center justify-between px-5 py-4 bg-zinc-50 hover:bg-zinc-100 transition-colors text-sm font-bold text-zinc-700"
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-100/50 transition-colors text-sm font-bold text-slate-700"
         onClick={() => setOpen(!open)} type="button"
       >
         <span className="flex items-center gap-2"><Code2 size={15} />SDK Installation Guide</span>
         {open ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
       </button>
       {open && (
-        <div className="p-5 grid gap-4 border-t border-zinc-200 bg-white">
+        <div className="p-5 grid gap-4 bg-white shadow-xs">
           <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-zinc-400 mb-2">1. Install the SDK</p>
-            <pre className="bg-zinc-900 text-emerald-300 rounded-lg px-4 py-3 text-xs overflow-auto">{`npm install @engagement/sdk`}</pre>
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">1. Install the SDK</p>
+            <pre className="bg-slate-900 text-emerald-300 rounded px-4 py-3 text-xs overflow-auto shadow-inner">{`npm install @engagement/sdk`}</pre>
           </div>
           <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-zinc-400 mb-2">2. Initialize</p>
-            <pre className="bg-zinc-900 text-emerald-300 rounded-lg px-4 py-3 text-xs overflow-auto">{`import { EngagementSDK } from '@engagement/sdk';
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">2. Initialize</p>
+            <pre className="bg-slate-900 text-emerald-300 rounded px-4 py-3 text-xs overflow-auto shadow-inner">{`import { EngagementSDK } from '@engagement/sdk';
 
 EngagementSDK.init({
   sdkKey: '${masked}',
-  // DO NOT send tenantId — resolved automatically
 });`}</pre>
           </div>
           <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-zinc-400 mb-2">3. Identify user (optional)</p>
-            <pre className="bg-zinc-900 text-emerald-300 rounded-lg px-4 py-3 text-xs overflow-auto">{`EngagementSDK.identify({ userId: 'user-123', role: 'admin', plan: 'pro' });`}</pre>
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">3. Identify user (optional)</p>
+            <pre className="bg-slate-900 text-emerald-300 rounded px-4 py-3 text-xs overflow-auto shadow-inner">{`EngagementSDK.identify({ userId: 'user-123', role: 'admin' });`}</pre>
           </div>
-          <div className="rounded-lg bg-sky-50 border border-sky-200 px-4 py-3 text-xs text-sky-700">
+          <div className="rounded bg-sky-50 px-4 py-3 text-xs text-sky-700 shadow-xs">
             <strong>Domain:</strong> {integration.domain} &nbsp;·&nbsp; <strong>Environment:</strong> {integration.environment}
           </div>
         </div>
@@ -193,186 +197,152 @@ EngagementSDK.init({
   );
 }
 
-// ---------- Integration detail card ----------
-function IntegrationCard({
-  integration, onRefresh
-}: {
-  integration: SdkIntegration;
-  onRefresh: () => Promise<void>;
-}) {
+// ---------- Details modal ----------
+function DetailsModal({ integration, onClose, onRefresh }: { integration: SdkIntegration; onClose: () => void; onRefresh: () => Promise<void> }) {
   const navigate = useNavigate();
-  const [expanded, setExpanded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [newKey, setNewKey] = useState<string | null>(null);
-  const [showDropdown, setShowDropdown] = useState(false);
-
   const act = async (fn: () => Promise<unknown>) => { setBusy(true); try { await fn(); await onRefresh(); } finally { setBusy(false); } };
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-xs px-4" onClick={onClose}>
+      {newKey && <KeyRevealModal sdkKey={newKey} name={integration.name} onClose={() => setNewKey(null)} />}
+      <div className="w-full max-w-lg rounded-md bg-white shadow-sm overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="bg-slate-900 px-6 py-4 flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-base font-semibold text-white">{integration.name}</h2>
+            <p className="text-xs text-slate-400 mt-0.5">{integration.domain}</p>
+          </div>
+          <button onClick={onClose} type="button" className="text-slate-400 hover:text-white mt-0.5">✕</button>
+        </div>
+        <div className="p-5 grid gap-4 max-h-[70vh] overflow-y-auto">
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { label: 'First Connected', value: fmtTime(integration.firstConnectedAt) },
+              { label: 'Last Runtime', value: fmtTime(integration.lastRuntimeRequestAt) },
+              { label: 'Last Event', value: fmtTime(integration.lastEventRequestAt) },
+              { label: 'Last Heartbeat', value: fmtTime(integration.lastHeartbeatAt) },
+              { label: 'Created', value: fmtDate(integration.createdAt) },
+              { label: 'Latest Origin', value: integration.latestOrigin ?? '—' },
+            ].map(({ label, value }) => (
+              <div key={label} className="rounded bg-slate-50 p-3">
+                <p className="text-[10px] uppercase tracking-wider text-slate-400 mb-0.5">{label}</p>
+                <p className="text-xs text-slate-700 truncate">{value}</p>
+              </div>
+            ))}
+          </div>
+          {integration.allowedOrigins?.length > 0 && (
+            <div className="rounded bg-slate-50 p-3">
+              <p className="text-[10px] uppercase tracking-wider text-slate-400 mb-0.5">Allowed Origins</p>
+              <p className="text-xs text-slate-700 break-all">{integration.allowedOrigins.join(', ')}</p>
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { label: 'Overview', icon: <Settings size={13} />, tab: 'overview' },
+              { label: 'Guides', icon: <BookOpen size={13} />, tab: 'guides' },
+              { label: 'Surveys', icon: <Target size={13} />, tab: 'surveys' },
+              { label: 'Events', icon: <Activity size={13} />, tab: 'events' },
+            ].map(lnk => (
+              <button key={lnk.label} onClick={() => { onClose(); navigate(`/sdk-integrations/${integration.id}/${lnk.tab}`); }} type="button"
+                className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 hover:bg-slate-100 rounded text-sm text-slate-700 transition-colors">
+                <span className="text-slate-400">{lnk.icon}</span>{lnk.label}
+              </button>
+            ))}
+          </div>
+          <InstallGuide integration={integration} />
+          <div className="flex items-center gap-2 pt-1">
+            <button onClick={() => act(async () => { const { sdkKey } = await regenerateKey(integration.id); setNewKey(sdkKey); })} disabled={busy} type="button"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-slate-100 text-xs text-slate-600 hover:bg-slate-200 disabled:opacity-50">
+              <RefreshCw size={12} />Regenerate Key
+            </button>
+            {integration.status === 'disabled'
+              ? <button onClick={() => act(() => enableIntegration(integration.id))} disabled={busy} type="button" className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-emerald-50 text-xs text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"><Zap size={12} />Enable</button>
+              : <button onClick={() => act(() => disableIntegration(integration.id))} disabled={busy || integration.status === 'revoked'} type="button" className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-amber-50 text-xs text-amber-700 hover:bg-amber-100 disabled:opacity-50"><WifiOff size={12} />Disable</button>
+            }
+            <button onClick={() => { if (window.confirm(`Delete "${integration.name}"?`)) void act(() => deleteIntegration(integration.id)); }} disabled={busy} type="button"
+              className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded bg-red-50 text-xs text-red-600 hover:bg-red-100 disabled:opacity-50">
+              <Trash2 size={12} />Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
+// ---------- Integration card ----------
+function IntegrationCard({ integration, onRefresh }: { integration: SdkIntegration; onRefresh: () => Promise<void> }) {
+  const navigate = useNavigate();
+  const [showDetails, setShowDetails] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
   const sm = STATUS_META[integration.status];
 
   return (
     <>
-      {newKey && <KeyRevealModal sdkKey={newKey} name={integration.name} onClose={() => setNewKey(null)} />}
-      <div className={`rounded-2xl border bg-white shadow-sm transition-shadow hover:shadow-md overflow-hidden ${integration.status === 'disabled' || integration.status === 'revoked' ? 'opacity-70' : ''}`}>
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4 px-6 py-5">
-          <div className="flex-1 min-w-0">
-            <div className="flex flex-wrap items-center gap-2 mb-1">
-              <h3 className="text-base font-bold text-zinc-900 truncate">{integration.name}</h3>
-              <Badge cls={sm.cls}>{sm.icon}{sm.label}</Badge>
-              <Badge cls={ENV_COLORS[integration.environment]}>{ENV_LABELS[integration.environment]}</Badge>
-            </div>
-            <p className="text-sm text-zinc-500 flex items-center gap-1.5"><Globe size={13} />{integration.domain}</p>
-            {integration.description && <p className="text-xs text-zinc-400 mt-1">{integration.description}</p>}
+      {showDetails && <DetailsModal integration={integration} onClose={() => setShowDetails(false)} onRefresh={onRefresh} />}
+      <div
+        className={`rounded-md bg-white shadow-sm hover:shadow-sm transition-all duration-200 flex flex-col overflow-hidden cursor-pointer group border-t-[3px] ${ENV_BORDER[integration.environment]} ${integration.status === 'disabled' || integration.status === 'revoked' ? 'opacity-70' : ''}`}
+        onClick={() => navigate(`/sdk-integrations/${integration.id}/overview`)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={e => e.key === 'Enter' && navigate(`/sdk-integrations/${integration.id}/overview`)}
+      >
+        <div className="p-5 flex-1 flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-2">
+            <Badge cls={ENV_COLORS[integration.environment]}>{ENV_LABELS[integration.environment]}</Badge>
+            <Badge cls={sm.cls}>{sm.icon}{sm.label}</Badge>
           </div>
-          <div className="relative flex items-center gap-2 shrink-0">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-800 truncate group-hover:text-slate-900 transition-colors" title={integration.name}>{integration.name}</h3>
+            <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5 truncate"><Globe size={11} className="shrink-0" />{integration.domain}</p>
+          </div>
+          {integration.description && <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">{integration.description}</p>}
+
+          <div className="flex items-center gap-2 mt-auto pt-1" onClick={e => e.stopPropagation()}>
             <div className="relative">
-              <button
-                onClick={() => setShowDropdown(!showDropdown)}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-olive-50 hover:bg-olive-100 text-xs font-bold text-olive-700 transition-colors"
-                type="button"
-              >
-                Configure
-                <ChevronDown size={14} className={`transition-transform duration-200 ${showDropdown ? 'rotate-180' : ''}`} />
+              <button onClick={() => setShowDropdown(!showDropdown)} type="button"
+                className="flex items-center gap-1 px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-xs text-slate-600 transition-colors">
+                Configure <ChevronDown size={12} className={`transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
               </button>
               {showDropdown && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setShowDropdown(false)} />
-                  <div className="absolute right-0 mt-1.5 w-40 rounded-xl bg-white border border-zinc-200 shadow-lg py-1.5 z-20 min-w-[150px] animate-in fade-in slide-in-from-top-1 duration-100">
-                    {[
-                      { label: 'Overview', icon: <Settings size={13} />, tab: 'overview' },
-                      { label: 'Guides', icon: <BookOpen size={13} />, tab: 'guides' },
-                      { label: 'Surveys', icon: <Target size={13} />, tab: 'surveys' },
-                      { label: 'Events', icon: <Activity size={13} />, tab: 'events' },
-                    ].map((item) => (
-                      <button
-                        key={item.label}
-                        onClick={() => {
-                          setShowDropdown(false);
-                          navigate(`/sdk-integrations/${integration.id}/${item.tab}`);
-                        }}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs font-medium text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 transition-colors"
-                        type="button"
-                      >
-                        <span className="text-zinc-400">{item.icon}</span>
-                        {item.label}
+                  <div className="absolute left-0 mt-1 w-36 rounded bg-white shadow-sm py-1 z-20">
+                    {[{label:'Overview',icon:<Settings size={12}/>,tab:'overview'},{label:'Guides',icon:<BookOpen size={12}/>,tab:'guides'},{label:'Surveys',icon:<Target size={12}/>,tab:'surveys'},{label:'Events',icon:<Activity size={12}/>,tab:'events'}].map(item => (
+                      <button key={item.label} onClick={() => { setShowDropdown(false); navigate(`/sdk-integrations/${integration.id}/${item.tab}`); }} type="button"
+                        className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-600 hover:bg-slate-50 hover:text-slate-900">
+                        <span className="text-slate-400">{item.icon}</span>{item.label}
                       </button>
                     ))}
                   </div>
                 </>
               )}
             </div>
-            <button onClick={() => setExpanded(!expanded)} type="button" className="text-zinc-400 hover:text-zinc-700 transition-colors">
-              {expanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+            <button onClick={() => setShowDetails(true)} type="button"
+              className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-700 px-2 py-1 rounded hover:bg-slate-50 transition-colors ml-auto">
+              Details <ChevronRight size={12} />
             </button>
           </div>
         </div>
 
-        {/* Quick stats row */}
-        <div className="grid grid-cols-3 divide-x divide-zinc-100 border-t border-zinc-100 bg-zinc-50/60">
+        <div className="grid grid-cols-3 border-t border-slate-100 py-2.5">
           {[
             { label: 'Connections', value: integration.connectionCount },
             { label: 'Last Active', value: integration.lastConnectedAt ? fmtDate(integration.lastConnectedAt) : 'Never' },
             { label: 'SDK Version', value: integration.sdkVersion ?? '—' },
           ].map(({ label, value }) => (
-            <div key={label} className="px-4 py-3 text-center">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">{label}</p>
-              <p className="text-sm font-bold text-zinc-700 mt-0.5">{value}</p>
+            <div key={label} className="px-2 text-center">
+              <p className="text-[9px] uppercase tracking-wider text-slate-400">{label}</p>
+              <p className="text-[11px] text-slate-600 mt-0.5 truncate">{value}</p>
             </div>
           ))}
         </div>
 
-        {/* SDK key row */}
-        <div className="flex items-center gap-3 px-6 py-3 border-t border-zinc-100 bg-zinc-50">
-          <KeyRound size={13} className="text-zinc-400 shrink-0" />
-          <code className="text-xs font-mono text-zinc-600 flex-1 truncate">{integration.sdkKeyMasked}</code>
+        <div className="flex items-center gap-2 px-4 py-2 border-t border-slate-100" onClick={e => e.stopPropagation()}>
+          <KeyRound size={11} className="text-slate-300 shrink-0" />
+          <code className="text-[10px] font-mono text-slate-400 flex-1 truncate">{integration.sdkKeyMasked}</code>
           <CopyBtn text={integration.sdkKeyMasked} />
         </div>
-
-        {/* Expanded detail */}
-        {expanded && (
-          <div className="px-6 pb-5 pt-4 border-t border-zinc-100 grid gap-5">
-            {/* Connection info */}
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { label: 'First Connected', value: fmtTime(integration.firstConnectedAt) },
-                { label: 'Last Runtime', value: fmtTime(integration.lastRuntimeRequestAt) },
-                { label: 'Last Event', value: fmtTime(integration.lastEventRequestAt) },
-                { label: 'Last Heartbeat', value: fmtTime(integration.lastHeartbeatAt) },
-                { label: 'Created', value: fmtDate(integration.createdAt) },
-                { label: 'Latest Origin', value: integration.latestOrigin ?? '—' },
-              ].map(({ label, value }) => (
-                <div key={label} className="rounded-lg bg-zinc-50 border border-zinc-100 px-3 py-2.5">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">{label}</p>
-                  <p className="text-xs font-semibold text-zinc-700 mt-0.5 truncate">{value}</p>
-                </div>
-              ))}
-            </div>
-
-            {integration.allowedOrigins?.length > 0 && (
-              <div className="rounded-lg bg-zinc-50 border border-zinc-100 px-3 py-2.5">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Additional Allowed Origins</p>
-                <p className="text-xs font-semibold text-zinc-700 mt-0.5 break-all">
-                  {integration.allowedOrigins.join(', ')}
-                </p>
-              </div>
-            )}
-
-            {/* Scoped Environment Workspace Shortcuts */}
-            <div className="rounded-xl border border-olive-100 bg-olive-50/40 p-4">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-olive-600 mb-2">Integration Workspace Shortcuts</p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {[
-                  { label: 'Overview', icon: <Settings size={14} />, tab: 'overview' },
-                  { label: 'Guides', icon: <BookOpen size={14} />, tab: 'guides' },
-                  { label: 'Surveys', icon: <Target size={14} />, tab: 'surveys' },
-                  { label: 'Events', icon: <Activity size={14} />, tab: 'events' },
-                ].map((lnk) => (
-                  <button
-                    key={lnk.label}
-                    onClick={() => navigate(`/sdk-integrations/${integration.id}/${lnk.tab}`)}
-                    className="flex items-center justify-center gap-2 px-3 py-2 bg-white rounded-lg border border-zinc-200 hover:border-olive-300 hover:shadow-sm text-xs font-semibold text-zinc-700 hover:text-olive-700 transition-all duration-200"
-                    type="button"
-                  >
-                    <span className="text-zinc-400">{lnk.icon}</span>
-                    {lnk.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <InstallGuide integration={integration} />
-
-            {/* Actions */}
-            <div className="flex flex-wrap gap-2 pt-1">
-              <button
-                onClick={() => act(async () => { const { sdkKey } = await regenerateKey(integration.id); setNewKey(sdkKey); })}
-                disabled={busy} type="button"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-200 text-xs font-semibold text-zinc-600 hover:bg-zinc-50 disabled:opacity-50 transition-colors"
-              >
-                <RefreshCw size={12} />Regenerate Key
-              </button>
-              {integration.status === 'disabled' ? (
-                <button onClick={() => act(() => enableIntegration(integration.id))} disabled={busy} type="button"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-200 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 transition-colors">
-                  <Zap size={12} />Enable
-                </button>
-              ) : (
-                <button onClick={() => act(() => disableIntegration(integration.id))} disabled={busy || integration.status === 'revoked'} type="button"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-200 text-xs font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-50 transition-colors">
-                  <WifiOff size={12} />Disable
-                </button>
-              )}
-              <button
-                onClick={() => { if (window.confirm(`Delete "${integration.name}"? This cannot be undone.`)) void act(() => deleteIntegration(integration.id)); }}
-                disabled={busy} type="button"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors ml-auto"
-              >
-                <Trash2 size={12} />Delete
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </>
   );
@@ -410,14 +380,13 @@ export default function SdkIntegrationsPage() {
   };
 
   return (
-    <div className="min-h-full bg-zinc-50">
+    <div className="min-h-full bg-slate-50">
       {showCreate && (
         <CreateModal
           onClose={() => setShowCreate(false)}
           onCreated={(key) => {
             setShowCreate(false);
             void load().then(() => {
-              // get name from latest integrations
               setNewKey({ key, name: 'New Integration' });
             });
           }}
@@ -426,35 +395,40 @@ export default function SdkIntegrationsPage() {
       {newKey && <KeyRevealModal sdkKey={newKey.key} name={newKey.name} onClose={() => setNewKey(null)} />}
 
       {/* Header */}
-      <div className="border-b border-zinc-200 bg-white px-8 py-6">
+      <div className="bg-white px-8 py-6 shadow-sm">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="m-0 text-2xl font-black text-zinc-900 flex items-center gap-2">
-              <Shield className="text-olive-600" size={24} />SDK Integrations
-            </h2>
-            <p className="m-0 mt-1 text-sm text-zinc-500">Connect external websites · Generate SDK Keys · Manage authentication</p>
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 rounded bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
+                <Shield className="text-white" size={18} />
+              </div>
+              <div>
+                <h2 className="m-0 text-xl font-semibold text-slate-800">SDK Integrations</h2>
+                <p className="m-0 text-xs text-slate-400">Connect websites · Generate keys · Manage auth</p>
+              </div>
+            </div>
           </div>
           <button
             onClick={() => setShowCreate(true)} type="button"
-            className="flex items-center gap-2 rounded-xl bg-olive-700 px-5 py-2.5 text-sm font-bold text-white hover:bg-olive-800 shadow-sm transition-colors"
+            className="flex items-center gap-2 rounded bg-slate-900 px-5 py-2.5 text-sm font-bold text-white hover:bg-slate-800 shadow-sm hover:shadow-sm transition-all"
           >
             <Plus size={16} />New Integration
           </button>
         </div>
 
         {/* Stats */}
-        <div className="mt-5 grid grid-cols-4 gap-3">
+        <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: 'Total', value: stats.total, icon: <Globe size={15} />, cls: 'text-zinc-600' },
-            { label: 'Connected', value: stats.connected, icon: <CheckCircle2 size={15} />, cls: 'text-emerald-600' },
-            { label: 'Pending', value: stats.pending, icon: <Clock size={15} />, cls: 'text-amber-600' },
-            { label: 'Inactive', value: stats.disabled, icon: <WifiOff size={15} />, cls: 'text-red-500' },
-          ].map(({ label, value, icon, cls }) => (
-            <div key={label} className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 flex items-center gap-3">
-              <span className={cls}>{icon}</span>
+            { label: 'Total', value: stats.total, icon: <Globe size={14} />, iconCls: 'text-slate-500', bg: 'bg-slate-50', txt: 'text-slate-700' },
+            { label: 'Connected', value: stats.connected, icon: <CheckCircle2 size={14} />, iconCls: 'text-emerald-500', bg: 'bg-emerald-50', txt: 'text-emerald-700' },
+            { label: 'Pending', value: stats.pending, icon: <Clock size={14} />, iconCls: 'text-amber-500', bg: 'bg-amber-50', txt: 'text-amber-700' },
+            { label: 'Inactive', value: stats.disabled, icon: <WifiOff size={14} />, iconCls: 'text-rose-400', bg: 'bg-rose-50', txt: 'text-rose-600' },
+          ].map(({ label, value, icon, iconCls, bg, txt }) => (
+            <div key={label} className={`rounded ${bg} px-4 py-3.5 flex items-center gap-3`}>
+              <span className={iconCls}>{icon}</span>
               <div>
-                <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">{label}</p>
-                <p className="text-xl font-black text-zinc-800">{value}</p>
+                <p className="text-[10px] uppercase tracking-wider text-slate-400">{label}</p>
+                <p className={`text-xl font-semibold ${txt} leading-tight mt-0.5`}>{value}</p>
               </div>
             </div>
           ))}
@@ -462,55 +436,55 @@ export default function SdkIntegrationsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3 px-8 py-4 border-b border-zinc-200 bg-white/60">
+      <div className="flex flex-wrap items-center gap-3 px-8 py-4 bg-white/60 shadow-xs">
         <input
-          className="rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-olive-400 w-56"
+          className="rounded bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500/10 shadow-xs focus:shadow-sm w-56 transition-shadow"
           placeholder="Search integrations…" value={search} onChange={e => setSearch(e.target.value)}
         />
-        <select className="rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:outline-none" value={filterEnv} onChange={e => setFilterEnv(e.target.value as typeof filterEnv)}>
+        <select className="rounded bg-white px-3 py-2 text-sm focus:outline-none shadow-xs text-slate-700 font-semibold" value={filterEnv} onChange={e => setFilterEnv(e.target.value as typeof filterEnv)}>
           <option value="all">All Environments</option>
           <option value="production">Production</option>
           <option value="staging">Staging</option>
           <option value="development">Development</option>
         </select>
-        <select className="rounded-lg border border-zinc-200 px-3 py-2 text-sm focus:outline-none" value={filterStatus} onChange={e => setFilterStatus(e.target.value as typeof filterStatus)}>
+        <select className="rounded bg-white px-3 py-2 text-sm focus:outline-none shadow-xs text-slate-700 font-semibold" value={filterStatus} onChange={e => setFilterStatus(e.target.value as typeof filterStatus)}>
           <option value="all">All Statuses</option>
           <option value="pending">Pending</option>
           <option value="connected">Connected</option>
           <option value="disabled">Disabled</option>
           <option value="revoked">Revoked</option>
         </select>
-        <span className="text-xs text-zinc-400 ml-auto">{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
+        <span className="text-xs text-slate-400 font-semibold ml-auto">{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
       </div>
 
       {/* Content */}
       <div className="p-8">
         {loading ? (
-          <div className="flex items-center justify-center py-20 text-zinc-400">
+          <div className="flex items-center justify-center py-20 text-slate-400 font-semibold">
             <Loader2 className="animate-spin mr-2" size={20} />Loading integrations…
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="rounded-2xl bg-white border border-zinc-200 p-10 max-w-sm shadow-sm">
-              <Server size={40} className="text-zinc-300 mx-auto mb-4" />
-              <h3 className="text-base font-bold text-zinc-700 mb-2">
+            <div className="rounded-md bg-white p-10 max-w-sm shadow-sm">
+              <Server size={40} className="text-slate-300 mx-auto mb-4" />
+              <h3 className="text-base font-bold text-slate-700 mb-2">
                 {integrations.length === 0 ? 'No integrations yet' : 'No results'}
               </h3>
-              <p className="text-sm text-zinc-400 mb-5">
+              <p className="text-sm text-slate-455 mb-5 leading-relaxed">
                 {integrations.length === 0
                   ? 'Create your first SDK integration to connect an external website to the Engagement Platform.'
                   : 'Try adjusting your search or filters.'}
               </p>
               {integrations.length === 0 && (
                 <button onClick={() => setShowCreate(true)} type="button"
-                  className="flex items-center gap-2 mx-auto rounded-xl bg-olive-700 px-5 py-2.5 text-sm font-bold text-white hover:bg-olive-800">
+                  className="flex items-center gap-2 mx-auto rounded bg-slate-900 px-5 py-2.5 text-sm font-bold text-white hover:bg-slate-800 shadow-sm">
                   <Plus size={15} />Create Integration
                 </button>
               )}
             </div>
           </div>
         ) : (
-          <div className="grid gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
             {filtered.map(i => (
               <IntegrationCard key={i.id} integration={i} onRefresh={load} />
             ))}

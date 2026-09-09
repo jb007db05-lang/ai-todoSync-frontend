@@ -1,241 +1,185 @@
 /* ============================================================
-   GLOBALS — Institutional Olive Design System (Roboto Edition)
+   GLOBALS — Pristine Enterprise Olive & Slate Design System
+   Sharp, dense, professional, olive-accented
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;500&display=swap');
-
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 
+:root {
+  --bg-page:    #f8faf9;
+  --bg-surface: #ffffff;
+  --bg-raised:  #f1f5f3;
+
+  --text-primary:   #090c0a;
+  --text-secondary: #47554f;
+  --text-tertiary:  #94a39d;
+
+  --border:       #e2e8e5;
+  --border-heavy: #cbd5d0;
+
+  --card-shadow: 0 1px 2px rgba(9, 12, 10, 0.04);
+
+  --scrollbar-thumb: #cbd5d0;
+  --scrollbar-thumb-hover: #94a39d;
+
+  /* --- Olive Theme Scale --- */
+  --color-olive-50-val: #f8faf9;
+  --color-olive-100-val: #f1f5f3;
+  --color-olive-200-val: #e2e8e5;
+  --color-olive-300-val: #cbd5d0;
+  --color-olive-400-val: #94a39d;
+  --color-olive-500-val: #64746e;
+  --color-olive-600-val: #47554f;
+  --color-olive-700-val: #33413b;
+  --color-olive-800-val: #1e2925;
+  --color-olive-900-val: #0f1714;
+  --color-olive-950-val: #090c0a;
+
+  /* --- Slate Theme Scale --- */
+  --color-slate-50-val:  #f8fafc;
+  --color-slate-100-val: #f1f5f9;
+  --color-slate-200-val: #e2e8f0;
+  --color-slate-300-val: #cbd5e1;
+  --color-slate-400-val: #94a3b8;
+  --color-slate-500-val: #64748b;
+  --color-slate-600-val: #475569;
+  --color-slate-700-val: #334155;
+  --color-slate-800-val: #1e293b;
+  --color-slate-900-val: #0f172a;
+  --color-slate-950-val: #020617;
+}
+
 @theme {
-  /* Balanced Institutional Palette */
-  --color-olive-50: #f8faf9;
-  --color-olive-100: #f1f5f3;
-  --color-olive-200: #e2e8e5;
-  --color-olive-300: #cbd5d0;
-  --color-olive-400: #94a39d;
-  --color-olive-500: #64746e;
-  --color-olive-600: #47554f;
-  --color-olive-700: #33413b;
-  --color-olive-800: #1e2925;
-  --color-olive-900: #0f1714;
-  --color-olive-950: #090c0a;
+  /* Olive Theme Scale */
+  --color-olive-50:  var(--color-olive-50-val);
+  --color-olive-100: var(--color-olive-100-val);
+  --color-olive-200: var(--color-olive-200-val);
+  --color-olive-300: var(--color-olive-300-val);
+  --color-olive-400: var(--color-olive-400-val);
+  --color-olive-500: var(--color-olive-500-val);
+  --color-olive-600: var(--color-olive-600-val);
+  --color-olive-700: var(--color-olive-700-val);
+  --color-olive-800: var(--color-olive-800-val);
+  --color-olive-900: var(--color-olive-900-val);
+  --color-olive-950: var(--color-olive-950-val);
 
-  /* Balanced Accents */
-  --color-accent-indigo: #4f46e5;
-  --color-accent-emerald: #10b981;
-  --color-accent-amber: #f59e0b;
-  --color-accent-rose: #ef4444;
-  --color-accent-slate: #475569;
+  /* Slate Theme Scale */
+  --color-slate-50:  var(--color-slate-50-val);
+  --color-slate-100: var(--color-slate-100-val);
+  --color-slate-200: var(--color-slate-200-val);
+  --color-slate-300: var(--color-slate-300-val);
+  --color-slate-400: var(--color-slate-400-val);
+  --color-slate-500: var(--color-slate-500-val);
+  --color-slate-600: var(--color-slate-600-val);
+  --color-slate-700: var(--color-slate-700-val);
+  --color-slate-800: var(--color-slate-800-val);
+  --color-slate-900: var(--color-slate-900-val);
+  --color-slate-950: var(--color-slate-950-val);
 
-  /* Typography - ROBOTO */
-  --font-display: "Roboto", sans-serif;
-  --font-sans: "Roboto", sans-serif;
+  --font-sans: "Inter", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", monospace;
-
-  /* Elevations */
-  --shadow-premium: 0 20px 40px -12px rgba(0, 0, 0, 0.05);
-  --shadow-glow: 0 0 30px -10px rgba(79, 70, 229, 0.15);
-  
-  /* Radii */
-  --radius-sober: 4px;
-  --radius-pill: 9999px;
-  --radius-xl: 12px;
-  --radius-2xl: 20px;
 }
 
 @layer base {
-  html {
-    scroll-behavior: smooth;
-  }
+  html { scroll-behavior: smooth; }
 
-  * {
-    box-sizing: border-box;
-    cursor: default;
-  }
+  *, *::before, *::after { box-sizing: border-box; }
 
   body {
     font-family: var(--font-sans);
-    background-color: #ffffff;
-    color: var(--color-olive-950);
-    line-height: 1.6;
+    font-size: 13px;
+    line-height: 1.5;
+    background: var(--bg-page);
+    color: var(--text-primary);
     -webkit-font-smoothing: antialiased;
   }
 
-  h1, h2, h3, h4 {
-    font-family: var(--font-display);
-    font-weight: 700;
-    letter-spacing: -0.01em;
-    line-height: 1.1;
-    color: var(--color-olive-950);
-  }
+  h1 { font-size: 1.05rem; font-weight: 600; letter-spacing: -0.01em; }
+  h2 { font-size: 0.95rem; font-weight: 600; letter-spacing: -0.005em; }
+  h3 { font-size: 0.875rem; font-weight: 600; }
+  h4 { font-size: 0.8rem; font-weight: 500; }
 
-  button, a {
-    cursor: pointer;
-  }
+  button, a { cursor: pointer; }
 
-  /* Hide scrollbar but keep functionality */
-  ::-webkit-scrollbar {
-    width: 0px;
-    background: transparent;
-  }
-  
-  * {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
 }
 
 @layer utilities {
-  .flex-center {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  /* Surface card — sharp, minimal */
+  .card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    box-shadow: var(--card-shadow);
   }
 
-  .glass-panel {
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(0, 0, 0, 0.05);
+  .input-base {
+    width: 100%;
+    border-radius: 4px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    padding: 0.4rem 0.625rem;
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 0.15s;
   }
+  .input-base:focus { border-color: #64746e; }
 
-  .institutional-grid {
-    background-image: 
-      linear-gradient(to right, rgba(70, 90, 71, 0.03) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(70, 90, 71, 0.03) 1px, transparent 1px);
-    background-size: 50px 50px;
+  .btn-primary {
+    display: inline-flex; align-items: center; gap: 0.375rem;
+    padding: 0.4rem 0.875rem;
+    border-radius: 4px;
+    background: #33413b;
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 500;
+    border: 1px solid #33413b;
+    transition: background 0.15s;
   }
-
-  .bento-grid {
-    display: grid;
-    grid-template-columns: repeat(12, 1fr);
-    gap: 1.5rem;
-  }
-
-  .bento-item {
-    @apply rounded-2xl border border-olive-100 bg-white p-8 transition-all duration-300 hover:shadow-premium hover:border-olive-200;
-  }
-
-  .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-br from-olive-950 via-olive-800 to-olive-600;
-  }
-
-  .gradient-indigo {
-    background: linear-gradient(135deg, var(--color-olive-950) 0%, var(--color-accent-indigo) 100%);
-  }
-
-  .gradient-emerald {
-    background: linear-gradient(135deg, var(--color-olive-900) 0%, var(--color-accent-emerald) 100%);
-  }
-
-  .gradient-amber {
-    background: linear-gradient(135deg, var(--color-olive-950) 0%, var(--color-accent-amber) 100%);
-  }
-
-  .gradient-rose {
-    background: linear-gradient(135deg, var(--color-olive-950) 0%, var(--color-accent-rose) 100%);
-  }
-
-  .surgical-border {
-    border: 1px solid rgba(0, 0, 0, 0.06);
-  }
-
-  @keyframes marquee {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-50%); }
-  }
-
-  .animate-marquee {
-    display: flex;
-    width: fit-content;
-    animation: marquee 60s linear infinite;
-  }
-
-  .animate-spin-slow {
-    animation: spin 12s linear infinite;
-  }
-
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
-
-  /* Redesign Utilities */
-  .neural-glow {
-    box-shadow: 0 0 40px -10px var(--color-accent-indigo),
-                0 0 20px -5px var(--color-accent-emerald);
-  }
-
-  .surgical-line {
-    border: 0.5px solid rgba(0, 0, 0, 0.08);
-  }
-
-  .noise-overlay {
-    position: relative;
-  }
-  
-  .noise-overlay::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: 1;
-    opacity: 0.02;
-    pointer-events: none;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3%3Ffilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-  }
-
-  .perspective-1000 {
-    perspective: 1000px;
-  }
-}
-
-/* Custom Component Classes */
-.nav-link {
-  @apply text-sm font-medium text-olive-600 hover:text-olive-950 transition-colors duration-200;
-}
-
-.btn-primary {
-  @apply px-8 py-3 bg-olive-700 text-white rounded-xl font-bold 
-         hover:bg-olive-800 transition-all duration-300 
-         shadow-lg shadow-olive-700/10 flex items-center gap-2;
-}
+  .btn-primary:hover { background: #1e2925; }
 
   .btn-secondary {
-  @apply px-8 py-3 bg-white text-olive-900 rounded-xl font-bold 
-         border border-olive-200 hover:border-olive-400 hover:bg-olive-50 
-         transition-all duration-300 flex items-center gap-2;
-}
+    display: inline-flex; align-items: center; gap: 0.375rem;
+    padding: 0.4rem 0.875rem;
+    border-radius: 4px;
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-weight: 500;
+    border: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+  .btn-secondary:hover { background: var(--bg-raised); }
 
-.system-label {
-  @apply text-[10px] font-mono uppercase tracking-[0.3em] text-olive-400 font-bold;
-}
+  .badge {
+    display: inline-flex; align-items: center;
+    padding: 1px 7px;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    border: 1px solid transparent;
+  }
+  .badge-green  { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+  .badge-amber  { background: #fffbeb; color: #92400e; border-color: #fde68a; }
+  .badge-red    { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+  .badge-slate  { background: #f8fafc; color: #475569; border-color: #e2e8f0; }
+  .badge-indigo { background: #eef2ff; color: #4338ca; border-color: #c7d2fe; }
 
-.hide-scrollbar {
-  -ms-overflow-x-style: none;
-  scrollbar-width: none;
-}
+  .section-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+  }
 
-.custom-scrollbar::-webkit-scrollbar {
-  width: 5px;
-  display: block !important;
-}
+  .hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+  .hide-scrollbar::-webkit-scrollbar { display: none; }
 
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
+  .divider { height: 1px; background: var(--border); }
 }
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--color-olive-200);
-  border-radius: 10px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: var(--color-olive-400);
-}
-
-.custom-scrollbar {
-  scrollbar-width: thin !important;
-  scrollbar-color: var(--color-olive-200) transparent !important;
-  -ms-overflow-style: auto !important;
-}
-

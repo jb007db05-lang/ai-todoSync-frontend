@@ -71,6 +71,10 @@ const SdkIntegrationDetailPage: React.FC = () => {
   };
 
   useEffect(() => {
+    if (integrationId) {
+      localStorage.setItem('active_sdk_integration_id', integrationId);
+      window.dispatchEvent(new CustomEvent('sync:active-integration-changed', { detail: { id: integrationId } }));
+    }
     loadData();
   }, [integrationId]);
 
@@ -175,20 +179,20 @@ const SdkIntegrationDetailPage: React.FC = () => {
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <RefreshCw className="h-8 w-8 animate-spin text-olive-600" />
+        <RefreshCw className="h-8 w-8 animate-spin text-slate-600" />
       </div>
     );
   }
 
   if (error || !integration) {
     return (
-      <div className="p-8 text-center">
+      <div className="p-8 text-center bg-white shadow-sm rounded-md max-w-md mx-auto mt-10">
         <AlertTriangle className="mx-auto h-12 w-12 text-rose-500" />
-        <h3 className="mt-4 text-lg font-semibold text-olive-900">Integration Not Found</h3>
-        <p className="mt-2 text-sm text-olive-500">{error || 'The requested SDK integration could not be loaded.'}</p>
+        <h3 className="mt-4 text-lg font-bold text-slate-900">Integration Not Found</h3>
+        <p className="mt-2 text-sm text-slate-500">{error || 'The requested SDK integration could not be loaded.'}</p>
         <button
           onClick={() => navigate('/sdk-integrations')}
-          className="mt-4 rounded-lg bg-olive-900 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-olive-800 transition-colors"
+          className="mt-5 rounded bg-slate-950 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-slate-800 transition-colors"
         >
           Back to List
         </button>
@@ -197,102 +201,67 @@ const SdkIntegrationDetailPage: React.FC = () => {
   }
 
   const statusColors = {
-    pending: 'bg-amber-50 text-amber-700 border-amber-200',
-    connected: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    disabled: 'bg-rose-50 text-rose-700 border-rose-200',
-    revoked: 'bg-zinc-50 text-zinc-700 border-zinc-200'
+    pending: 'bg-amber-50 text-amber-705 shadow-xs',
+    connected: 'bg-emerald-50 text-emerald-705 shadow-xs',
+    disabled: 'bg-rose-50 text-rose-705 shadow-xs',
+    revoked: 'bg-zinc-50 text-zinc-705 shadow-xs'
+  };
+
+  const envGradient: Record<string, string> = {
+    production: 'from-indigo-600 to-violet-600',
+    staging: 'from-amber-500 to-orange-500',
+    development: 'from-emerald-500 to-teal-600',
   };
 
   return (
-    <div className="min-h-full bg-olive-50">
+    <div className="min-h-full bg-slate-50">
       {/* Detail Header */}
-      <div className="border-b border-olive-200 bg-white px-8 py-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3">
-              <h2 className="m-0 text-2xl font-bold text-olive-950">{integration.name}</h2>
-              <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider ${statusColors[integration.status]}`}>
-                {integration.status}
-              </span>
-              <span className="rounded bg-olive-100 px-2 py-0.5 text-xs font-semibold text-olive-700 uppercase">
-                {integration.environment}
-              </span>
+      <div className="relative overflow-hidden">
+        <div className={`absolute inset-0 bg-gradient-to-br ${envGradient[integration.environment] ?? 'from-slate-100 to-slate-200'} opacity-[0.05]`} />
+        <div className="relative bg-white px-8 py-6 shadow-sm">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className={`w-2.5 h-2.5 rounded-full bg-gradient-to-br ${envGradient[integration.environment] ?? 'from-slate-400 to-slate-600'} shrink-0`} />
+                <h2 className="m-0 text-xl font-semibold text-slate-900">{integration.name}</h2>
+                <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium uppercase tracking-wide ${statusColors[integration.status]}`}>
+                  {integration.status}
+                </span>
+                <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium text-white uppercase bg-gradient-to-r ${envGradient[integration.environment] ?? 'from-slate-600 to-slate-800'}`}>
+                  {integration.environment}
+                </span>
+              </div>
+              <p className="m-0 mt-1.5 text-sm text-slate-500">
+                Target: <span className="font-mono text-slate-600 text-xs">{integration.domain}</span>
+              </p>
             </div>
-            <p className="m-0 mt-1 text-sm text-olive-500">
-              Target: <span className="font-mono text-olive-700">{integration.domain}</span>
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
             <button
               onClick={() => navigate('/sdk-integrations')}
-              className="rounded-lg border border-olive-200 bg-white px-4 py-2 text-sm font-semibold text-olive-700 shadow-sm hover:bg-olive-50 transition-colors"
+              className="rounded bg-slate-100 px-4 py-2 text-sm text-slate-600 hover:bg-slate-200 transition-colors shrink-0"
             >
-              Back to Integrations
+              ← Back to Integrations
             </button>
           </div>
-        </div>
-
-        {/* Local Tab Navigation */}
-        <div className="mt-6 flex gap-2 border-b border-olive-100">
-          <button
-            onClick={() => navigate(`/sdk-integrations/${integrationId}/overview`)}
-            className={`pb-3 text-sm font-semibold border-b-2 px-1 transition-colors ${
-              activeTab === 'overview'
-                ? 'border-olive-900 text-olive-900'
-                : 'border-transparent text-olive-500 hover:text-olive-700'
-            }`}
-          >
-            Overview
-          </button>
-          <button
-            onClick={() => navigate(`/sdk-integrations/${integrationId}/guides`)}
-            className={`pb-3 text-sm font-semibold border-b-2 px-1 transition-colors ${
-              activeTab === 'guides'
-                ? 'border-olive-900 text-olive-900'
-                : 'border-transparent text-olive-500 hover:text-olive-700'
-            }`}
-          >
-            Guides
-          </button>
-          <button
-            onClick={() => navigate(`/sdk-integrations/${integrationId}/surveys`)}
-            className={`pb-3 text-sm font-semibold border-b-2 px-1 transition-colors ${
-              activeTab === 'surveys'
-                ? 'border-olive-900 text-olive-900'
-                : 'border-transparent text-olive-500 hover:text-olive-700'
-            }`}
-          >
-            Surveys
-          </button>
-          <button
-            onClick={() => navigate(`/sdk-integrations/${integrationId}/events`)}
-            className={`pb-3 text-sm font-semibold border-b-2 px-1 transition-colors ${
-              activeTab === 'events'
-                ? 'border-olive-900 text-olive-900'
-                : 'border-transparent text-olive-500 hover:text-olive-700'
-            }`}
-          >
-            Events
-          </button>
         </div>
       </div>
 
       {/* Tab Panels */}
       <div className="p-8">
         {activeTab === 'overview' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* Left 2 Columns: Config & Keys */}
             <div className="lg:col-span-2 space-y-8">
               {/* SDK Key Panel */}
-              <div className="rounded-xl border border-olive-200 bg-white p-6 shadow-sm">
+              <div className="rounded-md bg-white p-4 shadow-sm border-l-4 border-indigo-500">
                 <div className="flex items-center gap-2 mb-4">
-                  <Code className="h-5 w-5 text-olive-600" />
-                  <h3 className="m-0 text-lg font-bold text-olive-900">Integration SDK Key</h3>
+                  <div className="w-8 h-8 rounded bg-indigo-50 flex items-center justify-center">
+                    <Code className="h-4 w-4 text-indigo-600" />
+                  </div>
+                  <h3 className="m-0 text-base font-semibold text-slate-800">Integration SDK Key</h3>
                 </div>
 
                 {newKey ? (
-                  <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                  <div className="mb-4 rounded bg-amber-50 p-4 shadow-sm">
                     <div className="flex items-center gap-2 text-amber-800 font-bold text-sm mb-1">
                       <AlertTriangle className="h-4 w-4" />
                       Copy your new SDK Key
@@ -300,11 +269,11 @@ const SdkIntegrationDetailPage: React.FC = () => {
                     <p className="text-xs text-amber-700 mb-3">
                       This key will only be shown once. Copy it now and store it securely.
                     </p>
-                    <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-white p-2.5">
-                      <code className="flex-1 font-mono text-xs text-olive-800 break-all select-all">{newKey}</code>
+                    <div className="flex items-center gap-2 rounded bg-white  p-2.5 shadow-inner">
+                      <code className="flex-1 font-mono text-xs text-slate-800 break-all select-all">{newKey}</code>
                       <button
                         onClick={() => handleCopy(newKey)}
-                        className="rounded p-1 text-olive-600 hover:bg-olive-50 transition-colors"
+                        className="rounded p-1 text-slate-600 hover:bg-slate-50 transition-colors"
                         title="Copy Key"
                       >
                         {copied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
@@ -312,12 +281,12 @@ const SdkIntegrationDetailPage: React.FC = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="mb-4 flex items-center gap-2 rounded-lg border border-olive-200 bg-olive-50 p-2.5">
-                    <code className="flex-1 font-mono text-xs text-olive-600 break-all select-none">{integration.sdkKeyMasked}</code>
+                  <div className="mb-4 flex items-center gap-2 rounded bg-slate-50  p-2.5 shadow-inner">
+                    <code className="flex-1 font-mono text-xs text-slate-600 break-all select-none">{integration.sdkKeyMasked}</code>
                     <button
                       onClick={() => handleCopy(integration.sdkKeyMasked)}
                       disabled={true}
-                      className="rounded p-1 text-olive-400 cursor-not-allowed opacity-50"
+                      className="rounded p-1 text-slate-400 cursor-not-allowed opacity-50"
                       title="Masked Key cannot be copied"
                     >
                       <Copy className="h-4 w-4" />
@@ -328,14 +297,14 @@ const SdkIntegrationDetailPage: React.FC = () => {
                 <div className="flex gap-2">
                   <button
                     onClick={handleRegenerateKey}
-                    className="rounded-lg bg-olive-900 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-olive-800 transition-colors"
+                    className="rounded bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-slate-800 transition-colors"
                   >
                     Regenerate Key
                   </button>
                   {newKey && (
                     <button
                       onClick={() => setNewKey(null)}
-                      className="rounded-lg border border-olive-200 bg-white px-4 py-2 text-sm font-semibold text-olive-700 shadow-sm hover:bg-olive-50 transition-colors"
+                      className="rounded bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200 transition-colors shadow-xs"
                     >
                       Done Viewing
                     </button>
@@ -344,16 +313,18 @@ const SdkIntegrationDetailPage: React.FC = () => {
               </div>
 
               {/* Edit Details Form */}
-              <div className="rounded-xl border border-olive-200 bg-white p-6 shadow-sm">
+              <div className="rounded bg-white p-5 shadow-sm border-l-4 border-violet-500">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <Settings className="h-5 w-5 text-olive-600" />
-                    <h3 className="m-0 text-lg font-bold text-olive-900">Configuration Details</h3>
+                    <div className="w-8 h-8 rounded bg-violet-50 flex items-center justify-center">
+                      <Settings className="h-4 w-4 text-violet-600" />
+                    </div>
+                    <h3 className="m-0 text-base font-semibold text-slate-800">Configuration Details</h3>
                   </div>
                   {!isEditing && (
                     <button
                       onClick={() => setIsEditing(true)}
-                      className="text-sm font-semibold text-olive-600 hover:text-olive-800 transition-colors"
+                      className="text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors"
                     >
                       Edit Configuration
                     </button>
@@ -363,7 +334,7 @@ const SdkIntegrationDetailPage: React.FC = () => {
                 {isEditing ? (
                   <form onSubmit={handleSaveChanges} className="space-y-4">
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-olive-600 mb-1">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
                         Integration Name
                       </label>
                       <input
@@ -371,13 +342,13 @@ const SdkIntegrationDetailPage: React.FC = () => {
                         required
                         value={editName}
                         onChange={(e) => setEditName(e.target.value)}
-                        className="w-full rounded-lg border border-olive-200 px-3.5 py-2 text-sm text-olive-900 focus:border-olive-500 focus:outline-none"
+                        className="w-full rounded bg-slate-50 px-3.5 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-500/10 shadow-xs focus:shadow-sm"
                       />
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-olive-600 mb-1">
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
                           Primary Domain
                         </label>
                         <input
@@ -386,17 +357,17 @@ const SdkIntegrationDetailPage: React.FC = () => {
                           value={editDomain}
                           onChange={(e) => setEditDomain(e.target.value)}
                           placeholder="example.com"
-                          className="w-full rounded-lg border border-olive-200 px-3.5 py-2 text-sm text-olive-900 focus:border-olive-500 focus:outline-none"
+                          className="w-full rounded bg-slate-50 px-3.5 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-500/10 shadow-xs"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-olive-600 mb-1">
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
                           Environment
                         </label>
                         <select
                           value={editEnvironment}
                           onChange={(e) => setEditEnvironment(e.target.value as SdkEnvironment)}
-                          className="w-full rounded-lg border border-olive-200 bg-white px-3.5 py-2 text-sm text-olive-900 focus:border-olive-500 focus:outline-none"
+                          className="w-full rounded bg-slate-50 px-3.5 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-500/10 shadow-xs"
                         >
                           <option value="development">Development</option>
                           <option value="staging">Staging</option>
@@ -406,7 +377,7 @@ const SdkIntegrationDetailPage: React.FC = () => {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-olive-600 mb-1">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
                         Allowed CORS Origins (comma-separated URLs)
                       </label>
                       <input
@@ -414,27 +385,27 @@ const SdkIntegrationDetailPage: React.FC = () => {
                         value={editAllowedOrigins}
                         onChange={(e) => setEditAllowedOrigins(e.target.value)}
                         placeholder="http://localhost:3000, https://staging.example.com"
-                        className="w-full rounded-lg border border-olive-200 px-3.5 py-2 text-sm text-olive-900 focus:border-olive-500 focus:outline-none"
+                        className="w-full rounded bg-slate-50 px-3.5 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-500/10 shadow-xs"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-olive-600 mb-1">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
                         Description
                       </label>
                       <textarea
                         value={editDescription}
                         onChange={(e) => setEditDescription(e.target.value)}
                         rows={3}
-                        className="w-full rounded-lg border border-olive-200 px-3.5 py-2 text-sm text-olive-900 focus:border-olive-500 focus:outline-none"
+                        className="w-full rounded bg-slate-50 px-3.5 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-500/10 shadow-xs resize-none"
                       />
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 pt-2 pb-1">
                       <button
                         type="submit"
                         disabled={saving}
-                        className="rounded-lg bg-olive-900 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-olive-800 transition-colors disabled:opacity-50"
+                        className="rounded bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-slate-800 transition-colors disabled:opacity-50"
                       >
                         {saving ? 'Saving...' : 'Save Changes'}
                       </button>
@@ -444,7 +415,7 @@ const SdkIntegrationDetailPage: React.FC = () => {
                           setIsEditing(false);
                           loadData();
                         }}
-                        className="rounded-lg border border-olive-200 bg-white px-4 py-2 text-sm font-semibold text-olive-700 shadow-sm hover:bg-olive-50 transition-colors"
+                        className="rounded bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200 transition-colors shadow-xs"
                       >
                         Cancel
                       </button>
@@ -454,33 +425,33 @@ const SdkIntegrationDetailPage: React.FC = () => {
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <span className="block text-xs font-bold uppercase tracking-wider text-olive-400">Primary Domain</span>
-                        <span className="text-sm font-semibold text-olive-800">{integration.domain}</span>
+                        <span className="block text-xs font-bold uppercase tracking-wider text-slate-400">Primary Domain</span>
+                        <span className="text-sm font-semibold text-slate-800">{integration.domain}</span>
                       </div>
                       <div>
-                        <span className="block text-xs font-bold uppercase tracking-wider text-olive-400">Environment</span>
-                        <span className="text-sm font-semibold text-olive-800 capitalize">{integration.environment}</span>
+                        <span className="block text-xs font-bold uppercase tracking-wider text-slate-400">Environment</span>
+                        <span className="text-sm font-semibold text-slate-800 capitalize">{integration.environment}</span>
                       </div>
                     </div>
 
                     <div>
-                      <span className="block text-xs font-bold uppercase tracking-wider text-olive-400">Allowed Origins</span>
+                      <span className="block text-xs font-bold uppercase tracking-wider text-slate-400">Allowed Origins</span>
                       <div className="mt-1 flex flex-wrap gap-1.5">
                         {integration.allowedOrigins.length > 0 ? (
                           integration.allowedOrigins.map((origin) => (
-                            <span key={origin} className="rounded bg-olive-100 border border-olive-200 px-2 py-0.5 text-xs text-olive-700 font-mono">
+                            <span key={origin} className="rounded bg-slate-105 px-2 py-0.5 text-xs text-slate-700 font-mono shadow-xs">
                               {origin}
                             </span>
                           ))
                         ) : (
-                          <span className="text-sm italic text-olive-400">Only matching primary domain requests allowed</span>
+                          <span className="text-sm italic text-slate-400">Only matching primary domain requests allowed</span>
                         )}
                       </div>
                     </div>
 
                     <div>
-                      <span className="block text-xs font-bold uppercase tracking-wider text-olive-400">Description</span>
-                      <p className="mt-1 text-sm text-olive-700 whitespace-pre-wrap">{integration.description || 'No description provided.'}</p>
+                      <span className="block text-xs font-bold uppercase tracking-wider text-slate-400">Description</span>
+                      <p className="mt-1 text-sm text-slate-700 whitespace-pre-wrap">{integration.description || 'No description provided.'}</p>
                     </div>
                   </div>
                 )}
@@ -490,73 +461,53 @@ const SdkIntegrationDetailPage: React.FC = () => {
             {/* Right Column: Connection Diagnostics & Control */}
             <div className="space-y-8">
               {/* Health Diagnostics Panel */}
-              <div className="rounded-xl border border-olive-200 bg-white p-6 shadow-sm">
-                <div className="flex items-center gap-2 mb-4">
-                  <Activity className="h-5 w-5 text-olive-600" />
-                  <h3 className="m-0 text-lg font-bold text-olive-900">Diagnostics &amp; Health</h3>
+              <div className="rounded-md bg-white p-4 shadow-sm border-l-4 border-emerald-500">
+                <div className="flex items-center gap-2 mb-5">
+                  <div className="w-8 h-8 rounded bg-emerald-50 flex items-center justify-center">
+                    <Activity className="h-4 w-4 text-emerald-600" />
+                  </div>
+                  <h3 className="m-0 text-base font-semibold text-slate-800">Diagnostics &amp; Health</h3>
                 </div>
 
-                <div className="space-y-3.5">
-                  <div className="flex justify-between border-b border-olive-50 pb-2">
-                    <span className="text-xs text-olive-500">Connections (All-time)</span>
-                    <span className="text-sm font-bold text-olive-800">{integration.connectionCount}</span>
-                  </div>
-                  <div className="flex justify-between border-b border-olive-50 pb-2">
-                    <span className="text-xs text-olive-500">SDK Client Version</span>
-                    <span className="text-sm font-semibold text-olive-700">{integration.sdkVersion || 'Not connected yet'}</span>
-                  </div>
-                  <div className="flex justify-between border-b border-olive-50 pb-2">
-                    <span className="text-xs text-olive-500">Latest Active Origin</span>
-                    <span className="text-sm font-mono text-xs text-olive-700 truncate max-w-[150px]">{integration.latestOrigin || '-'}</span>
-                  </div>
-                  <div className="flex justify-between border-b border-olive-50 pb-2">
-                    <span className="text-xs text-olive-500">First Registered</span>
-                    <span className="text-xs font-semibold text-olive-700">
-                      {integration.firstConnectedAt ? new Date(integration.firstConnectedAt).toLocaleString() : 'Never'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between border-b border-olive-50 pb-2">
-                    <span className="text-xs text-olive-500">Last Live Connect</span>
-                    <span className="text-xs font-semibold text-olive-700">
-                      {integration.lastConnectedAt ? new Date(integration.lastConnectedAt).toLocaleString() : 'Never'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between border-b border-olive-50 pb-2">
-                    <span className="text-xs text-olive-500">Last Heartbeat</span>
-                    <span className="text-xs font-semibold text-olive-700">
-                      {integration.lastHeartbeatAt ? new Date(integration.lastHeartbeatAt).toLocaleString() : 'Never'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between border-b border-olive-50 pb-2">
-                    <span className="text-xs text-olive-500">Last Setup Fetch</span>
-                    <span className="text-xs font-semibold text-olive-700">
-                      {integration.lastRuntimeRequestAt ? new Date(integration.lastRuntimeRequestAt).toLocaleString() : 'Never'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-xs text-olive-500">Last Logged Event</span>
-                    <span className="text-xs font-semibold text-olive-700">
-                      {integration.lastEventRequestAt ? new Date(integration.lastEventRequestAt).toLocaleString() : 'Never'}
-                    </span>
-                  </div>
+                {/* Connection count highlight */}
+                <div className="mb-4 rounded bg-gradient-to-r from-emerald-50 to-teal-50 px-4 py-3 flex items-center justify-between">
+                  <span className="text-xs text-emerald-700">Connections (All-time)</span>
+                  <span className="text-2xl font-semibold text-emerald-700">{integration.connectionCount}</span>
+                </div>
+
+                <div className="space-y-0 divide-y divide-slate-100">
+                  {[
+                    { label: 'SDK Client Version', value: integration.sdkVersion || 'Not connected', accent: 'text-indigo-600' },
+                    { label: 'Latest Active Origin', value: integration.latestOrigin || '—', mono: true },
+                    { label: 'First Registered', value: integration.firstConnectedAt ? new Date(integration.firstConnectedAt).toLocaleString() : 'Never', accent: 'text-violet-600' },
+                    { label: 'Last Live Connect', value: integration.lastConnectedAt ? new Date(integration.lastConnectedAt).toLocaleString() : 'Never' },
+                    { label: 'Last Heartbeat', value: integration.lastHeartbeatAt ? new Date(integration.lastHeartbeatAt).toLocaleString() : 'Never' },
+                    { label: 'Last Setup Fetch', value: integration.lastRuntimeRequestAt ? new Date(integration.lastRuntimeRequestAt).toLocaleString() : 'Never' },
+                    { label: 'Last Logged Event', value: integration.lastEventRequestAt ? new Date(integration.lastEventRequestAt).toLocaleString() : 'Never', accent: 'text-amber-600' },
+                  ].map(({ label, value, mono, accent }) => (
+                    <div key={label} className="flex justify-between items-center py-2.5">
+                      <span className="text-xs text-slate-500">{label}</span>
+                      <span className={`text-xs truncate max-w-[160px] text-right ${mono ? 'font-mono text-slate-600' : accent ?? 'text-slate-700'}`}>{value}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
 
               {/* Danger Zone */}
-              <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-6 shadow-sm">
+              <div className="rounded-md bg-rose-50/50 p-4 shadow-sm">
                 <div className="flex items-center gap-2 mb-4">
                   <ShieldAlert className="h-5 w-5 text-rose-600" />
                   <h3 className="m-0 text-lg font-bold text-rose-900">Danger Zone</h3>
                 </div>
 
-                <p className="text-xs text-rose-700 mb-4">
+                <p className="text-xs text-rose-705 mb-4 leading-relaxed font-medium">
                   Temporarily disable administrative operations or permanently delete this entire integration context.
                 </p>
 
                 <div className="space-y-3">
                   <button
                     onClick={handleToggleStatus}
-                    className={`w-full rounded-lg px-4 py-2 text-sm font-semibold shadow transition-colors flex items-center justify-center gap-2 ${
+                    className={`w-full rounded px-4 py-2.5 text-sm font-bold shadow transition-colors flex items-center justify-center gap-2 ${
                       integration.status === 'disabled'
                         ? 'bg-emerald-600 text-white hover:bg-emerald-500'
                         : 'bg-amber-600 text-white hover:bg-amber-500'
@@ -577,7 +528,7 @@ const SdkIntegrationDetailPage: React.FC = () => {
 
                   <button
                     onClick={handleDelete}
-                    className="w-full rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-rose-500 transition-colors flex items-center justify-center gap-2"
+                    className="w-full rounded bg-rose-600 px-4 py-2.5 text-sm font-bold text-white shadow hover:bg-rose-500 transition-colors flex items-center justify-center gap-2"
                   >
                     <Trash2 className="h-4 w-4" />
                     Delete Integration
@@ -589,19 +540,19 @@ const SdkIntegrationDetailPage: React.FC = () => {
         )}
 
         {activeTab === 'guides' && (
-          <div className="rounded-xl border border-olive-200 bg-white shadow-sm overflow-hidden">
+          <div className="rounded-md bg-white  shadow-sm overflow-hidden">
             <EngagementPage sdkIntegrationId={integrationId} defaultTab="guides" hideHeader={true} />
           </div>
         )}
 
         {activeTab === 'surveys' && (
-          <div className="rounded-xl border border-olive-200 bg-white shadow-sm overflow-hidden">
+          <div className="rounded-md bg-white  shadow-sm overflow-hidden">
             <EngagementPage sdkIntegrationId={integrationId} defaultTab="surveys" hideHeader={true} />
           </div>
         )}
 
         {activeTab === 'events' && (
-          <div className="rounded-xl border border-olive-200 bg-white shadow-sm overflow-hidden">
+          <div className="rounded-md bg-white  shadow-sm overflow-hidden">
             <EventTrackingPage sdkIntegrationId={integrationId} hideHeader={true} onOpenDocs={() => navigate('/sdk-docs')} />
           </div>
         )}

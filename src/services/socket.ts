@@ -2,7 +2,7 @@ import { io, type Socket } from 'socket.io-client';
 import { TOKEN_STORAGE_KEY } from '@/services/api';
 import type { ChatMessage } from '@/types/chat';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL ?? import.meta.env.VITE_API_URL?.replace('/api', '') ?? 'http://localhost:3000';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL ?? import.meta.env.VITE_API_URL?.replace('/api', '') ?? 'http://localhost:4000';
 
 /**
  * Socket.IO events
@@ -171,7 +171,9 @@ class SocketService {
       return;
     }
 
-    const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+    const token =
+      localStorage.getItem(TOKEN_STORAGE_KEY) ??
+      sessionStorage.getItem(TOKEN_STORAGE_KEY);
 
     this.socket = io(SOCKET_URL, {
       auth: { token },

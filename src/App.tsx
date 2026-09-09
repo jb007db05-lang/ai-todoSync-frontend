@@ -24,44 +24,45 @@ function App(): JSX.Element {
     <ToastProvider>
       <LoadingProvider>
         <AuthProvider>
-          <ChatProvider>
+          <ChatProvider>.
             <ConfirmationProvider>
               <BrowserRouter>
                 <GuideRuntimeProvider>
                   <Suspense fallback={<Loader center />}>
-                    <Routes>
-                      <Route path="/" element={<LandingPage />} />
-                      <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
-                      <Route
-                        path="/login"
-                        element={
-                          <PublicRoute redirectTo="/dashboard">
-                            <LoginPage />
-                          </PublicRoute>
-                        }
-                      />
-                      <Route
-                        path="/register"
-                        element={
-                          <PublicRoute redirectTo="/dashboard">
-                            <RegisterPage />
-                          </PublicRoute>
-                        }
-                      />
-                      <Route path="/dashboard" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
-                      <Route path="/intelligence" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
-                      <Route path="/event-tracking" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
-                      <Route path="/engagement" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
-                      <Route path="/sdk-integrations" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
-                      <Route path="/sdk-integrations/:integrationId" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
-                      <Route path="/sdk-integrations/:integrationId/:tab" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
-                      <Route path="/sdk-docs" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
-                      <Route path="/settings" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
-                      <Route path="/projects/:projectId" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
-                      <Route path="/projects/:projectId/epics/:epicId" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
-                      <Route path="*" element={<Navigate to="/dashboard" replace />} />
-                    </Routes>
-                  </Suspense>
+                  <Routes>
+                    <Route path="/" element={<LandingPage />} />
+                    <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
+                    <Route
+                      path="/login"
+                      element={
+                        <PublicRoute redirectTo="/dashboard">
+                          <LoginPage />
+                        </PublicRoute>
+                      }
+                    />
+                    <Route
+                      path="/register"
+                      element={
+                        <PublicRoute redirectTo="/dashboard">
+                          <RegisterPage />
+                        </PublicRoute>
+                      }
+                    />
+                    <Route path="/dashboard" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
+                    <Route path="/intelligence" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
+                    <Route path="/prompts" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
+                    <Route path="/event-tracking" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
+                    <Route path="/engagement" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
+                    <Route path="/sdk-integrations" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
+                    <Route path="/sdk-integrations/:integrationId" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
+                    <Route path="/sdk-integrations/:integrationId/:tab" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
+                    <Route path="/sdk-docs" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
+                    <Route path="/settings" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
+                    <Route path="/projects/:projectId" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
+                    <Route path="/projects/:projectId/epics/:epicId" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
+                    <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                  </Routes>
+                </Suspense>
                 </GuideRuntimeProvider>
               </BrowserRouter>
               <GlobalLoadingSpinner />

@@ -10,8 +10,8 @@ function SectionCard({ children, className, ...props }: SectionCardProps): JSX.E
     <section
       {...props}
       className={[
-        'bg-white  border border-olive-200',
-        'rounded-lg shadow-sm p-7',
+        'bg-white border border-olive-200',
+        'rounded shadow-sm p-5',
         'transition-all duration-200 relative overflow-hidden',
         className ?? ''
       ].join(' ')}

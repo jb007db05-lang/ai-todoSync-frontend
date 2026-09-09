@@ -130,6 +130,7 @@ export interface Guide {
 export interface EngagementRuntimeContext {
   userId?: string;
   sessionId?: string | null;
+  sdkIntegrationId?: string;
   url?: string;
   referrer?: string;
   role?: string;

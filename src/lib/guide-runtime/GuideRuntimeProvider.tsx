@@ -44,6 +44,7 @@ export function GuideRuntimeProvider({ children }: GuideRuntimeProviderProps): J
         const result = await evaluateRuntime({
           userId: user.id,
           sessionId: session?.sessionId,
+          sdkIntegrationId: localStorage.getItem('active_sdk_integration_id') || undefined,
           url: window.location.href,
           referrer: document.referrer,
           role: 'ADMIN',
@@ -83,6 +84,14 @@ export function GuideRuntimeProvider({ children }: GuideRuntimeProviderProps): J
     }, 250);
     return () => window.clearTimeout(timer);
   }, [evaluate, location.pathname, location.search]);
+
+  useEffect(() => {
+    const listener = () => {
+      void evaluate();
+    };
+    window.addEventListener('sync:active-integration-changed', listener);
+    return () => window.removeEventListener('sync:active-integration-changed', listener);
+  }, [evaluate]);
 
   useEffect(() => {
     const listener = (event: Event) => {

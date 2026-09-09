@@ -184,8 +184,6 @@ function SettingsPanel({ activeProject, onAiConfigChange }: SettingsPanelProps):
   const [slaConfigs, setSlaConfigs] = useState<SlaConfig[]>([]);
   const [slaSavingPriority, setSlaSavingPriority] = useState<TaskPriority | null>(null);
 
-
-
   useEffect(() => {
     if (user) {
       setFirstName(user.firstName || '');
@@ -230,6 +228,7 @@ function SettingsPanel({ activeProject, onAiConfigChange }: SettingsPanelProps):
       setIsSavingGlobalKeys(false);
     }
   };
+
   const [generatedCompanionKey, setGeneratedCompanionKey] = useState<{
     key: string;
     deviceName: string;
@@ -261,18 +260,12 @@ function SettingsPanel({ activeProject, onAiConfigChange }: SettingsPanelProps):
   const loadDevices = async (): Promise<void> => {
     try {
       const response = await api.get<CompanionDevicesResponse>('/auth/devices');
-      console.info('[SettingsPanel] Raw API Response:', JSON.stringify(response.data, null, 2));
       const fetched = response.data.data?.devices ?? [];
-      console.info('[SettingsPanel] Extracted Devices Array:', fetched);
       setDevices(fetched);
     } catch (err) {
       console.error('[SettingsPanel] Error loading devices:', err);
     }
   };
-
-  useEffect(() => {
-    console.info('[SettingsPanel] Current Devices State:', devices);
-  }, [devices]);
 
   useEffect(() => {
     if (canManagePrimarySecurity) {
@@ -332,8 +325,7 @@ function SettingsPanel({ activeProject, onAiConfigChange }: SettingsPanelProps):
     setErrorMessage(null);
 
     try {
-      const response = await api.patch<RegenerateSyncKeyResponse>('/auth/regenerate-sync-key');
-      console.info('Sync key regenerated:', response.data);
+      await api.patch<RegenerateSyncKeyResponse>('/auth/regenerate-sync-key');
       await refreshUser();
       setSuccessMessage('Sync API key regenerated successfully.');
     } catch {
@@ -381,74 +373,69 @@ function SettingsPanel({ activeProject, onAiConfigChange }: SettingsPanelProps):
     }
   };
 
-  const ghostBtn = 'inline-flex items-center gap-1.5 px-4 py-2 bg-white  border border-olive-200  rounded text-olive-600  text-sm hover:bg-olive-50  disabled:opacity-50 transition-colors';
-  const primaryBtn = 'inline-flex items-center gap-1.5 px-4 py-2 bg-olive-900  text-white rounded text-sm font-medium hover:bg-olive-800  disabled:opacity-50 transition-colors';
+  const ghostBtn = 'inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-olive-200 rounded text-olive-750 text-xs font-semibold hover:bg-olive-50 disabled:opacity-50 transition-colors shadow-xs';
+  const primaryBtn = 'inline-flex items-center gap-1.5 px-3 py-1.5 bg-olive-800 text-white rounded text-xs font-semibold hover:bg-olive-900 disabled:opacity-50 transition-colors shadow-xs';
 
   return (
-    <div className="grid gap-8 p-1">
-      {/* <div className="grid gap-1 mb-2">
-        <h2 className="text-[1.5rem] font-bold text-olive-950  m-0">Settings</h2>
-        <p className="text-olive-500  m-0">Manage your profile, account security, and integrations.</p>
-      </div> */}
-
+    <div className="grid gap-4 p-1 max-w-5xl mx-auto">
       {/* Profile Section */}
       <SectionCard>
-        <div className="flex items-start justify-between gap-4 mb-6">
+        <div className="flex items-start justify-between gap-4 mb-4">
           <div>
-            <span className="text-olive-600  text-[0.72rem] tracking-[0.12em] uppercase font-semibold">Account</span>
-            <h2 className="mt-1 mb-1 text-olive-950 ">Profile Information</h2>
-            <p className="text-olive-500  m-0 text-sm">Update your personal details used across the workspace.</p>
+            <span className="text-olive-600 text-[0.65rem] tracking-[0.12em] uppercase font-bold">Account</span>
+            <h2 className="mt-0.5 mb-0.5 text-sm font-semibold text-olive-950">Profile Information</h2>
+            <p className="text-olive-500 m-0 text-xs">Update your personal details used across the workspace.</p>
           </div>
-          <span className="flex items-center justify-center w-10 h-10 bg-olive-600/8  rounded-xl text-olive-600  shrink-0">
-            <UserCircle size={18} />
+          <span className="flex items-center justify-center w-8 h-8 bg-olive-100 rounded text-olive-750 shrink-0">
+            <UserCircle size={16} />
           </span>
         </div>
 
-        <div className="grid gap-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <label className="text-sm font-semibold text-olive-900 ">First Name</label>
+        <div className="grid gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid gap-1">
+              <label className="text-xs font-semibold text-olive-900">First Name</label>
               <input
                 type="text"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
-                className="w-full px-4 py-2.5 bg-olive-50  border border-olive-200  rounded-xl focus:outline-none focus:ring-2 focus:ring-olive-500/20 focus:border-olive-500 transition-all text-olive-950 "
+                className="w-full px-3 py-2 bg-white border border-olive-200 rounded text-xs focus:outline-none focus:border-olive-500 transition-all text-olive-950"
                 placeholder="Enter your first name"
               />
             </div>
-            <div className="grid gap-2">
-              <label className="text-sm font-semibold text-olive-900 ">Last Name</label>
+            <div className="grid gap-1">
+              <label className="text-xs font-semibold text-olive-900">Last Name</label>
               <input
                 type="text"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
-                className="w-full px-4 py-2.5 bg-olive-50  border border-olive-200  rounded-xl focus:outline-none focus:ring-2 focus:ring-olive-500/20 focus:border-olive-500 transition-all text-olive-950 "
+                className="w-full px-3 py-2 bg-white border border-olive-200 rounded text-xs focus:outline-none focus:border-olive-500 transition-all text-olive-950"
                 placeholder="Enter your last name"
               />
             </div>
           </div>
 
-          <div className="grid gap-2">
-            <label className="text-sm font-semibold text-olive-900 ">Email Address</label>
+          <div className="grid gap-1">
+            <label className="text-xs font-semibold text-olive-900">Email Address</label>
             <input
               type="email"
               value={user?.email || ''}
               readOnly
-              className="w-full px-4 py-2.5 bg-olive-100  border border-olive-200  rounded-xl text-olive-500 cursor-not-allowed"
+              className="w-full px-3 py-2 bg-olive-50 border border-olive-200 rounded text-xs text-olive-500 cursor-not-allowed"
             />
-            <p className="text-[0.7rem] text-olive-400 mt-1">Email cannot be changed directly. Contact support for help.</p>
+            <p className="text-[0.65rem] text-olive-400 m-0 mt-0.5">Email cannot be changed directly. Contact support for help.</p>
           </div>
 
-          <div className="flex justify-end pt-2">
+          <div className="flex justify-end pt-1">
             <button
               onClick={handleUpdateProfile}
               disabled={isUpdatingProfile || (firstName === (user?.firstName || '') && lastName === (user?.lastName || ''))}
-              className="flex items-center gap-2 px-6 py-2.5 bg-olive-900 text-white rounded-xl font-bold text-sm hover:bg-olive-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="flex items-center gap-1.5 px-4 py-2 bg-olive-800 text-white rounded font-bold text-xs hover:bg-olive-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-xs"
             >
               {isUpdatingProfile ? (
-                 <RefreshCcw className="w-4 h-4 animate-spin" />
+                 <RefreshCcw className="w-3.5 h-3.5 animate-spin" />
               ) : profileSuccess ? (
-                <Check className="w-4 h-4" />
+                <Check className="w-3.5 h-3.5" />
               ) : null}
               {isUpdatingProfile ? 'Saving...' : profileSuccess ? 'Saved' : 'Save Changes'}
             </button>
@@ -458,148 +445,153 @@ function SettingsPanel({ activeProject, onAiConfigChange }: SettingsPanelProps):
 
       {/* Global AI API Keys Card */}
       <SectionCard>
-        <div className="flex items-start justify-between gap-4 mb-6">
+        <div className="flex items-start justify-between gap-4 mb-4">
           <div>
-            <span className="text-olive-600 text-[0.72rem] tracking-[0.12em] uppercase font-semibold">Account Security</span>
-            <h2 className="mt-1 mb-1 text-olive-950">Global AI Credentials</h2>
-            <p className="text-olive-500 m-0 text-sm">Configure API keys for your AI providers. These are encrypted and shared across all your projects.</p>
+            <span className="text-olive-600 text-[0.65rem] tracking-[0.12em] uppercase font-bold">Account Security</span>
+            <h2 className="mt-0.5 mb-0.5 text-sm font-semibold text-olive-950">Global AI Credentials</h2>
+            <p className="text-olive-500 m-0 text-xs">Configure API keys for your AI providers. These are encrypted and shared across all your projects.</p>
           </div>
-          <span className="flex items-center justify-center w-10 h-10 bg-olive-600/8 rounded-xl text-olive-600 shrink-0">
-            <KeyRound size={18} />
+          <span className="flex items-center justify-center w-8 h-8 bg-olive-100 rounded text-olive-750 shrink-0">
+            <KeyRound size={16} />
           </span>
         </div>
 
-        <div className="grid gap-6">
+        <div className="grid gap-4">
           {/* OpenAI API Key */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-semibold text-olive-900">OpenAI API Key</label>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-semibold text-olive-900">OpenAI API Key</label>
             <div className="relative">
               <input
                 type={showOpenaiKey ? 'text' : 'password'}
-                className="w-full px-4 py-2.5 bg-white border border-olive-200 rounded-xl text-sm text-olive-950 focus:outline-none focus:ring-2 focus:ring-olive-500/20 transition-all"
+                className="w-full px-3 py-2 bg-white border border-olive-200 rounded text-xs text-olive-950 focus:outline-none focus:border-olive-500 transition-all pr-10"
                 placeholder={user?.openaiApiKeyConfigured ? '••••••••' : 'Enter OpenAI API key'}
                 value={openaiKey}
                 onChange={(e) => setOpenaiKey(e.target.value)}
               />
               <button
                 type="button"
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-olive-400 hover:text-olive-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-olive-400 hover:text-olive-600"
                 onClick={() => setShowOpenaiKey(!showOpenaiKey)}
               >
-                {showOpenaiKey ? <EyeOff size={16} /> : <Eye size={16} />}
+                {showOpenaiKey ? <EyeOff size={14} /> : <Eye size={14} />}
               </button>
             </div>
           </div>
 
           {/* Anthropic API Key */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-semibold text-olive-900">Anthropic Claude API Key</label>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-semibold text-olive-900">Anthropic Claude API Key</label>
             <div className="relative">
               <input
                 type={showAnthropicKey ? 'text' : 'password'}
-                className="w-full px-4 py-2.5 bg-white border border-olive-200 rounded-xl text-sm text-olive-950 focus:outline-none focus:ring-2 focus:ring-olive-500/20 transition-all"
+                className="w-full px-3 py-2 bg-white border border-olive-200 rounded text-xs text-olive-950 focus:outline-none focus:border-olive-500 transition-all pr-10"
                 placeholder={user?.anthropicApiKeyConfigured ? '••••••••' : 'Enter Anthropic API key'}
                 value={anthropicKey}
                 onChange={(e) => setAnthropicKey(e.target.value)}
               />
               <button
                 type="button"
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-olive-400 hover:text-olive-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-olive-400 hover:text-olive-600"
                 onClick={() => setShowAnthropicKey(!showAnthropicKey)}
               >
-                {showAnthropicKey ? <EyeOff size={16} /> : <Eye size={16} />}
+                {showAnthropicKey ? <EyeOff size={14} /> : <Eye size={14} />}
               </button>
             </div>
           </div>
 
           {/* Gemini API Key */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-semibold text-olive-900">Google Gemini API Key</label>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-semibold text-olive-900">Google Gemini API Key</label>
             <div className="relative">
               <input
                 type={showGeminiKey ? 'text' : 'password'}
-                className="w-full px-4 py-2.5 bg-white border border-olive-200 rounded-xl text-sm text-olive-950 focus:outline-none focus:ring-2 focus:ring-olive-500/20 transition-all"
+                className="w-full px-3 py-2 bg-white border border-olive-200 rounded text-xs text-olive-950 focus:outline-none focus:border-olive-500 transition-all pr-10"
                 placeholder={user?.geminiApiKeyConfigured ? '••••••••' : 'Enter Google Gemini API key'}
                 value={geminiKey}
                 onChange={(e) => setGeminiKey(e.target.value)}
               />
               <button
                 type="button"
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-olive-400 hover:text-olive-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-olive-400 hover:text-olive-600"
                 onClick={() => setShowGeminiKey(!showGeminiKey)}
               >
-                {showGeminiKey ? <EyeOff size={16} /> : <Eye size={16} />}
+                {showGeminiKey ? <EyeOff size={14} /> : <Eye size={14} />}
               </button>
             </div>
           </div>
 
-          <div className="flex justify-end pt-2">
+          <div className="flex justify-end pt-1">
             <button
               onClick={handleSaveGlobalKeys}
               disabled={isSavingGlobalKeys || (openaiKey === (user?.openaiApiKeyConfigured ? '••••••••' : '') && anthropicKey === (user?.anthropicApiKeyConfigured ? '••••••••' : '') && geminiKey === (user?.geminiApiKeyConfigured ? '••••••••' : ''))}
-              className="flex items-center gap-2 px-6 py-2.5 bg-olive-900 text-white rounded-xl font-bold text-sm hover:bg-olive-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="flex items-center gap-1.5 px-4 py-2 bg-olive-800 text-white rounded font-bold text-xs hover:bg-olive-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-xs"
             >
               {isSavingGlobalKeys ? (
-                 <RefreshCcw className="w-4 h-4 animate-spin" />
+                 <RefreshCcw className="w-3.5 h-3.5 animate-spin" />
               ) : globalKeysSuccess ? (
-                <Check className="w-4 h-4" />
+                <Check className="w-3.5 h-3.5" />
               ) : null}
               {isSavingGlobalKeys ? 'Saving...' : globalKeysSuccess ? 'Saved' : 'Save AI Credentials'}
             </button>
           </div>
 
-          {globalKeysError && <p className="text-red-600 text-sm m-0 mt-2 font-medium">{globalKeysError}</p>}
+          {globalKeysError && <p className="text-red-600 text-xs m-0 mt-1 font-medium">{globalKeysError}</p>}
         </div>
       </SectionCard>
 
-
-
+      {/* SLA Configuration Card */}
       <SectionCard>
-        <div className="flex items-start justify-between gap-4 mb-6">
+        <div className="flex items-start justify-between gap-4 mb-4">
           <div>
-            <span className="text-olive-600  text-[0.72rem] tracking-[0.12em] uppercase font-semibold">Operations</span>
-            <h2 className="mt-1 mb-1 text-olive-950 ">SLA Configuration</h2>
-            <p className="text-olive-500  m-0 text-sm">Set response and resolution targets by task priority.</p>
+            <span className="text-olive-600 text-[0.65rem] tracking-[0.12em] uppercase font-bold">Operations</span>
+            <h2 className="mt-0.5 mb-0.5 text-sm font-semibold text-olive-950">SLA Configuration</h2>
+            <p className="text-olive-500 m-0 text-xs">Set response and resolution targets by task priority.</p>
           </div>
-          <span className="flex items-center justify-center w-10 h-10 bg-olive-600/8  rounded-xl text-olive-600  shrink-0">
-            <TimerReset size={18} />
+          <span className="flex items-center justify-center w-8 h-8 bg-olive-100 rounded text-olive-750 shrink-0">
+            <TimerReset size={16} />
           </span>
         </div>
 
-        <div className="grid gap-3">
+        <div className="flex flex-col gap-2">
           {slaConfigs.map((config) => (
-            <div key={config.priority} className="grid grid-cols-[120px_1fr_1fr_auto] gap-3 items-end p-3 border border-olive-200 rounded-xl bg-olive-50/60">
-              <strong className="text-sm text-olive-900 pb-2">{config.priority}</strong>
-              <label className="grid gap-1 text-xs font-bold text-olive-600 uppercase tracking-wider">
-                Response hours
-                <input
-                  className="bg-white border border-olive-200 rounded-lg px-3 py-2 text-sm text-olive-950 focus:outline-none focus:border-olive-500"
-                  min="0.01"
-                  step="0.25"
-                  type="number"
-                  value={config.responseTimeHours}
-                  onChange={(event) => handleSlaFieldChange(config.priority, 'responseTimeHours', event.target.value)}
-                />
-              </label>
-              <label className="grid gap-1 text-xs font-bold text-olive-600 uppercase tracking-wider">
-                Resolution hours
-                <input
-                  className="bg-white border border-olive-200 rounded-lg px-3 py-2 text-sm text-olive-950 focus:outline-none focus:border-olive-500"
-                  min="0.01"
-                  step="0.25"
-                  type="number"
-                  value={config.resolutionTimeHours}
-                  onChange={(event) => handleSlaFieldChange(config.priority, 'resolutionTimeHours', event.target.value)}
-                />
-              </label>
-              <button
-                className={primaryBtn}
-                disabled={slaSavingPriority === config.priority}
-                onClick={() => void handleSaveSlaConfig(config)}
-                type="button"
-              >
-                {slaSavingPriority === config.priority ? 'Saving...' : 'Save'}
-              </button>
+            <div key={config.priority} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 border border-olive-200 rounded bg-olive-50/50">
+              <div className="min-w-[100px] shrink-0">
+                <span className="text-xs font-bold text-olive-900 uppercase tracking-wider">{config.priority}</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-3 flex-1">
+                <label className="flex items-center gap-2 text-xs font-semibold text-olive-600">
+                  <span>Response (h):</span>
+                  <input
+                    className="bg-white border border-olive-200 rounded px-2 py-1.5 text-xs text-olive-950 w-20 focus:outline-none focus:border-olive-500"
+                    min="0.01"
+                    step="0.25"
+                    type="number"
+                    value={config.responseTimeHours}
+                    onChange={(event) => handleSlaFieldChange(config.priority, 'responseTimeHours', event.target.value)}
+                  />
+                </label>
+                <label className="flex items-center gap-2 text-xs font-semibold text-olive-600">
+                  <span>Resolution (h):</span>
+                  <input
+                    className="bg-white border border-olive-200 rounded px-2 py-1.5 text-xs text-olive-950 w-20 focus:outline-none focus:border-olive-500"
+                    min="0.01"
+                    step="0.25"
+                    type="number"
+                    value={config.resolutionTimeHours}
+                    onChange={(event) => handleSlaFieldChange(config.priority, 'resolutionTimeHours', event.target.value)}
+                  />
+                </label>
+              </div>
+              <div className="shrink-0 flex justify-end">
+                <button
+                  className={primaryBtn}
+                  disabled={slaSavingPriority === config.priority}
+                  onClick={() => void handleSaveSlaConfig(config)}
+                  type="button"
+                >
+                  {slaSavingPriority === config.priority ? 'Saving...' : 'Save'}
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -607,22 +599,22 @@ function SettingsPanel({ activeProject, onAiConfigChange }: SettingsPanelProps):
 
       {/* Two-Factor Authentication Card */}
       <SectionCard>
-        <div className="flex items-start justify-between gap-4 mb-6">
+        <div className="flex items-start justify-between gap-4 mb-4">
           <div>
-            <span className="text-olive-600 text-[0.72rem] tracking-[0.12em] uppercase font-semibold">Security</span>
-            <h2 className="mt-1 mb-1 text-olive-950">Two-Factor Authentication (2FA)</h2>
-            <p className="text-olive-500 m-0 text-sm">Add an extra layer of security to your account by requiring a verification code sent to your email upon login.</p>
+            <span className="text-olive-600 text-[0.65rem] tracking-[0.12em] uppercase font-bold">Security</span>
+            <h2 className="mt-0.5 mb-0.5 text-sm font-semibold text-olive-950">Two-Factor Authentication (2FA)</h2>
+            <p className="text-olive-500 m-0 text-xs">Add an extra layer of security to your account by requiring a verification code sent via email upon login.</p>
           </div>
-          <span className="flex items-center justify-center w-10 h-10 bg-olive-600/8 rounded-xl text-olive-600 shrink-0">
-            <Shield size={18} />
+          <span className="flex items-center justify-center w-8 h-8 bg-olive-100 rounded text-olive-750 shrink-0">
+            <Shield size={16} />
           </span>
         </div>
 
-        <div className="flex items-center justify-between p-5 bg-olive-50/60 border border-olive-200 rounded-xl">
-          <div className="flex flex-col gap-1">
-            <span className="text-sm font-bold text-olive-950">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-olive-50/50 border border-olive-200 rounded">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs font-bold text-olive-950">
               Status: {user?.twoFactorEnabled ? (
-                <span className="text-emerald-750 font-black">ENABLED</span>
+                <span className="text-emerald-700 font-bold">ENABLED</span>
               ) : (
                 <span className="text-olive-500 font-bold">DISABLED</span>
               )}
@@ -636,10 +628,10 @@ function SettingsPanel({ activeProject, onAiConfigChange }: SettingsPanelProps):
           <button
             onClick={() => void handleToggle2FA(!user?.twoFactorEnabled)}
             disabled={isToggling2FA}
-            className={`inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-bold shadow-md transition-all active:scale-95 ${
+            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded text-xs font-bold shadow-xs transition-all ${
               user?.twoFactorEnabled 
                 ? 'bg-red-50 text-red-700 border border-red-200 hover:bg-red-100' 
-                : 'bg-olive-900 text-white hover:bg-olive-800'
+                : 'bg-olive-800 text-white hover:bg-olive-900'
             }`}
           >
             {isToggling2FA ? 'Updating...' : user?.twoFactorEnabled ? 'Disable 2FA' : 'Enable 2FA'}
@@ -648,30 +640,30 @@ function SettingsPanel({ activeProject, onAiConfigChange }: SettingsPanelProps):
       </SectionCard>
 
       {/* Top grid: Security + Devices */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Sync API Key card */}
         <SectionCard>
-          <div className="flex items-start justify-between gap-4 mb-6">
+          <div className="flex items-start justify-between gap-4 mb-4">
             <div>
-              <span className="text-olive-600  text-[0.72rem] tracking-[0.12em] uppercase font-semibold">Security</span>
-              <h2 className="mt-1 mb-1 text-olive-950 ">Sync API Key</h2>
-              <p className="text-olive-500  m-0 text-sm">Your unique key for connecting external task tools.</p>
+              <span className="text-olive-600 text-[0.65rem] tracking-[0.12em] uppercase font-bold">Security</span>
+              <h2 className="mt-0.5 mb-0.5 text-sm font-semibold text-olive-950">Sync API Key</h2>
+              <p className="text-olive-500 m-0 text-xs">Your unique key for connecting external task tools.</p>
             </div>
-            <span className="flex items-center justify-center w-10 h-10 bg-olive-600/8  rounded-xl text-olive-600  shrink-0">
-              <Shield size={18} />
+            <span className="flex items-center justify-center w-8 h-8 bg-olive-100 rounded text-olive-750 shrink-0">
+              <Shield size={16} />
             </span>
           </div>
 
           {/* Key display */}
-          <div className="flex items-center gap-2 bg-olive-50  border border-olive-200  rounded-xl px-4 py-3 mb-4">
-            <KeyRound className="text-olive-400  shrink-0" size={16} />
-            <code className="flex-1 text-[0.85rem] text-olive-700  break-all">{user?.syncApiKey || 'No key generated'}</code>
+          <div className="flex items-center gap-2 bg-olive-50 border border-olive-200 rounded px-3 py-2.5 mb-3">
+            <KeyRound className="text-olive-400 shrink-0" size={14} />
+            <code className="flex-1 text-[0.8rem] text-olive-700 break-all">{user?.syncApiKey || 'No key generated'}</code>
             <button
-              className="flex items-center justify-center w-7 h-7 rounded text-olive-400  hover:text-olive-700  transition-colors"
+              className="flex items-center justify-center w-6 h-6 rounded text-olive-400 hover:text-olive-700 transition-colors"
               onClick={() => user?.syncApiKey && handleCopy(user.syncApiKey, -1)}
               type="button"
             >
-              {copiedIndex === -1 ? <Check size={14} /> : <Copy size={14} />}
+              {copiedIndex === -1 ? <Check size={12} /> : <Copy size={12} />}
             </button>
           </div>
 
@@ -681,81 +673,79 @@ function SettingsPanel({ activeProject, onAiConfigChange }: SettingsPanelProps):
             onClick={() => void handleRegenerateKey()}
             type="button"
           >
-            <RefreshCcw className={isRegenerating ? 'animate-spin' : ''} size={14} />
+            <RefreshCcw className={isRegenerating ? 'animate-spin' : ''} size={12} />
             {isRegenerating ? 'Regenerating...' : 'Regenerate Key'}
           </button>
 
-          {successMessage && <p className="text-teal-600  m-0 text-sm mt-3">{successMessage}</p>}
-          {errorMessage && <p className="text-red-600  m-0 text-sm mt-3">{errorMessage}</p>}
+          {successMessage && <p className="text-teal-600 m-0 text-xs mt-2">{successMessage}</p>}
+          {errorMessage && <p className="text-red-600 m-0 text-xs mt-2">{errorMessage}</p>}
         </SectionCard>
 
         {/* Companion Access card */}
         <SectionCard>
-          <div className="flex items-start justify-between gap-4 mb-6">
+          <div className="flex items-start justify-between gap-4 mb-4">
             <div>
-              <span className="text-olive-600  text-[0.72rem] tracking-[0.12em] uppercase font-semibold">Devices</span>
-              <h2 className="mt-1 mb-1 text-olive-950 ">Companion Access</h2>
-              <p className="text-olive-500  m-0 text-sm">Manage secure keys for mobile, desktop, or voice apps.</p>
+              <span className="text-olive-600 text-[0.65rem] tracking-[0.12em] uppercase font-bold">Devices</span>
+              <h2 className="mt-0.5 mb-0.5 text-sm font-semibold text-olive-950">Companion Access</h2>
+              <p className="text-olive-500 m-0 text-xs">Manage secure keys for mobile, desktop, or voice apps.</p>
             </div>
-            <span className="flex items-center justify-center w-10 h-10 bg-olive-600/8  rounded-xl text-olive-600  shrink-0">
-              <Smartphone size={18} />
+            <span className="flex items-center justify-center w-8 h-8 bg-olive-100 rounded text-olive-750 shrink-0">
+              <Smartphone size={16} />
             </span>
           </div>
 
           {canManagePrimarySecurity ? (
-            <>
-              <div className="flex flex-col gap-4">
-                <div className="flex items-center justify-between p-4 bg-olive-50  rounded-xl border border-dashed border-olive-200 ">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-white  shadow-sm text-olive-400  border border-olive-100 ">
-                      <Smartphone size={18} />
-                    </div>
-                    <div>
-                      <p className="text-[0.65rem] font-bold text-olive-400  uppercase tracking-widest m-0 mb-0.5">Device Registry</p>
-                      <p className="text-sm font-semibold text-olive-950  m-0">
-                        {devices.length} registered {devices.length === 1 ? 'device' : 'devices'}
-                      </p>
-                    </div>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between p-3 bg-olive-50 rounded border border-dashed border-olive-200">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 flex items-center justify-center rounded bg-white shadow-xs text-olive-400 border border-olive-100">
+                    <Smartphone size={14} />
                   </div>
-                  <button
-                    className={ghostBtn}
-                    onClick={() => setIsManageModalOpen(true)}
-                    type="button"
-                  >
-                    <Settings2 size={14} />
-                    Manage devices
-                  </button>
+                  <div>
+                    <p className="text-[0.6rem] font-bold text-olive-400 uppercase tracking-widest m-0 mb-0.5">Registry</p>
+                    <p className="text-xs font-semibold text-olive-950 m-0">
+                      {devices.length} registered {devices.length === 1 ? 'device' : 'devices'}
+                    </p>
+                  </div>
                 </div>
+                <button
+                  className={ghostBtn}
+                  onClick={() => setIsManageModalOpen(true)}
+                  type="button"
+                >
+                  <Settings2 size={12} />
+                  Manage
+                </button>
+              </div>
 
-                <div className="flex flex-col gap-1.5 pt-2 border-t border-olive-100 ">
-                  <p className="text-[0.65rem] font-bold text-olive-400  uppercase tracking-widest mb-2">New Device Key</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <input
-                      className="bg-white/50  border border-olive-200  rounded-lg px-4 py-2.5 text-sm text-olive-950  transition-all focus:outline-none focus:border-olive-500"
-                      onChange={(event) => setDeviceName(event.target.value)}
-                      placeholder="e.g. Work Mobile"
-                      value={deviceName}
-                    />
-                    <select
-                      className="bg-white/50  border border-olive-200  rounded-lg px-4 py-2.5 text-sm text-olive-950  transition-all focus:outline-none focus:border-olive-500"
-                      onChange={(event) => setDeviceType(event.target.value)}
-                      value={deviceType}
-                    >
-                      <option value="mobile">Mobile</option>
-                      <option value="tablet">Tablet</option>
-                      <option value="desktop">Desktop</option>
-                      </select>
-                  </div>
-                  <button
-                    className="w-full mt-2 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-olive-600  hover:bg-olive-700  text-white rounded-lg text-sm font-semibold shadow-lg shadow-olive-500/20 transition-all disabled:opacity-50"
-                    disabled={isGeneratingCompanionKey || !deviceName.trim() || devices.length >= 5}
-                    onClick={() => void handleGenerateCompanionKey()}
-                    type="button"
+              <div className="flex flex-col gap-1.5 pt-2 border-t border-olive-100">
+                <p className="text-[0.6rem] font-bold text-olive-400 uppercase tracking-widest mb-1.5">New Device Key</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    className="bg-white border border-olive-200 rounded px-3 py-2 text-xs text-olive-950 transition-all focus:outline-none focus:border-olive-500"
+                    onChange={(event) => setDeviceName(event.target.value)}
+                    placeholder="e.g. Work Mobile"
+                    value={deviceName}
+                  />
+                  <select
+                    className="bg-white border border-olive-200 rounded px-3 py-2 text-xs text-olive-950 transition-all focus:outline-none focus:border-olive-500"
+                    onChange={(event) => setDeviceType(event.target.value)}
+                    value={deviceType}
                   >
-                    <Shield size={16} />
-                    {isGeneratingCompanionKey ? 'Generating...' : 'Generate Device Key'}
-                  </button>
+                    <option value="mobile">Mobile</option>
+                    <option value="tablet">Tablet</option>
+                    <option value="desktop">Desktop</option>
+                  </select>
                 </div>
+                <button
+                  className="w-full mt-1.5 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-olive-750 hover:bg-olive-800 text-white rounded text-xs font-semibold shadow-xs disabled:opacity-50"
+                  disabled={isGeneratingCompanionKey || !deviceName.trim() || devices.length >= 5}
+                  onClick={() => void handleGenerateCompanionKey()}
+                  type="button"
+                >
+                  <Shield size={14} />
+                  {isGeneratingCompanionKey ? 'Generating...' : 'Generate Device Key'}
+                </button>
               </div>
 
               {isManageModalOpen && (
@@ -766,11 +756,11 @@ function SettingsPanel({ activeProject, onAiConfigChange }: SettingsPanelProps):
                   }}
                 />
               )}
-            </>
+            </div>
           ) : (
-            <div className="bg-olive-50  border border-olive-200  rounded-xl p-5 text-center">
-              <span className="text-olive-400  text-sm">Restricted on companion devices</span>
-              <strong className="block mt-1.5 text-olive-700 ">Only the main device can manage companion devices.</strong>
+            <div className="bg-olive-50 border border-olive-200 rounded p-4 text-center">
+              <span className="text-olive-400 text-xs">Restricted on companion devices</span>
+              <strong className="block mt-1 text-olive-700 text-xs">Only the main device can manage companion devices.</strong>
             </div>
           )}
         </SectionCard>
@@ -778,19 +768,19 @@ function SettingsPanel({ activeProject, onAiConfigChange }: SettingsPanelProps):
 
       {/* ChatGPT Integration */}
       <SectionCard>
-        <div className="flex items-start justify-between gap-4 mb-6">
+        <div className="flex items-start justify-between gap-4 mb-4">
           <div>
-            <span className="text-olive-600  text-[0.72rem] tracking-[0.12em] uppercase font-semibold">A.I.</span>
-            <h2 className="mt-1 mb-1 text-olive-950 ">ChatGPT Integration</h2>
-            <p className="text-olive-500  m-0 text-sm">Configure a custom GPT to manage your tasks via voice or chat.</p>
+            <span className="text-olive-600 text-[0.65rem] tracking-[0.12em] uppercase font-bold">A.I.</span>
+            <h2 className="mt-0.5 mb-0.5 text-sm font-semibold text-olive-950">ChatGPT Integration</h2>
+            <p className="text-olive-500 m-0 text-xs">Configure a custom GPT to manage your tasks via voice or chat.</p>
           </div>
-          <span className="flex items-center justify-center w-10 h-10 bg-olive-600/8  rounded-xl text-olive-600  shrink-0">
-            <Sparkles size={18} />
+          <span className="flex items-center justify-center w-8 h-8 bg-olive-100 rounded text-olive-750 shrink-0">
+            <Sparkles size={16} />
           </span>
         </div>
 
         {/* Accordion steps */}
-        <div className="grid gap-3">
+        <div className="grid gap-2">
           {chatGptIntegrationSteps.map((step, index) => {
             const isOpen = openStepIndex === index;
             const panelId = `chatgpt-step-panel-${index}`;
@@ -799,53 +789,57 @@ function SettingsPanel({ activeProject, onAiConfigChange }: SettingsPanelProps):
               <article
                 key={step.title}
                 className={[
-                  'border border-olive-200  rounded-xl overflow-hidden transition-all',
-                  isOpen ? 'bg-olive-50' : 'bg-white'
+                  'border border-olive-200 rounded overflow-hidden transition-all',
+                  isOpen ? 'bg-olive-50/40' : 'bg-white'
                 ].join(' ')}
               >
                 {/* Trigger */}
                 <button
                   aria-controls={panelId}
                   aria-expanded={isOpen}
-                  className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left"
+                  className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left focus:outline-none"
                   onClick={() => setOpenStepIndex(isOpen ? null : index)}
                   type="button"
                 >
                   <span className="grid gap-0.5">
-                    <strong className="text-olive-950  text-[0.95rem]">{step.title}</strong>
-                    <span className="text-olive-500  text-sm">{step.summary}</span>
+                    <strong className="text-olive-950 text-xs font-semibold">{step.title}</strong>
+                    <span className="text-olive-500 text-[0.7rem]">{step.summary}</span>
                   </span>
-                  <span className="flex items-center justify-center w-6 h-6 text-olive-400  text-lg shrink-0">
+                  <span className="flex items-center justify-center w-5 h-5 text-olive-400 text-sm shrink-0">
                     {isOpen ? '−' : '+'}
                   </span>
                 </button>
 
                 {/* Panel */}
                 {isOpen && (
-                  <div className="px-5 pb-5 grid gap-4" id={panelId}>
-                    <div className="grid grid-cols-[1fr_280px] gap-6">
-                      <ol className="text-olive-700  text-sm list-decimal pl-4 grid gap-2">
+                  <div className="px-4 pb-4 grid gap-3" id={panelId}>
+                    <div className="grid grid-cols-1 md:grid-cols-[1fr_200px] gap-4">
+                      <ol className="text-olive-700 text-xs list-decimal pl-4 grid gap-1.5">
                         {step.details.map((detail) => (
                           <li key={detail}>{detail}</li>
                         ))}
                       </ol>
-                      <img
-                        alt={step.title}
-                        className="rounded-lg border border-olive-200  w-full object-cover"
-                        src={step.image}
-                      />
+                      {step.image && (
+                        <div className="flex items-center justify-center">
+                          <img
+                            alt={step.title}
+                            className="rounded border border-olive-200 w-full max-h-[140px] object-cover"
+                            src={step.image}
+                          />
+                        </div>
+                      )}
                     </div>
                     {step.code && (
-                      <div className="relative">
+                      <div className="relative mt-1">
                         <button
-                          className="absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1.5 text-xs bg-white  border border-olive-200  rounded text-olive-600  hover:bg-olive-50  transition-colors"
+                          className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 text-[10px] bg-white border border-olive-200 rounded text-olive-750 hover:bg-olive-50 transition-colors shadow-xs"
                           onClick={() => handleCopy(step.code!, index)}
                           type="button"
                         >
-                          {copiedIndex === index ? <Check size={12} /> : <Copy size={12} />}
+                          {copiedIndex === index ? <Check size={10} /> : <Copy size={10} />}
                           {copiedIndex === index ? 'Copied!' : 'Copy'}
                         </button>
-                        <pre className="bg-olive-900  text-olive-100 text-[0.8rem] leading-relaxed rounded-xl p-5 overflow-x-auto whitespace-pre-wrap max-h-[400px] overflow-y-auto">
+                        <pre className="bg-olive-900 text-olive-100 text-[0.75rem] leading-relaxed rounded p-4 overflow-x-auto whitespace-pre-wrap max-h-[250px] overflow-y-auto">
                           <code>{step.code}</code>
                         </pre>
                       </div>
@@ -861,20 +855,20 @@ function SettingsPanel({ activeProject, onAiConfigChange }: SettingsPanelProps):
       {/* Generated key modal */}
       {generatedCompanionKey && (
         <Modal onClose={() => setGeneratedCompanionKey(null)} title="Companion Device Key">
-          <div className="grid gap-4">
-            <p className="text-olive-500  m-0 text-sm">
-              Key for <strong className="text-olive-900 ">{generatedCompanionKey?.deviceName}</strong>. Copy it now; it won't be shown again.
+          <div className="grid gap-3">
+            <p className="text-olive-500 m-0 text-xs">
+              Key for <strong className="text-olive-900">{generatedCompanionKey?.deviceName}</strong>. Copy it now; it won't be shown again.
             </p>
-            <code className="block bg-olive-900  text-olive-100 text-[0.85rem] rounded-xl p-4 break-all">
+            <code className="block bg-olive-900 text-olive-100 text-[0.8rem] rounded p-3 break-all font-mono">
               {generatedCompanionKey?.key}
             </code>
-            <div className="flex gap-3">
-              <button className={primaryBtn} onClick={() => generatedCompanionKey?.key && void handleCopy(generatedCompanionKey.key, -2)} type="button">
-                {copiedIndex === -2 ? <Check size={14} /> : <Copy size={14} />}
-                Copy Key
-              </button>
+            <div className="flex gap-2 justify-end mt-1">
               <button className={ghostBtn} onClick={() => setGeneratedCompanionKey(null)} type="button">
                 Close
+              </button>
+              <button className={primaryBtn} onClick={() => generatedCompanionKey?.key && void handleCopy(generatedCompanionKey.key, -2)} type="button">
+                {copiedIndex === -2 ? <Check size={12} /> : <Copy size={12} />}
+                Copy Key
               </button>
             </div>
           </div>
