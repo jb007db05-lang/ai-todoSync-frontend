@@ -272,7 +272,10 @@ function DashboardPage(): JSX.Element {
       try {
         const list = await workspaceService.listWorkspaces();
         if (list && list.length > 0) {
-          setActiveWorkspaceId(list[0].id || (list[0] as { id?: string; _id?: string })._id);
+          const wsId = list[0].id || (list[0] as { id?: string; _id?: string })._id;
+          if (wsId) {
+            setActiveWorkspaceId(wsId);
+          }
         }
       } catch (err) {
         console.error('Failed to load user workspace', err);

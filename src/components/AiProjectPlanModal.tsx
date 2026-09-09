@@ -3,6 +3,7 @@ import {
   centralizedAiService,
   AIProjectPlanResponse,
   AIPlanModificationResponse,
+  WorkspaceSessionItem,
 } from "../services/centralizedAi";
 import {
   Sparkles,
@@ -90,7 +91,7 @@ export const AiProjectPlanModal: React.FC<AiProjectPlanModalProps> = ({
       setSavedWorkspacePlans(plans);
 
       if (historySessions && historySessions.length > 0) {
-        const formattedSessions = historySessions.map((s: { id: string; title?: string; createdAt?: string }) => ({
+        const formattedSessions = historySessions.map((s: WorkspaceSessionItem) => ({
           id: s.id,
           title: s.title || "Planning Session",
           createdAt: s.createdAt ? new Date(s.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Recent",

@@ -125,24 +125,45 @@ export interface AIDailyScheduleResponse {
   }>;
 }
 
+export interface WorkspaceSessionMessage {
+  role: string;
+  content: string;
+  metadata?: {
+    plan?: AIProjectPlanResponse;
+    delta?: AIPlanModificationResponse["delta"];
+  };
+}
+
+export interface WorkspaceSessionDraft {
+  plan?: AIProjectPlanResponse;
+}
+
+export interface WorkspaceSessionItem {
+  id: string;
+  title?: string;
+  createdAt?: string;
+  messages?: WorkspaceSessionMessage[];
+  drafts?: WorkspaceSessionDraft[];
+}
+
 export const centralizedAiService = {
-  async listWorkspaceSessions(workspaceId?: string): Promise<Record<string, unknown>[]> {
-    const res = await api.get<{ data: { sessions: Record<string, unknown>[] } }>("/ai/workspace-sessions", {
+  async listWorkspaceSessions(workspaceId?: string): Promise<WorkspaceSessionItem[]> {
+    const res = await api.get<{ data: { sessions: WorkspaceSessionItem[] } }>("/ai/workspace-sessions", {
       params: { workspaceId },
     });
     return res.data?.data?.sessions || [];
   },
 
-  async createWorkspaceSession(workspaceId?: string, title?: string): Promise<Record<string, unknown>> {
-    const res = await api.post<{ data: { session: Record<string, unknown> } }>("/ai/workspace-sessions", {
+  async createWorkspaceSession(workspaceId?: string, title?: string): Promise<WorkspaceSessionItem> {
+    const res = await api.post<{ data: { session: WorkspaceSessionItem } }>("/ai/workspace-sessions", {
       workspaceId,
       title,
     });
     return res.data?.data?.session;
   },
 
-  async getWorkspaceSession(workspaceId: string | undefined, sessionId: string): Promise<Record<string, unknown>> {
-    const res = await api.get<{ data: Record<string, unknown> }>(`/ai/workspace-sessions/${sessionId}`, {
+  async getWorkspaceSession(workspaceId: string | undefined, sessionId: string): Promise<WorkspaceSessionItem> {
+    const res = await api.get<{ data: WorkspaceSessionItem }>(`/ai/workspace-sessions/${sessionId}`, {
       params: { workspaceId },
     });
     return res.data?.data;
