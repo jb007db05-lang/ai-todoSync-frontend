@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import documentService, { Document } from "../services/documents";
 import centralizedAiService from "../services/centralizedAi";
-import { FileText, Sparkles, Plus, Edit3, Trash2, Tag, Clock, BookOpen, Save, X } from "lucide-react";
+import { FileText, Sparkles, Plus, Edit3, Trash2, BookOpen, Save, X } from "lucide-react";
 
 interface ProjectDocsPanelProps {
   projectId: string;

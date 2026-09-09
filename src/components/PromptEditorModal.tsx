@@ -5,10 +5,6 @@ import {
   Trash2,
   Code,
   Sparkles,
-  Layers,
-  Tag as TagIcon,
-  Folder as FolderIcon,
-  FileText,
   AlertCircle,
 } from "lucide-react";
 import {
@@ -145,7 +141,7 @@ export const PromptEditorModal: React.FC<PromptEditorModalProps> = ({
     setMessages(updated);
   };
 
-  const handleVariableChange = (index: number, field: keyof IPromptVariable, val: any) => {
+  const handleVariableChange = (index: number, field: keyof IPromptVariable, val: string | boolean | string[]) => {
     const updated = [...variables];
     updated[index] = { ...updated[index], [field]: val };
     setVariables(updated);
@@ -203,8 +199,9 @@ export const PromptEditorModal: React.FC<PromptEditorModalProps> = ({
         onSaved(created);
       }
       onClose();
-    } catch (err: any) {
-      setError(err.response?.data?.message || err.message || "Failed to save prompt.");
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      setError(errorObj.response?.data?.message || errorObj.message || "Failed to save prompt.");
     } finally {
       setIsSubmitting(false);
     }
@@ -365,7 +362,7 @@ export const PromptEditorModal: React.FC<PromptEditorModalProps> = ({
                       value={msg.role}
                       onChange={(e) => {
                         const updated = [...messages];
-                        updated[index].role = e.target.value as any;
+                        updated[index].role = e.target.value as IPromptMessage['role'];
                         setMessages(updated);
                       }}
                       className="bg-slate-900 border border-slate-700 text-indigo-400 font-semibold text-xs rounded-lg px-2.5 py-1 focus:outline-none uppercase"

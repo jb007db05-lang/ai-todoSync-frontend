@@ -9,11 +9,9 @@ import {
   BookOpen,
   Target,
   Plug,
-  Sparkles,
-  Calendar
+  Sparkles
 } from 'lucide-react';
 import logoImg from '@/assets/logo.png';
-import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { Workspace } from '../services/workspaces';
 
 export type SidebarView =
@@ -48,13 +46,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   activeView,
   selectedProjectView,
   allProjectsValue,
-  currentWorkspaceId,
-  onSelectWorkspace,
   onProjectSelect,
   onViewChange,
   onNewProject,
-  onPlanWithAi,
-  onPlanMyDay,
   onLogout,
   activeIntegrationId,
   activeIntegrationName,

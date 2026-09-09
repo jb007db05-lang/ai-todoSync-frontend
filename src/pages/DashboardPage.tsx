@@ -19,7 +19,6 @@ import SubtaskForm from '@/components/SubtaskForm';
 import ChatPanel from '@/components/ChatPanel';
 import ActivityHistoryPanel from '@/components/ActivityHistoryPanel';
 import ApprovalSection from '@/components/ApprovalSection';
-import AiPlanningWorkspace from '@/components/AiPlanningWorkspace';
 import { AiProjectPlanModal } from '@/components/AiProjectPlanModal';
 import { getProjectAiConfig } from '@/services/aiPlanning';
 import SdkDocsPanel from '@/components/SdkDocsPanel';
@@ -273,7 +272,7 @@ function DashboardPage(): JSX.Element {
       try {
         const list = await workspaceService.listWorkspaces();
         if (list && list.length > 0) {
-          setActiveWorkspaceId(list[0].id || (list[0] as any)._id);
+          setActiveWorkspaceId(list[0].id || (list[0] as { id?: string; _id?: string })._id);
         }
       } catch (err) {
         console.error('Failed to load user workspace', err);

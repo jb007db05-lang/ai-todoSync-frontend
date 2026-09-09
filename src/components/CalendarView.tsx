@@ -1,15 +1,17 @@
 import React, { useState } from "react";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
+
+interface CalendarTask {
+  id: string;
+  title: string;
+  date?: string;
+  priority?: string;
+  status?: string;
+}
 
 interface CalendarViewProps {
-  tasks: Array<{
-    id: string;
-    title: string;
-    date?: string;
-    priority?: string;
-    status?: string;
-  }>;
-  onTaskClick?: (task: any) => void;
+  tasks: CalendarTask[];
+  onTaskClick?: (task: CalendarTask) => void;
 }
 
 export const CalendarView: React.FC<CalendarViewProps> = ({ tasks, onTaskClick }) => {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { workspaceService, Workspace } from "../services/workspaces";
-import { Folder, Plus, UserPlus, Check, ChevronDown, Building } from "lucide-react";
+import { Plus, UserPlus, Check, ChevronDown, Building } from "lucide-react";
 
 interface WorkspaceSwitcherProps {
   currentWorkspaceId?: string;
@@ -33,7 +33,7 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
       if (list.length > 0 && !currentWorkspaceId) {
         onSelectWorkspace(list[0]);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to load workspaces", err);
     }
   };
@@ -49,8 +49,9 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
       onSelectWorkspace(created);
       setNewWorkspaceName("");
       setShowCreateModal(false);
-    } catch (err: any) {
-      setError(err.response?.data?.error || "Failed to create workspace");
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { error?: string } } };
+      setError(errorObj.response?.data?.error || "Failed to create workspace");
     } finally {
       setLoading(false);
     }
@@ -66,8 +67,9 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
       setInviteEmail("");
       setShowInviteModal(false);
       alert(`Invitation sent to ${inviteEmail}`);
-    } catch (err: any) {
-      setError(err.response?.data?.error || "Failed to invite user");
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { error?: string } } };
+      setError(errorObj.response?.data?.error || "Failed to invite user");
     } finally {
       setLoading(false);
     }

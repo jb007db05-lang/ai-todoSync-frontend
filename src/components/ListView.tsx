@@ -1,5 +1,5 @@
 import React from "react";
-import { CheckCircle2, Clock, AlertCircle, Sparkles, User, Tag } from "lucide-react";
+import { Clock, AlertCircle, Sparkles, User } from "lucide-react";
 
 interface TaskItem {
   id: string;
@@ -22,7 +22,6 @@ interface ListViewProps {
 export const ListView: React.FC<ListViewProps> = ({
   tasks,
   onTaskClick,
-  onStatusChange,
   onDecomposeAi,
 }) => {
   const getPriorityBadge = (priority: string) => {

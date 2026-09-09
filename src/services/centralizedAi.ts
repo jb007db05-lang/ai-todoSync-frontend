@@ -126,23 +126,23 @@ export interface AIDailyScheduleResponse {
 }
 
 export const centralizedAiService = {
-  async listWorkspaceSessions(workspaceId?: string): Promise<any[]> {
-    const res = await api.get<{ data: { sessions: any[] } }>("/ai/workspace-sessions", {
+  async listWorkspaceSessions(workspaceId?: string): Promise<Record<string, unknown>[]> {
+    const res = await api.get<{ data: { sessions: Record<string, unknown>[] } }>("/ai/workspace-sessions", {
       params: { workspaceId },
     });
     return res.data?.data?.sessions || [];
   },
 
-  async createWorkspaceSession(workspaceId?: string, title?: string): Promise<any> {
-    const res = await api.post<{ data: { session: any } }>("/ai/workspace-sessions", {
+  async createWorkspaceSession(workspaceId?: string, title?: string): Promise<Record<string, unknown>> {
+    const res = await api.post<{ data: { session: Record<string, unknown> } }>("/ai/workspace-sessions", {
       workspaceId,
       title,
     });
     return res.data?.data?.session;
   },
 
-  async getWorkspaceSession(workspaceId: string | undefined, sessionId: string): Promise<any> {
-    const res = await api.get<{ data: any }>(`/ai/workspace-sessions/${sessionId}`, {
+  async getWorkspaceSession(workspaceId: string | undefined, sessionId: string): Promise<Record<string, unknown>> {
+    const res = await api.get<{ data: Record<string, unknown> }>(`/ai/workspace-sessions/${sessionId}`, {
       params: { workspaceId },
     });
     return res.data?.data;
@@ -154,8 +154,8 @@ export const centralizedAiService = {
     });
   },
 
-  async listWorkspacePlans(workspaceId?: string): Promise<any[]> {
-    const res = await api.get<{ plans: any[] }>("/ai/workspace-plans", {
+  async listWorkspacePlans(workspaceId?: string): Promise<Record<string, unknown>[]> {
+    const res = await api.get<{ plans: Record<string, unknown>[] }>("/ai/workspace-plans", {
       params: { workspaceId },
     });
     return res.data.plans;
@@ -207,8 +207,8 @@ export const centralizedAiService = {
     return res.data;
   },
 
-  async confirmProjectPlan(workspaceId: string | null, plan: AIProjectPlanResponse): Promise<any> {
-    const res = await api.post<{ project: any }>("/ai/confirm-project-plan", {
+  async confirmProjectPlan(workspaceId: string | null, plan: AIProjectPlanResponse): Promise<Record<string, unknown>> {
+    const res = await api.post<{ project: Record<string, unknown> }>("/ai/confirm-project-plan", {
       workspaceId,
       plan,
     });
@@ -239,15 +239,15 @@ export const centralizedAiService = {
     return res.data.draft;
   },
 
-  async generateNotes(projectId: string, transcript: string): Promise<any> {
-    const res = await api.post<{ notesDraft: any }>("/ai/notes-generation", {
+  async generateNotes(projectId: string, transcript: string): Promise<Record<string, unknown>> {
+    const res = await api.post<{ notesDraft: Record<string, unknown> }>("/ai/notes-generation", {
       projectId,
       transcript,
     });
     return res.data.notesDraft;
   },
 
-  async chatWithAssistant(projectId: string, message: string, chatHistory?: any[]): Promise<string> {
+  async chatWithAssistant(projectId: string, message: string, chatHistory?: unknown[]): Promise<string> {
     const res = await api.post<{ reply: string }>("/ai/chat", {
       projectId,
       message,

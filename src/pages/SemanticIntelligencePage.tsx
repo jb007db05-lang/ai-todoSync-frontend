@@ -249,7 +249,7 @@ export default function SemanticIntelligencePage({
   const [forecast, setForecast] = useState<OperationalForecast | null>(null);
   const [simulation, setSimulation] = useState<OperationalSimulation | null>(null);
   const [simulating, setSimulating] = useState(false);
-  const [projectReport, setProjectReport] = useState<any | null>(null);
+  const [, setProjectReport] = useState<Record<string, unknown> | null>(null);
 
   useEffect(() => {
     setActiveProjectId(selectedProjectId);
@@ -327,7 +327,7 @@ export default function SemanticIntelligencePage({
 
       if (projectFilter) {
         try {
-          const reportRes = await api.get<{ report: any }>(`/analytics/projects/${projectFilter}/report`);
+          const reportRes = await api.get<{ report: Record<string, unknown> }>(`/analytics/projects/${projectFilter}/report`);
           setProjectReport(reportRes.data.report);
         } catch {
           setProjectReport(null);

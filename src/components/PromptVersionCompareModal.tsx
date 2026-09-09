@@ -4,8 +4,6 @@ import {
   GitCompare,
   CheckCircle2,
   AlertTriangle,
-  History,
-  Code,
   ShieldCheck,
   Play,
 } from "lucide-react";

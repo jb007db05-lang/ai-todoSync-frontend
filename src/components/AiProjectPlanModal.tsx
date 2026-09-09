@@ -7,13 +7,7 @@ import {
 import {
   Sparkles,
   Check,
-  Layers,
-  Users,
-  ShieldAlert,
-  Clock,
-  ArrowRight,
   X,
-  FileText,
   Plus,
   Edit3,
   BookOpen,
@@ -37,7 +31,7 @@ interface AiProjectPlanModalProps {
   isOpen: boolean;
   workspaceId?: string;
   onClose: () => void;
-  onProjectCreated: (project: any) => void;
+  onProjectCreated: (project: unknown) => void;
 }
 
 export const AiProjectPlanModal: React.FC<AiProjectPlanModalProps> = ({
@@ -51,8 +45,8 @@ export const AiProjectPlanModal: React.FC<AiProjectPlanModalProps> = ({
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
 
   // Conversation Stream State
-  const [chatMessages, setChatMessages] = useState<
-    Array<{ role: "user" | "ai"; content: string; plan?: AIProjectPlanResponse; delta?: any }>
+  const [, setChatMessages] = useState<
+    Array<{ role: "user" | "ai"; content: string; plan?: AIProjectPlanResponse; delta?: Record<string, unknown> }>
   >([]);
   const [prompt, setPrompt] = useState("");
   const [context, setContext] = useState("");
@@ -74,7 +68,7 @@ export const AiProjectPlanModal: React.FC<AiProjectPlanModalProps> = ({
   const [selectedArtifactType, setSelectedArtifactType] = useState<"project_plan" | "prd" | "tech_spec" | "timeline" | "risks">("project_plan");
 
   // Saved Workspace Artifacts
-  const [savedWorkspacePlans, setSavedWorkspacePlans] = useState<any[]>([]);
+  const [savedWorkspacePlans, setSavedWorkspacePlans] = useState<Record<string, unknown>[]>([]);
   const [copiedText, setCopiedText] = useState(false);
 
   // Model Selector State
@@ -96,7 +90,7 @@ export const AiProjectPlanModal: React.FC<AiProjectPlanModalProps> = ({
       setSavedWorkspacePlans(plans);
 
       if (historySessions && historySessions.length > 0) {
-        const formattedSessions = historySessions.map((s: any) => ({
+        const formattedSessions = historySessions.map((s: { id: string; title?: string; createdAt?: string }) => ({
           id: s.id,
           title: s.title || "Planning Session",
           createdAt: s.createdAt ? new Date(s.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Recent",
@@ -164,7 +158,7 @@ export const AiProjectPlanModal: React.FC<AiProjectPlanModalProps> = ({
       const detail = await centralizedAiService.getWorkspaceSession(workspaceId, sess.id);
       if (detail && detail.messages && detail.messages.length > 0) {
         setChatMessages(
-          detail.messages.map((m: any) => ({
+          detail.messages.map((m: { role: string; content: string; metadata?: { plan?: AIProjectPlanResponse; delta?: AIPlanModificationResponse["delta"] } }) => ({
             role: m.role === "USER" ? "user" : "ai",
             content: m.content,
             plan: m.metadata?.plan,
@@ -224,8 +218,9 @@ export const AiProjectPlanModal: React.FC<AiProjectPlanModalProps> = ({
         },
       ]);
       setPrompt("");
-    } catch (err: any) {
-      setError(err.response?.data?.error || err.message || "Failed to generate project plan");
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { error?: string } }; message?: string };
+      setError(errorObj.response?.data?.error || errorObj.message || "Failed to generate project plan");
     } finally {
       setLoading(false);
     }
@@ -262,8 +257,9 @@ export const AiProjectPlanModal: React.FC<AiProjectPlanModalProps> = ({
         },
       ]);
       setChangeRequest("");
-    } catch (err: any) {
-      setError(err.response?.data?.error || err.message || "Failed to update project plan");
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { error?: string } }; message?: string };
+      setError(errorObj.response?.data?.error || errorObj.message || "Failed to update project plan");
     } finally {
       setModifying(false);
     }
@@ -278,8 +274,9 @@ export const AiProjectPlanModal: React.FC<AiProjectPlanModalProps> = ({
       setShowApprovalDialog(false);
       onProjectCreated(project);
       onClose();
-    } catch (err: any) {
-      setError(err.response?.data?.error || err.message || "Failed to materialize project");
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { error?: string } }; message?: string };
+      setError(errorObj.response?.data?.error || errorObj.message || "Failed to materialize project");
     } finally {
       setConfirming(false);
     }
@@ -373,7 +370,7 @@ export const AiProjectPlanModal: React.FC<AiProjectPlanModalProps> = ({
                   value={`${selectedProvider}:${selectedModel}`}
                   onChange={(e) => {
                     const [p, m] = e.target.value.split(":");
-                    setSelectedProvider(p as any);
+                    setSelectedProvider(p as "gemini" | "openai" | "anthropic");
                     setSelectedModel(m);
                   }}
                   className="bg-transparent text-olive-950 font-bold text-xs focus:outline-none cursor-pointer pr-1"

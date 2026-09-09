@@ -35,8 +35,9 @@ export const AiTaskBreakdownModal: React.FC<AiTaskBreakdownModalProps> = ({
     try {
       const res = await centralizedAiService.decomposeTask(taskId, title, description);
       setBreakdown(res);
-    } catch (err: any) {
-      setError(err.response?.data?.error || err.message || "Failed to breakdown task");
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { error?: string } }; message?: string };
+      setError(errorObj.response?.data?.error || errorObj.message || "Failed to breakdown task");
     } finally {
       setLoading(false);
     }

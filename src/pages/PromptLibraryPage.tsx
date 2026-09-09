@@ -5,16 +5,11 @@ import {
   FolderPlus,
   Search,
   Folder as FolderIcon,
-  Tag,
   Star,
   GitBranch,
   Layers,
-  Code,
-  FileCode,
   Trash2,
   Edit,
-  Filter,
-  CheckCircle,
 } from "lucide-react";
 import {
   promptService,

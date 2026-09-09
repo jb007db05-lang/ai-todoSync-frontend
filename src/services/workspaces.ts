@@ -56,7 +56,7 @@ export const workspaceService = {
     return res.data.workspace;
   },
 
-  async updateWorkspace(id: string, payload: { name?: string; settings?: any }): Promise<Workspace> {
+  async updateWorkspace(id: string, payload: { name?: string; settings?: Record<string, unknown> }): Promise<Workspace> {
     const res = await api.patch<{ workspace: Workspace }>(`/workspaces/${id}`, payload);
     return res.data.workspace;
   },

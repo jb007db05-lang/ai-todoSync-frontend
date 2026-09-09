@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import centralizedAiService, { AIDailyScheduleResponse } from "../services/centralizedAi";
-import { Sparkles, Calendar, Clock, CheckCircle2, X } from "lucide-react";
+import { Sparkles, Calendar, X } from "lucide-react";
 
 interface AiDailyPlannerModalProps {
   isOpen: boolean;
@@ -22,8 +22,9 @@ export const AiDailyPlannerModal: React.FC<AiDailyPlannerModalProps> = ({ isOpen
     try {
       const res = await centralizedAiService.planDailyWork(workloadContext);
       setSchedule(res);
-    } catch (err: any) {
-      setError(err.response?.data?.error || err.message || "Failed to generate daily schedule");
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { error?: string } }; message?: string };
+      setError(errorObj.response?.data?.error || errorObj.message || "Failed to generate daily schedule");
     } finally {
       setLoading(false);
     }

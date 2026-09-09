@@ -1,5 +1,5 @@
 import React from "react";
-import { GitCommitHorizontal, Milestone, CheckCircle2, Clock } from "lucide-react";
+import { GitCommitHorizontal, Clock } from "lucide-react";
 
 interface TimelineTask {
   id: string;
@@ -29,7 +29,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ tasks, onTaskClick }
         </div>
       ) : (
         <div className="relative pl-6 border-l-2 border-slate-800 space-y-6">
-          {tasks.map((task, idx) => (
+          {tasks.map((task) => (
             <div
               key={task.id}
               onClick={() => onTaskClick?.(task)}
