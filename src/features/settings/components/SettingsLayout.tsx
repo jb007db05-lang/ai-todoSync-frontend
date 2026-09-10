@@ -2,8 +2,9 @@ import React from "react";
 import { UserCircle, Settings2, TimerReset, Sparkles, Smartphone } from "lucide-react";
 import { ProfileSettings } from "./ProfileSettings";
 import { ChatGPTIntegrationSettings } from "./ChatGPTIntegrationSettings";
+import { CompanionDevicesList } from "./CompanionDevicesList";
+import { CompanionDeviceModal } from "./CompanionDeviceModal";
 import { WorkspaceSettingsPanel } from "@/features/workspaces";
-import ManageDevicesModal from "@/components/ManageDevicesModal";
 import SectionCard from "@/components/SectionCard";
 import type { TaskPriority } from "@/types/task";
 import type { AuthProfile } from "@/store/authSlice";
@@ -23,7 +24,7 @@ interface SettingsLayoutProps {
   companionDevices: CompanionDevice[];
   isCompanionModalOpen: boolean;
   setIsCompanionModalOpen: (open: boolean) => void;
-  isGeneratingCompanionKey: boolean;
+  setSelectedDeviceForRegen: (device: CompanionDevice | null) => void;
   isLoadingCompanionDevices: boolean;
   slaConfigs: Record<TaskPriority, number>;
   isLoadingSla: boolean;
@@ -32,9 +33,10 @@ interface SettingsLayoutProps {
   onCopySchema: () => void;
   onCopyInstructions: () => void;
   onRegenerateKey: () => void;
-  onGenerateCompanionKey: () => void;
+  createCompanionDeviceAndKey: (name: string, type: string) => Promise<{ pairingKey: string; device: CompanionDevice }>;
   onRevokeCompanionDevice: (id: string) => void;
   onSaveSlaConfig: (priority: TaskPriority, hours: number) => void;
+  fetchCompanionDevices: () => Promise<void>;
   projects: Project[];
 }
 
@@ -51,7 +53,7 @@ export const SettingsLayout: React.FC<SettingsLayoutProps> = ({
   companionDevices,
   isCompanionModalOpen,
   setIsCompanionModalOpen,
-  isGeneratingCompanionKey,
+  setSelectedDeviceForRegen,
   isLoadingCompanionDevices,
   slaConfigs,
   isLoadingSla,
@@ -60,9 +62,10 @@ export const SettingsLayout: React.FC<SettingsLayoutProps> = ({
   onCopySchema,
   onCopyInstructions,
   onRegenerateKey,
-  onGenerateCompanionKey,
+  createCompanionDeviceAndKey,
   onRevokeCompanionDevice,
   onSaveSlaConfig,
+  fetchCompanionDevices,
 }) => {
   return (
     <div className="space-y-6 font-sans">
@@ -196,56 +199,34 @@ export const SettingsLayout: React.FC<SettingsLayoutProps> = ({
       )}
 
       {activeTab === "companion" && (
-        <SectionCard>
-          <h3 className="text-sm font-bold text-olive-950 mb-1">Companion Mobile & Desktop Devices</h3>
-          <p className="text-xs text-olive-600 mb-4">Pair and manage companion mobile apps or desktop notification clients.</p>
-          <div className="space-y-4 text-xs">
-            <div className="flex items-center justify-between">
-              <span className="text-olive-700">Active Companion Devices: <strong className="text-olive-950">{companionDevices.length}</strong></span>
-              <button
-                type="button"
-                onClick={onGenerateCompanionKey}
-                disabled={isGeneratingCompanionKey}
-                className="px-3.5 py-1.5 rounded bg-olive-800 hover:bg-olive-900 text-white text-xs font-semibold transition shadow-xs cursor-pointer disabled:opacity-50"
-              >
-                {isGeneratingCompanionKey ? "Generating..." : "Generate Companion Key"}
-              </button>
-            </div>
-
-            {isLoadingCompanionDevices ? (
-              <div className="p-6 text-center text-olive-500 text-xs">Loading companion devices...</div>
-            ) : companionDevices.length === 0 ? (
-              <div className="p-6 text-center text-olive-500 text-xs rounded border border-dashed border-olive-300 bg-olive-50/30">
-                No companion devices currently paired.
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {companionDevices.map((dev) => (
-                  <div key={dev.id} className="flex items-center justify-between p-3 rounded border border-olive-200 bg-white">
-                    <div className="space-y-0.5">
-                      <h5 className="font-bold text-olive-950">{dev.deviceName}</h5>
-                      <span className="text-[10px] text-olive-600 uppercase font-mono">{dev.deviceType} • {dev.status}</span>
-                    </div>
-                    {dev.status === "active" && (
-                      <button
-                        type="button"
-                        onClick={() => onRevokeCompanionDevice(dev.id)}
-                        className="px-3 py-1 rounded border border-rose-200 hover:bg-rose-50 text-rose-700 font-medium text-xs transition cursor-pointer"
-                      >
-                        Revoke
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </SectionCard>
+        <CompanionDevicesList
+          devices={companionDevices}
+          isLoading={isLoadingCompanionDevices}
+          onOpenCreateModal={() => {
+            setSelectedDeviceForRegen(null);
+            setIsCompanionModalOpen(true);
+          }}
+          onOpenPairModal={() => {
+            setSelectedDeviceForRegen(null);
+            setIsCompanionModalOpen(true);
+          }}
+          onRegenerateKey={(device) => {
+            setSelectedDeviceForRegen(device);
+            setIsCompanionModalOpen(true);
+          }}
+          onRevokeDevice={onRevokeCompanionDevice}
+        />
       )}
 
       {isCompanionModalOpen && (
-        <ManageDevicesModal
-          onClose={() => setIsCompanionModalOpen(false)}
+        <CompanionDeviceModal
+          isOpen={isCompanionModalOpen}
+          onClose={() => {
+            setIsCompanionModalOpen(false);
+            setSelectedDeviceForRegen(null);
+          }}
+          onCreateDevice={createCompanionDeviceAndKey}
+          onRefreshDevices={fetchCompanionDevices}
         />
       )}
     </div>

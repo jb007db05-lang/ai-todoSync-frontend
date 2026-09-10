@@ -14,6 +14,7 @@ import {
   updateProfileThunk,
   logout as logoutAction,
   clearError as clearErrorAction,
+  setError as setErrorAction,
   setTokens,
   setRememberMe
 } from '@/store/authSlice';
@@ -28,6 +29,7 @@ interface AuthContextValue {
   tempEmail2fa: string | null;
   login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
   loginWithCompanionKey: (key: string) => Promise<void>;
+  loginWithCompanionQr: (payload: { sessionId: string; token: string; device?: Record<string, unknown> }) => Promise<void>;
   authenticateWithToken: (token: string) => Promise<void>;
   register: (payload: { email: string; password: string; firstName: string; lastName: string }) => Promise<void>;
   logout: () => void;
@@ -132,17 +134,41 @@ function AuthProvider({ children }: AuthProviderProps): JSX.Element {
   };
 
   const loginWithCompanionKey = async (key: string): Promise<void> => {
-    // Companion device login does not support 2FA or persistent refresh tokens on primary
-    // but let's allow basic session setup.
-    await dispatch(setRememberMe(false));
-    const response = await api.post<AuthResponse>('/auth/companion-login', { key });
-    dispatch(setTokens({
-      token: response.data.data.token,
-      refreshToken: response.data.data.token, // Fallback
-      user: response.data.data.user,
-      session: response.data.data.session,
-      rememberMe: false
-    }));
+    try {
+      await dispatch(setRememberMe(false));
+      const response = await api.post<AuthResponse>('/auth/companion-login', { key });
+      dispatch(setTokens({
+        token: response.data.data.token,
+        refreshToken: response.data.data.token,
+        user: response.data.data.user,
+        session: response.data.data.session,
+        rememberMe: false
+      }));
+    } catch (err) {
+      const errorObj = err as { message?: string; response?: { data?: { message?: string } } };
+      const msg = errorObj.response?.data?.message || errorObj.message || 'Companion key pairing failed';
+      dispatch(setErrorAction(msg));
+      throw new Error(msg, { cause: err });
+    }
+  };
+
+  const loginWithCompanionQr = async (payload: { sessionId: string; token: string; device?: Record<string, unknown> }): Promise<void> => {
+    try {
+      await dispatch(setRememberMe(false));
+      const response = await api.post<AuthResponse>('/companion/pair/qr', payload);
+      dispatch(setTokens({
+        token: response.data.data.token,
+        refreshToken: response.data.data.token,
+        user: response.data.data.user,
+        session: response.data.data.session,
+        rememberMe: false
+      }));
+    } catch (err) {
+      const errorObj = err as { message?: string; response?: { data?: { message?: string } } };
+      const msg = errorObj.response?.data?.message || errorObj.message || 'QR pairing failed. Please try scanning again.';
+      dispatch(setErrorAction(msg));
+      throw new Error(msg, { cause: err });
+    }
   };
 
   const authenticateWithToken = useCallback(
@@ -177,6 +203,7 @@ function AuthProvider({ children }: AuthProviderProps): JSX.Element {
       tempEmail2fa,
       login,
       loginWithCompanionKey,
+      loginWithCompanionQr,
       register,
       logout,
       refreshUser,

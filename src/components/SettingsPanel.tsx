@@ -26,7 +26,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ projects }) => {
       companionDevices={settings.companionDevices}
       isCompanionModalOpen={settings.isCompanionModalOpen}
       setIsCompanionModalOpen={settings.setIsCompanionModalOpen}
-      isGeneratingCompanionKey={settings.isGeneratingCompanionKey}
+      setSelectedDeviceForRegen={settings.setSelectedDeviceForRegen}
       isLoadingCompanionDevices={settings.isLoadingCompanionDevices}
       slaConfigs={settings.slaConfigs}
       isLoadingSla={settings.isLoadingSla}
@@ -35,9 +35,10 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ projects }) => {
       onCopySchema={settings.handleCopySchema}
       onCopyInstructions={settings.handleCopyInstructions}
       onRegenerateKey={settings.handleRegenerateKey}
-      onGenerateCompanionKey={settings.handleGenerateCompanionKey}
+      createCompanionDeviceAndKey={settings.createCompanionDeviceAndKey}
       onRevokeCompanionDevice={settings.handleRevokeCompanionDevice}
       onSaveSlaConfig={settings.handleSaveSlaConfig}
+      fetchCompanionDevices={settings.fetchCompanionDevices}
       projects={projects}
     />
   );
