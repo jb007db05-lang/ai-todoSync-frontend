@@ -11,7 +11,7 @@ export interface CompanionDevice {
   id: string;
   deviceName: string;
   deviceType: string;
-  status: "active" | "revoked" | "pending";
+  status: "pending" | "active" | "revoked";
   createdAt?: string;
   updatedAt?: string;
   revokedAt?: string | null;
@@ -30,9 +30,8 @@ export function useSettings() {
   const [showKey, setShowKey] = useState(false);
 
   const [companionDevices, setCompanionDevices] = useState<CompanionDevice[]>([]);
-  const [companionKey, setCompanionKey] = useState<string>("");
   const [isCompanionModalOpen, setIsCompanionModalOpen] = useState(false);
-  const [isGeneratingCompanionKey, setIsGeneratingCompanionKey] = useState(false);
+  const [selectedDeviceForRegen, setSelectedDeviceForRegen] = useState<CompanionDevice | null>(null);
   const [isLoadingCompanionDevices, setIsLoadingCompanionDevices] = useState(false);
 
   const [slaConfigs, setSlaConfigs] = useState<Record<TaskPriority, number>>({
@@ -48,7 +47,7 @@ export function useSettings() {
     try {
       setIsLoadingCompanionDevices(true);
       const res = await api.get<{ message: string; data: { devices: CompanionDevice[] } }>("/companion/devices");
-      setCompanionDevices(res.data.data.devices || []);
+      setCompanionDevices(res.data.data?.devices || []);
     } catch (err) {
       console.error("Failed to load companion devices", err);
     } finally {
@@ -126,25 +125,48 @@ export function useSettings() {
     }
   };
 
-  const handleGenerateCompanionKey = async () => {
-    try {
-      setIsGeneratingCompanionKey(true);
-      const res = await api.post<{ message: string; data: { key: string; maxCompanionDevices: number; activeCompanionDevices: number } }>("/companion/key");
-      setCompanionKey(res.data.data.key);
-      setIsCompanionModalOpen(true);
-      showToast({ variant: "success", message: "Companion Key generated" });
-    } catch (err: unknown) {
-      const errorObj = err as { response?: { data?: { message?: string } } };
-      showToast({ variant: "error", message: errorObj.response?.data?.message || "Failed to generate companion key" });
-    } finally {
-      setIsGeneratingCompanionKey(false);
-    }
+  const createCompanionDeviceAndKey = async (deviceName: string, deviceType: string) => {
+    const res = await api.post<{ message: string; device: CompanionDevice; pairingKey: string }>(
+      "/companion/devices",
+      { deviceName, deviceType }
+    );
+    showToast({ variant: "success", message: "Companion key generated. Save it before closing!" });
+    fetchCompanionDevices();
+    return { device: res.data.device, pairingKey: res.data.pairingKey };
+  };
+
+  const pairCompanionDeviceWithKey = async (pairingKey: string) => {
+    await api.post("/companion/pair/key", { pairingKey });
+    showToast({ variant: "success", message: "Companion device paired successfully" });
+    fetchCompanionDevices();
+  };
+
+  const pairCompanionDeviceWithQr = async (qrToken: string) => {
+    await api.post("/companion/pair/qr", { qrToken });
+    showToast({ variant: "success", message: "Companion device paired via QR code" });
+    fetchCompanionDevices();
+  };
+
+  const getCompanionQrToken = async (deviceId: string) => {
+    const res = await api.post<{ message: string; data: { qrToken: string; payload: string } }>(
+      `/companion/devices/${deviceId}/qr-token`
+    );
+    return res.data.data;
+  };
+
+  const regenerateCompanionKey = async (deviceId: string) => {
+    const res = await api.post<{ message: string; pairingKey: string }>(
+      `/companion/devices/${deviceId}/regenerate`
+    );
+    showToast({ variant: "success", message: "Companion key regenerated" });
+    fetchCompanionDevices();
+    return { pairingKey: res.data.pairingKey };
   };
 
   const handleRevokeCompanionDevice = async (deviceId: string) => {
     const isConfirmed = await confirm({
-      title: "Revoke Device?",
-      message: "Are you sure you want to revoke this device? It will lose access to Sync Todo until re-authenticated.",
+      title: "Revoke Companion Device?",
+      message: "Are you sure you want to revoke this device? It will lose access until re-authenticated.",
       confirmText: "Revoke Device",
       type: "danger",
     });
@@ -186,19 +208,24 @@ export function useSettings() {
     showKey,
     setShowKey,
     companionDevices,
-    companionKey,
     isCompanionModalOpen,
     setIsCompanionModalOpen,
-    isGeneratingCompanionKey,
+    selectedDeviceForRegen,
+    setSelectedDeviceForRegen,
     isLoadingCompanionDevices,
     slaConfigs,
     isLoadingSla,
     isSavingSla,
+    fetchCompanionDevices,
     handleCopyApiKey,
     handleCopySchema,
     handleCopyInstructions,
     handleRegenerateKey,
-    handleGenerateCompanionKey,
+    createCompanionDeviceAndKey,
+    pairCompanionDeviceWithKey,
+    pairCompanionDeviceWithQr,
+    getCompanionQrToken,
+    regenerateCompanionKey,
     handleRevokeCompanionDevice,
     handleSaveSlaConfig,
   };

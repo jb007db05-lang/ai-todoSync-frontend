@@ -1,8 +1,9 @@
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Eye, EyeOff, Shield, Smartphone } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, Key, QrCode, Shield, Smartphone } from 'lucide-react';
 
 import { useAuth } from '@/context/AuthContext';
+import { QRScanner } from '@/features/settings/components/QRScanner';
 import api from '@/services/api';
 import logoImg from '@/assets/logo.png';
 
@@ -20,6 +21,7 @@ function LoginPage(): JSX.Element {
   const {
     login,
     loginWithCompanionKey,
+    loginWithCompanionQr,
     loading,
     error,
     user,
@@ -30,6 +32,7 @@ function LoginPage(): JSX.Element {
   } = useAuth();
 
   const [loginMode, setLoginMode] = useState<'account' | 'companion'>('account');
+  const [companionMethod, setCompanionMethod] = useState<'key' | 'qr'>('key');
   const [email, setEmail] = useState<string>(emailParam);
   const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
@@ -54,6 +57,41 @@ function LoginPage(): JSX.Element {
   const nextPath = tokenParam
     ? `/accept-invitation?token=${tokenParam}`
     : ((location.state as { from?: { pathname?: string } } | null)?.from?.pathname ?? '/');
+
+  // Automatic companion device login when scanning URL with companion query parameters
+  useEffect(() => {
+    const sessionIdParam = searchParams.get('sessionId');
+    const qrTokenParam = searchParams.get('token') || searchParams.get('qrToken');
+
+    if (sessionIdParam && qrTokenParam) {
+      setLoginMode('companion');
+      setCompanionMethod('qr');
+
+      const url = new URL(window.location.href);
+      url.searchParams.delete('sessionId');
+      url.searchParams.delete('token');
+      url.searchParams.delete('qrToken');
+      url.searchParams.delete('mode');
+      window.history.replaceState({}, '', url.toString());
+
+      const userAgent = navigator.userAgent;
+      let type = 'mobile';
+      if (/ipad|tablet/i.test(userAgent)) type = 'tablet';
+      else if (/macintosh|windows|linux/i.test(userAgent) && !/mobile/i.test(userAgent)) type = 'desktop';
+
+      loginWithCompanionQr({
+        sessionId: sessionIdParam,
+        token: qrTokenParam,
+        device: { type, userAgent }
+      })
+        .then(() => {
+          navigate(nextPath, { replace: true });
+        })
+        .catch((err) => {
+          console.error('URL companion pairing failed:', err);
+        });
+    }
+  }, [searchParams, loginWithCompanionQr, navigate, nextPath]);
 
   const apiBase = useMemo(
     () => (import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api').replace(/\/$/, ''),
@@ -92,6 +130,24 @@ function LoginPage(): JSX.Element {
     event.preventDefault();
     try {
       await loginWithCompanionKey(companionKey);
+      navigate(nextPath, { replace: true });
+    } catch {
+      // Handled by AuthContext
+    }
+  };
+
+  const handleQrScanSuccess = async (qrData: { sessionId: string; token: string }): Promise<void> => {
+    try {
+      const userAgent = navigator.userAgent;
+      let type = 'mobile';
+      if (/ipad|tablet/i.test(userAgent)) type = 'tablet';
+      else if (/macintosh|windows|linux/i.test(userAgent) && !/mobile/i.test(userAgent)) type = 'desktop';
+
+      await loginWithCompanionQr({
+        sessionId: qrData.sessionId,
+        token: qrData.token,
+        device: { type, userAgent }
+      });
       navigate(nextPath, { replace: true });
     } catch {
       // Handled by AuthContext
@@ -512,31 +568,71 @@ function LoginPage(): JSX.Element {
                   </button>
                 </form>
               ) : (
-                <form className="grid gap-5" onSubmit={(event) => void handleCompanionSubmit(event)}>
-                  <label className={labelCls}>
-                    <span>Companion Device ID</span>
-                    <input
-                      className={inputCls}
-                      name="companion-key"
-                      onChange={(event) => setCompanionKey(event.target.value)}
-                      placeholder="Paste companion device ID"
-                      required
-                      type="password"
-                      value={companionKey}
-                    />
-                  </label>
-                  <p className="text-olive-500 m-0 text-xs leading-relaxed">
-                    Generate a companion device ID from your primary device in settings.
-                  </p>
-                  {error ? <p className="text-red-600 m-0 text-xs font-medium text-center">{error}</p> : null}
-                  <button
-                    className="bg-olive-900 text-white rounded-xl py-3.5 text-sm font-bold hover:bg-olive-800 shadow-md transition-all active:scale-[0.98] disabled:opacity-50"
-                    disabled={loading}
-                    type="submit"
-                  >
-                    {loading ? 'Authorizing...' : 'Authorize Device'}
-                  </button>
-                </form>
+                <div className="grid gap-5">
+                  <div className="flex p-1 bg-olive-100/50 border border-olive-200/30 rounded-xl gap-1">
+                    <button
+                      type="button"
+                      className={[
+                        'flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all',
+                        companionMethod === 'key'
+                          ? 'bg-white text-olive-950 shadow-sm border border-olive-100'
+                          : 'text-olive-500 hover:text-olive-700'
+                      ].join(' ')}
+                      onClick={() => setCompanionMethod('key')}
+                    >
+                      <Key size={14} /> Pairing Key
+                    </button>
+                    <button
+                      type="button"
+                      className={[
+                        'flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all',
+                        companionMethod === 'qr'
+                          ? 'bg-white text-olive-950 shadow-sm border border-olive-100'
+                          : 'text-olive-500 hover:text-olive-700'
+                      ].join(' ')}
+                      onClick={() => setCompanionMethod('qr')}
+                    >
+                      <QrCode size={14} /> Scan QR
+                    </button>
+                  </div>
+
+                  {companionMethod === 'key' ? (
+                    <form className="grid gap-4" onSubmit={(event) => void handleCompanionSubmit(event)}>
+                      <label className={labelCls}>
+                        <span>Enter Pairing Key</span>
+                        <input
+                          className={`${inputCls} font-mono text-xs`}
+                          name="companion-key"
+                          onChange={(event) => setCompanionKey(event.target.value)}
+                          placeholder="cmp_..."
+                          required
+                          type="password"
+                          value={companionKey}
+                        />
+                      </label>
+                      <p className="text-olive-500 m-0 text-xs leading-relaxed">
+                        Enter the one-time pairing key generated on your primary device in Settings.
+                      </p>
+                      {error ? <p className="text-red-600 m-0 text-xs font-medium text-center">{error}</p> : null}
+                      <button
+                        className="bg-olive-900 text-white rounded-xl py-3.5 text-sm font-bold hover:bg-olive-800 shadow-md transition-all active:scale-[0.98] disabled:opacity-50"
+                        disabled={loading || !companionKey.trim()}
+                        type="submit"
+                      >
+                        {loading ? 'Connecting...' : 'Connect Companion Device'}
+                      </button>
+                    </form>
+                  ) : (
+                    <div className="grid gap-3">
+                      <QRScanner
+                        onScanSuccess={(qrData) => void handleQrScanSuccess(qrData)}
+                        onFallbackToKey={() => setCompanionMethod('key')}
+                        isLoading={loading}
+                      />
+                      {error ? <p className="text-red-600 m-0 text-xs font-medium text-center">{error}</p> : null}
+                    </div>
+                  )}
+                </div>
               )}
 
               <p className="text-olive-500 m-0 text-xs text-center">

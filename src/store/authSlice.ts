@@ -159,6 +159,9 @@ const authSlice = createSlice({
     clearError(state) {
       state.error = null;
     },
+    setError(state, action: PayloadAction<string>) {
+      state.error = action.payload;
+    },
     setTokens(state, action: PayloadAction<{ token: string; refreshToken: string; user: AuthProfile; session?: AuthSession; rememberMe: boolean }>) {
       state.rememberMe = action.payload.rememberMe;
       saveTokens(state, action.payload);
@@ -297,5 +300,5 @@ function clearTokens(state: AuthState) {
   sessionStorage.removeItem('todo_session');
 }
 
-export const { logout, clearError, setTokens, setRememberMe } = authSlice.actions;
+export const { logout, clearError, setError, setTokens, setRememberMe } = authSlice.actions;
 export default authSlice.reducer;
