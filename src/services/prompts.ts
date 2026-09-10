@@ -23,6 +23,13 @@ export interface PromptFolder {
   createdAt?: string;
 }
 
+export interface PromptParametersPayload {
+  temperature?: number;
+  maxTokens?: number;
+  topP?: number;
+  responseFormat?: "text" | "json";
+}
+
 export interface PromptItem {
   _id: string;
   workspaceId: string;
@@ -36,6 +43,9 @@ export interface PromptItem {
   body: string;
   messages?: IPromptMessage[];
   variables: IPromptVariable[];
+  provider?: string;
+  modelName?: string;
+  parameters?: PromptParametersPayload;
   visibility: "private" | "project" | "organization";
   createdBy: {
     _id: string;
@@ -63,6 +73,9 @@ export interface PromptVersion {
   body: string;
   messages?: IPromptMessage[];
   variables: IPromptVariable[];
+  provider?: string;
+  modelName?: string;
+  parameters?: PromptParametersPayload;
   changedBy: {
     _id: string;
     name: string;
@@ -81,6 +94,9 @@ export interface CreatePromptPayload {
   body: string;
   messages?: IPromptMessage[];
   variables?: IPromptVariable[];
+  provider?: string;
+  modelName?: string;
+  parameters?: PromptParametersPayload;
   folderId?: string | null;
   visibility?: "private" | "project" | "organization";
   isTemplate?: boolean;
@@ -94,6 +110,9 @@ export interface UpdatePromptPayload {
   body?: string;
   messages?: IPromptMessage[];
   variables?: IPromptVariable[];
+  provider?: string;
+  modelName?: string;
+  parameters?: PromptParametersPayload;
   folderId?: string | null;
   visibility?: "private" | "project" | "organization";
   changeNote?: string;
@@ -247,7 +266,7 @@ export interface PlaygroundRunPayload {
   versionNumber?: number;
   body?: string;
   messages?: IPromptMessage[];
-  variables?: Record<string, any>;
+  variables?: Record<string, unknown>;
   provider?: string;
   modelName?: string;
   parameters?: {

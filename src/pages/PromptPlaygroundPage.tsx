@@ -4,30 +4,19 @@ import {
   Play,
   Copy,
   Check,
-  Sparkles,
-  GitCompare,
-  Sliders,
   Code2,
   Save,
-  Clock,
-  Layers,
-  Cpu,
   Zap,
-  Eye,
   AlertCircle,
   FileText,
-  ChevronRight,
-  ChevronDown,
   Plus,
   Search,
   Folder as FolderIcon,
   FolderOpen,
   X,
-  RotateCcw,
   SlidersHorizontal,
-  FolderPlus,
   Trash2,
-  MessageSquare,
+  Settings,
 } from "lucide-react";
 import {
   promptService,
@@ -39,19 +28,24 @@ import {
   PlaygroundRunResult,
 } from "@/services/prompts";
 
+export interface PromptParameters {
+  temperature: number;
+  maxTokens: number;
+  topP: number;
+  responseFormat: "text" | "json";
+  provider: string;
+  modelName: string;
+}
+
 export interface PlaygroundRunItem {
   id: string;
   timestamp: string;
   promptName: string;
   versionNumber?: number;
-  variableValues: Record<string, any>;
+  variableValues: Record<string, unknown>;
   provider: string;
   modelName: string;
-  parameters: {
-    temperature: number;
-    maxTokens: number;
-    topP: number;
-  };
+  parameters: PromptParameters;
   resolvedPrompt: string | IPromptMessage[];
   output: string;
   latencyMs: number;
@@ -66,14 +60,24 @@ interface PromptPlaygroundPageProps {
   workspaceId: string;
 }
 
+const DEFAULT_PARAMETERS: PromptParameters = {
+  temperature: 0.7,
+  maxTokens: 2048,
+  topP: 0.95,
+  responseFormat: "text",
+  provider: "gemini",
+  modelName: "gemini-3.6-flash",
+};
+
 export const PromptPlaygroundPage: React.FC<PromptPlaygroundPageProps> = ({
   workspaceId,
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const urlPromptId = searchParams.get("promptId");
   const urlVersionNum = searchParams.get("version");
+  const urlIsCreate = searchParams.get("create") === "true";
 
-  // Folders & Prompts Data State
+  // Data State
   const [folders, setFolders] = useState<PromptFolder[]>([]);
   const [prompts, setPrompts] = useState<PromptItem[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -84,40 +88,38 @@ export const PromptPlaygroundPage: React.FC<PromptPlaygroundPageProps> = ({
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null);
   const [activePrompt, setActivePrompt] = useState<PromptItem | null>(null);
   const [versionsList, setVersionsList] = useState<PromptVersion[]>([]);
-  const [selectedVersionNum, setSelectedVersionNum] = useState<number>(1);
-  const [activeVersionDoc, setActiveVersionDoc] = useState<PromptVersion | null>(null);
+  const [selectedVersionNum, setSelectedVersionNum] = useState<number>(0);
 
-  // Inline Prompt Editor Mode vs View Mode State
+  // Tabs & Editing State
+  const [activeTab, setActiveTab] = useState<"prompt" | "versions" | "variables" | "test">("prompt");
   const [isEditingPromptContent, setIsEditingPromptContent] = useState<boolean>(false);
   const [isCreatingNewPrompt, setIsCreatingNewPrompt] = useState<boolean>(false);
 
-  // Editable Form State (New or Edit)
-  const [newPromptName, setNewPromptName] = useState<string>("");
-  const [newPromptDesc, setNewPromptDesc] = useState<string>("");
-  const [newPromptCategory, setNewPromptCategory] = useState<string>("general");
-  const [newPromptFolderId, setNewPromptFolderId] = useState<string>("");
-  const [newPromptTags, setNewPromptTags] = useState<string>("");
-
-  // Template Body & Multi-role Messages State
+  // Working Versioned State (Draft)
   const [editorMode, setEditorMode] = useState<"blocks" | "raw">("blocks");
   const [body, setBody] = useState<string>("");
   const [messages, setMessages] = useState<IPromptMessage[]>([
-    { role: "system", content: "You are a senior developer assistant." },
-    { role: "user", content: "Analyze the following module: {{module_name}}" },
+    { role: "system", content: "You are a senior software developer assistant." },
+    { role: "user", content: "Analyze code module {{module_name}} in language {{language}}." },
   ]);
 
-  // Variables Schema & Runtime Test Values
+  // Variables Schema & Runtime Test Values (Draft)
   const [variablesSchema, setVariablesSchema] = useState<IPromptVariable[]>([]);
-  const [runtimeValues, setRuntimeValues] = useState<Record<string, any>>({});
-  const [previewMode, setPreviewMode] = useState<"template" | "resolved">("resolved");
+  const [runtimeValues, setRuntimeValues] = useState<Record<string, unknown>>({});
+  const [previewMode, setPreviewMode] = useState<"template" | "resolved">("template");
 
-  // Right Parameters Drawer State
-  const [isParametersDrawerOpen, setIsParametersDrawerOpen] = useState<boolean>(false);
-  const [provider, setProvider] = useState<string>("gemini");
-  const [modelName, setModelName] = useState<string>("gemini-3.6-flash");
-  const [temperature, setTemperature] = useState<number>(0.7);
-  const [maxTokens, setMaxTokens] = useState<number>(2048);
-  const [topP, setTopP] = useState<number>(0.95);
+  // Per-Prompt Context-Aware Parameters State
+  const [parameters, setParameters] = useState<PromptParameters>(DEFAULT_PARAMETERS);
+  const [isParametersModalOpen, setIsParametersModalOpen] = useState<boolean>(false);
+  const [modalTempParams, setModalTempParams] = useState<PromptParameters>(DEFAULT_PARAMETERS);
+
+  // Baseline Saved Snapshot for Dirty / Version Difference Checking
+  const [savedSnapshot, setSavedSnapshot] = useState<{
+    body: string;
+    messages: IPromptMessage[];
+    variables: IPromptVariable[];
+    parameters: PromptParameters;
+  } | null>(null);
 
   // Execution & Output State
   const [isExecuting, setIsExecuting] = useState<boolean>(false);
@@ -127,24 +129,10 @@ export const PromptPlaygroundPage: React.FC<PromptPlaygroundPageProps> = ({
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
 
-  // Side-by-Side Comparison State
-  const [isComparingRuns, setIsComparingRuns] = useState<boolean>(false);
-  const [compareRunIdA, setCompareRunIdA] = useState<string>("");
-  const [compareRunIdB, setCompareRunIdB] = useState<string>("");
-
-  // Save Modal States
-  const [showSaveVersionModal, setShowSaveVersionModal] = useState<boolean>(false);
-  const [saveVersionNote, setSaveVersionNote] = useState<string>("");
-  const [showSaveNewPromptModal, setShowSaveNewPromptModal] = useState<boolean>(false);
-  const [saveNewPromptTitle, setSaveNewPromptTitle] = useState<string>("");
-  const [saveNewPromptDesc, setSaveNewPromptDesc] = useState<string>("");
-  const [saveNewPromptCategory, setSaveNewPromptCategory] = useState<string>("general");
+  // Save State
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
-  // Mobile layout state
-  const [mobileTab, setMobileTab] = useState<"sidebar" | "main" | "params">("main");
-
-  // Auto-dismiss notification toasts
+  // Auto-dismiss notifications
   useEffect(() => {
     if (errorMsg || successMsg) {
       const timer = setTimeout(() => {
@@ -155,7 +143,7 @@ export const PromptPlaygroundPage: React.FC<PromptPlaygroundPageProps> = ({
     }
   }, [errorMsg, successMsg]);
 
-  // Load Folders & Prompts on Workspace Mount
+  // Load Initial Library Data
   useEffect(() => {
     if (workspaceId) {
       loadLibraryData();
@@ -172,15 +160,15 @@ export const PromptPlaygroundPage: React.FC<PromptPlaygroundPageProps> = ({
       setFolders(foldersList);
       setPrompts(promptsList);
 
-      // Expand all folders by default
       const expMap: Record<string, boolean> = { uncategorized: true };
       foldersList.forEach((f) => {
         expMap[f._id] = true;
       });
       setExpandedFolders(expMap);
 
-      // Check URL parameters for prompt selection
-      if (urlPromptId) {
+      if (urlIsCreate) {
+        handleNewPromptImmediate(promptsList);
+      } else if (urlPromptId) {
         setSelectedPromptId(urlPromptId);
       } else if (promptsList.length > 0 && !selectedPromptId) {
         setSelectedPromptId(promptsList[0]._id);
@@ -192,7 +180,51 @@ export const PromptPlaygroundPage: React.FC<PromptPlaygroundPageProps> = ({
     }
   };
 
-  // Synchronize when selectedPromptId or URL changes
+  // Immediate New Prompt Creation Logic
+  const handleNewPromptImmediate = async (existingList?: PromptItem[]) => {
+    const list = existingList || prompts;
+    setIsSaving(true);
+    setErrorMsg(null);
+
+    try {
+      const baseName = "New Prompt";
+      let targetName = baseName;
+      const existingNames = new Set(list.map((p) => p.name));
+      if (existingNames.has(targetName)) {
+        let count = 1;
+        while (existingNames.has(`${baseName} ${count}`)) {
+          count++;
+        }
+        targetName = `${baseName} ${count}`;
+      }
+
+      const created = await promptService.createPrompt(workspaceId, {
+        name: targetName,
+        description: "Created from Prompt Playground",
+        category: "general",
+        body: "Write your prompt here...",
+        messages: [
+          { role: "system", content: "You are a helpful AI assistant." },
+          { role: "user", content: "Write your prompt here..." },
+        ],
+        variables: [],
+      });
+
+      const updatedList = await promptService.listPrompts(workspaceId);
+      setPrompts(updatedList);
+      setSelectedPromptId(created._id);
+      setSearchParams({ promptId: created._id });
+      setIsEditingPromptContent(true);
+      setSuccessMsg(`Created prompt "${created.name}" (No saved version yet)`);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      setErrorMsg(errorObj.response?.data?.message || errorObj.message || "Failed to create prompt.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Synchronize Prompt details when selectedPromptId or version changes
   useEffect(() => {
     if (!workspaceId || !selectedPromptId) return;
 
@@ -211,18 +243,19 @@ export const PromptPlaygroundPage: React.FC<PromptPlaygroundPageProps> = ({
         applyPromptVersionDoc(promptDoc, matchVer || null);
 
         setIsCreatingNewPrompt(false);
-        setIsEditingPromptContent(false);
       } catch (err) {
         console.error("Failed to fetch prompt details", err);
+        setSelectedPromptId(null);
+        setActivePrompt(null);
+        setSearchParams({});
       }
     };
 
     fetchPromptDetails();
   }, [selectedPromptId, urlVersionNum, workspaceId]);
 
-  // Apply template & variable schema when active version or prompt changes
+  // Apply Prompt Version Data & Baseline Saved Snapshot
   const applyPromptVersionDoc = (prompt: PromptItem, verDoc: PromptVersion | null) => {
-    setActiveVersionDoc(verDoc);
     const contentBody = verDoc ? verDoc.body : prompt.body || "";
     const contentMsgs = verDoc
       ? verDoc.messages || []
@@ -231,17 +264,34 @@ export const PromptPlaygroundPage: React.FC<PromptPlaygroundPageProps> = ({
       : [];
     const schema = verDoc ? verDoc.variables || [] : prompt.variables || [];
 
+    const promptParams: PromptParameters = {
+      temperature: verDoc?.parameters?.temperature ?? prompt.parameters?.temperature ?? DEFAULT_PARAMETERS.temperature,
+      maxTokens: verDoc?.parameters?.maxTokens ?? prompt.parameters?.maxTokens ?? DEFAULT_PARAMETERS.maxTokens,
+      topP: verDoc?.parameters?.topP ?? prompt.parameters?.topP ?? DEFAULT_PARAMETERS.topP,
+      responseFormat: verDoc?.parameters?.responseFormat ?? prompt.parameters?.responseFormat ?? DEFAULT_PARAMETERS.responseFormat,
+      provider: verDoc?.provider ?? prompt.provider ?? DEFAULT_PARAMETERS.provider,
+      modelName: verDoc?.modelName ?? prompt.modelName ?? DEFAULT_PARAMETERS.modelName,
+    };
+
     setBody(contentBody);
     setMessages(contentMsgs);
     setVariablesSchema(schema);
+    setParameters(promptParams);
     setEditorMode(contentMsgs.length > 0 ? "blocks" : "raw");
 
-    // Reconcile runtime test values with detected placeholders
+    // Save baseline snapshot for version difference checking
+    setSavedSnapshot({
+      body: contentBody,
+      messages: contentMsgs,
+      variables: schema,
+      parameters: promptParams,
+    });
+
     const detectedNames = extractHandlebarsVariables(contentBody, contentMsgs);
     const schemaMap = new Map(schema.map((v) => [v.name, v]));
 
     setRuntimeValues((prevValues) => {
-      const nextValues: Record<string, any> = {};
+      const nextValues: Record<string, unknown> = {};
       detectedNames.forEach((varName) => {
         if (prevValues[varName] !== undefined && prevValues[varName] !== "") {
           nextValues[varName] = prevValues[varName];
@@ -254,7 +304,7 @@ export const PromptPlaygroundPage: React.FC<PromptPlaygroundPageProps> = ({
     });
   };
 
-  // Switch Version
+  // Version change handler
   const handleVersionChange = (verNum: number) => {
     setSelectedVersionNum(verNum);
     setSearchParams({ promptId: selectedPromptId || "", version: String(verNum) });
@@ -277,31 +327,28 @@ export const PromptPlaygroundPage: React.FC<PromptPlaygroundPageProps> = ({
     return Array.from(set);
   };
 
-  // Detected active variable list
   const activeDetectedVariables = useMemo(() => {
     return extractHandlebarsVariables(body, messages);
   }, [body, messages]);
 
-  // Sync variables schema with auto-detected Handlebars placeholders
+  // Sync schema with detected variables
   useEffect(() => {
     setVariablesSchema((prev) => {
       const prevMap = new Map(prev.map((v) => [v.name, v]));
       const updated: IPromptVariable[] = [];
 
-      // Retain existing schemas that are still in content
       prev.forEach((v) => {
         if (activeDetectedVariables.includes(v.name)) {
           updated.push(v);
         }
       });
 
-      // Add newly detected placeholders
       activeDetectedVariables.forEach((name) => {
         if (!prevMap.has(name)) {
           updated.push({
             name,
             type: "string",
-            description: `Auto-detected from {{${name}}}`,
+            description: `Variable {{${name}}}`,
             defaultValue: "",
             required: true,
           });
@@ -312,7 +359,27 @@ export const PromptPlaygroundPage: React.FC<PromptPlaygroundPageProps> = ({
     });
   }, [activeDetectedVariables]);
 
-  // Compute local resolved prompt preview (substituting runtime test values)
+  // Immediate Dirty / Unsaved State Detector
+  const hasVersionedConfigurationChanged = useMemo(() => {
+    if (!savedSnapshot) return false;
+
+    // Check body or messages
+    if (editorMode === "blocks") {
+      if (JSON.stringify(messages) !== JSON.stringify(savedSnapshot.messages)) return true;
+    } else {
+      if (body !== savedSnapshot.body) return true;
+    }
+
+    // Check variables
+    if (JSON.stringify(variablesSchema) !== JSON.stringify(savedSnapshot.variables)) return true;
+
+    // Check parameters, provider & model
+    if (JSON.stringify(parameters) !== JSON.stringify(savedSnapshot.parameters)) return true;
+
+    return false;
+  }, [savedSnapshot, body, messages, variablesSchema, parameters, editorMode]);
+
+  // Compute resolved preview
   const resolvedPreview = useMemo(() => {
     if (messages.length > 0) {
       return messages.map((m) => {
@@ -335,7 +402,7 @@ export const PromptPlaygroundPage: React.FC<PromptPlaygroundPageProps> = ({
     }
   }, [body, messages, activeDetectedVariables, runtimeValues]);
 
-  // Filter prompts by search query
+  // Filter prompts by search
   const filteredPrompts = useMemo(() => {
     if (!searchQuery.trim()) return prompts;
     const q = searchQuery.toLowerCase();
@@ -364,85 +431,33 @@ export const PromptPlaygroundPage: React.FC<PromptPlaygroundPageProps> = ({
     return map;
   }, [folders, filteredPrompts]);
 
-  // Handle prompt select from sidebar
   const handleSelectPrompt = (promptId: string) => {
     setSelectedPromptId(promptId);
     setSearchParams({ promptId });
-    setMobileTab("main");
   };
 
-  // Start New Prompt Workspace Editor
-  const handleStartNewPrompt = () => {
-    setSelectedPromptId(null);
-    setActivePrompt(null);
-    setIsCreatingNewPrompt(true);
-    setIsEditingPromptContent(true);
-    setNewPromptName("");
-    setNewPromptDesc("");
-    setNewPromptCategory("general");
-    setNewPromptFolderId("");
-    setNewPromptTags("");
-    setBody("Write your prompt with {{variable}} placeholders...");
-    setMessages([
-      { role: "system", content: "You are an expert AI assistant." },
-      { role: "user", content: "Process the following input: {{user_input}}" },
-    ]);
-    setVariablesSchema([]);
-    setRuntimeValues({ user_input: "Sample test value" });
-    setMobileTab("main");
+  // Context-Aware Parameters Modal Handlers
+  const handleOpenParametersModal = () => {
+    setModalTempParams({ ...parameters });
+    setIsParametersModalOpen(true);
   };
 
-  // Create Prompt from Workspace Editor
-  const handleCreatePromptSubmit = async () => {
-    if (!newPromptName.trim()) {
-      setErrorMsg("Prompt name is required.");
+  const handleCancelParametersModal = () => {
+    setIsParametersModalOpen(false);
+  };
+
+  const handleSaveParametersModal = () => {
+    setParameters({ ...modalTempParams });
+    setIsParametersModalOpen(false);
+  };
+
+  // Explicit Save Handler
+  const handleSavePrompt = async () => {
+    if (!selectedPromptId || !activePrompt) return;
+
+    if (!hasVersionedConfigurationChanged && activePrompt.version > 0) {
       return;
     }
-
-    setIsSaving(true);
-    setErrorMsg(null);
-
-    try {
-      const tags = newPromptTags
-        .split(",")
-        .map((t) => t.trim())
-        .filter(Boolean);
-
-      const contentBody =
-        editorMode === "blocks"
-          ? messages.map((m) => `[${m.role.toUpperCase()}]\n${m.content}`).join("\n\n")
-          : body;
-
-      const created = await promptService.createPrompt(workspaceId, {
-        name: newPromptName.trim(),
-        description: newPromptDesc.trim(),
-        category: newPromptCategory,
-        folderId: newPromptFolderId || null,
-        tags,
-        body: contentBody,
-        messages: editorMode === "blocks" ? messages : [],
-        variables: variablesSchema,
-      });
-
-      setSuccessMsg(`Prompt "${created.name}" created successfully.`);
-      setIsCreatingNewPrompt(false);
-      setIsEditingPromptContent(false);
-
-      // Refresh sidebar library and select created prompt
-      await loadLibraryData();
-      setSelectedPromptId(created._id);
-      setSearchParams({ promptId: created._id });
-    } catch (err: unknown) {
-      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      setErrorMsg(errorObj.response?.data?.message || errorObj.message || "Failed to create prompt.");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  // Save changes to Existing Prompt in Workspace Editor
-  const handleSaveExistingPromptChanges = async () => {
-    if (!selectedPromptId || !activePrompt) return;
 
     setIsSaving(true);
     setErrorMsg(null);
@@ -457,18 +472,32 @@ export const PromptPlaygroundPage: React.FC<PromptPlaygroundPageProps> = ({
         body: contentBody,
         messages: editorMode === "blocks" ? messages : [],
         variables: variablesSchema,
-        changeNote: `Updated in Playground Editor (${new Date().toLocaleTimeString()})`,
+        provider: parameters.provider,
+        modelName: parameters.modelName,
+        parameters: {
+          temperature: parameters.temperature,
+          maxTokens: parameters.maxTokens,
+          topP: parameters.topP,
+          responseFormat: parameters.responseFormat,
+        },
+        changeNote: `Saved prompt version (${new Date().toLocaleTimeString()})`,
       });
 
-      setSuccessMsg(`Prompt "${updated.name}" updated to v${updated.version}.`);
+      setSuccessMsg(`Saved version v${updated.version} for "${updated.name}"`);
       setIsEditingPromptContent(false);
 
-      // Refresh version list & prompt details
       const versions = await promptService.getPromptVersions(workspaceId, selectedPromptId);
       setVersionsList(versions);
       const promptDoc = await promptService.getPromptDetails(workspaceId, selectedPromptId);
       setActivePrompt(promptDoc);
       setSelectedVersionNum(promptDoc.version);
+
+      setSavedSnapshot({
+        body: contentBody,
+        messages: editorMode === "blocks" ? messages : [],
+        variables: variablesSchema,
+        parameters: { ...parameters },
+      });
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
       setErrorMsg(errorObj.response?.data?.message || errorObj.message || "Failed to save prompt changes.");
@@ -477,11 +506,10 @@ export const PromptPlaygroundPage: React.FC<PromptPlaygroundPageProps> = ({
     }
   };
 
-  // Run Prompt Execution via Backend AI Integration
+  // Run Prompt Execution
   const handleRunPlayground = async () => {
     setErrorMsg(null);
 
-    // Validate missing required variables
     const missingReq: string[] = [];
     activeDetectedVariables.forEach((varName) => {
       const schemaDef = variablesSchema.find((s) => s.name === varName);
@@ -503,28 +531,28 @@ export const PromptPlaygroundPage: React.FC<PromptPlaygroundPageProps> = ({
     try {
       const res: PlaygroundRunResult = await promptService.runPlayground(workspaceId, {
         promptId: selectedPromptId || undefined,
-        versionNumber: selectedVersionNum,
+        versionNumber: selectedVersionNum > 0 ? selectedVersionNum : undefined,
         body,
         messages: messages.length > 0 ? messages : undefined,
         variables: runtimeValues,
-        provider,
-        modelName,
+        provider: parameters.provider,
+        modelName: parameters.modelName,
         parameters: {
-          temperature,
-          maxTokens,
-          topP,
+          temperature: parameters.temperature,
+          maxTokens: parameters.maxTokens,
+          topP: parameters.topP,
         },
       });
 
       const newRunItem: PlaygroundRunItem = {
         id: `run-${Date.now()}`,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-        promptName: activePrompt ? activePrompt.name : newPromptName || "Playground Session",
+        promptName: activePrompt ? activePrompt.name : "Playground Session",
         versionNumber: selectedVersionNum,
         variableValues: { ...runtimeValues },
         provider: res.metadata.provider,
         modelName: res.metadata.modelName,
-        parameters: { temperature, maxTokens, topP },
+        parameters: { ...parameters },
         resolvedPrompt: res.resolvedPrompt,
         output: res.output,
         latencyMs: res.metadata.latencyMs,
@@ -549,174 +577,96 @@ export const PromptPlaygroundPage: React.FC<PromptPlaygroundPageProps> = ({
     }
   };
 
-  // Selected active run document from history
   const currentActiveRun = useMemo(() => {
     if (!selectedRunId && runHistory.length > 0) return runHistory[0];
     return runHistory.find((r) => r.id === selectedRunId) || runHistory[0] || null;
   }, [runHistory, selectedRunId]);
 
-  // Copy output text
   const handleCopyOutput = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Save Experiment as New Version
-  const handleSaveAsVersionSubmit = async () => {
-    if (!selectedPromptId || !activePrompt) return;
-    setIsSaving(true);
-    setErrorMsg(null);
-
-    try {
-      const contentBody =
-        editorMode === "blocks"
-          ? messages.map((m) => `[${m.role.toUpperCase()}]\n${m.content}`).join("\n\n")
-          : body;
-
-      await promptService.updatePrompt(workspaceId, selectedPromptId, {
-        body: contentBody,
-        messages: messages.length > 0 ? messages : undefined,
-        variables: variablesSchema,
-        changeNote:
-          saveVersionNote.trim() ||
-          `Playground experiment version (${new Date().toLocaleDateString()})`,
-      });
-
-      setShowSaveVersionModal(false);
-      setSaveVersionNote("");
-      setSuccessMsg("Experiment saved as a new version.");
-
-      // Refresh version list
-      const versions = await promptService.getPromptVersions(workspaceId, selectedPromptId);
-      setVersionsList(versions);
-      const promptDoc = await promptService.getPromptDetails(workspaceId, selectedPromptId);
-      setActivePrompt(promptDoc);
-      setSelectedVersionNum(promptDoc.version);
-    } catch (err: unknown) {
-      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      setErrorMsg(errorObj.response?.data?.message || errorObj.message || "Failed to save version.");
-    } finally {
-      setIsSaving(false);
-    }
+  const handleAddVariableRow = () => {
+    const defaultName = `var_${variablesSchema.length + 1}`;
+    setVariablesSchema([
+      ...variablesSchema,
+      {
+        name: defaultName,
+        type: "string",
+        description: "",
+        defaultValue: "",
+        required: true,
+      },
+    ]);
+    setRuntimeValues((prev) => ({ ...prev, [defaultName]: "" }));
   };
 
-  // Save Experiment as New Prompt
-  const handleSaveAsNewPromptSubmit = async () => {
-    if (!saveNewPromptTitle.trim()) {
-      setErrorMsg("New prompt name is required.");
-      return;
-    }
-
-    setIsSaving(true);
-    setErrorMsg(null);
-
-    try {
-      const contentBody =
-        editorMode === "blocks"
-          ? messages.map((m) => `[${m.role.toUpperCase()}]\n${m.content}`).join("\n\n")
-          : body;
-
-      const created = await promptService.createPrompt(workspaceId, {
-        name: saveNewPromptTitle.trim(),
-        description: saveNewPromptDesc.trim() || "Created from Playground experiment",
-        category: saveNewPromptCategory,
-        body: contentBody,
-        messages: messages.length > 0 ? messages : undefined,
-        variables: variablesSchema,
-      });
-
-      setShowSaveNewPromptModal(false);
-      setSaveNewPromptTitle("");
-      setSaveNewPromptDesc("");
-      setSuccessMsg(`New prompt "${created.name}" created.`);
-
-      // Switch to new prompt
-      await loadLibraryData();
-      setSelectedPromptId(created._id);
-      setSearchParams({ promptId: created._id });
-    } catch (err: unknown) {
-      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      setErrorMsg(errorObj.response?.data?.message || errorObj.message || "Failed to create new prompt.");
-    } finally {
-      setIsSaving(false);
-    }
+  const renderLineNumbers = (text: string) => {
+    const lines = text.split("\n");
+    return lines.map((_, i) => (
+      <div key={i} className="text-gray-400 select-none text-right pr-3 font-mono text-xs leading-6">
+        {i + 1}
+      </div>
+    ));
   };
-
-  // Check if non-default parameters are set
-  const isCustomParametersActive =
-    provider !== "gemini" ||
-    modelName !== "gemini-3.6-flash" ||
-    temperature !== 0.7 ||
-    maxTokens !== 2048 ||
-    topP !== 0.95;
-
-  const runA = runHistory.find((r) => r.id === compareRunIdA) || runHistory[0];
-  const runB = runHistory.find((r) => r.id === compareRunIdB) || runHistory[1] || runHistory[0];
 
   return (
-    <div className="h-full flex flex-col bg-olive-50 text-olive-950 font-sans overflow-hidden">
-      {/* Top Workspace Header Bar */}
-      <header className="px-6 py-3.5 bg-white border-b border-olive-200 shadow-xs flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-olive-900 text-white shadow-md shadow-olive-900/10">
-            <Sparkles className="w-5 h-5" />
+    <div className="h-full flex flex-col bg-white text-gray-900 font-sans overflow-hidden w-full">
+      {/* 1. Page Header */}
+      <header className="px-6 py-4 bg-white border-b border-gray-200 shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-4 w-full">
+        <div>
+          <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
+            <span>Workspace</span>
+            <span>/</span>
+            <span className="text-gray-900 font-medium">Prompt Playground</span>
           </div>
-          <div>
-            <div className="flex items-center gap-2.5">
-              <h1 className="text-lg font-bold text-olive-950">Prompt Playground</h1>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-olive-100 text-olive-800 border border-olive-200 uppercase tracking-wider font-mono">
-                Full-Page Workspace
-              </span>
-            </div>
-            <p className="text-xs text-olive-600">
-              Isolated prompt development, runtime testing, variable resolution & output comparison.
-            </p>
-          </div>
+          <h1 className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
+            Prompt Playground
+          </h1>
+          <p className="text-xs text-gray-500 mt-0.5 max-w-2xl">
+            Create, test, and refine your prompts. Experiment with variables, compare versions, and evaluate outputs.
+          </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 shrink-0">
           <button
             type="button"
-            onClick={handleStartNewPrompt}
-            className="px-3.5 py-2 rounded-xl bg-olive-100 hover:bg-olive-200 border border-olive-300 text-olive-900 text-xs font-bold flex items-center gap-2 transition shadow-xs cursor-pointer"
+            onClick={handleOpenParametersModal}
+            className="px-3.5 py-1.5 rounded-lg text-xs font-semibold border bg-white text-gray-700 border-gray-200 hover:bg-gray-50 flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
           >
-            <Plus className="w-4 h-4 text-olive-800" /> New Prompt
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            <span>Parameters</span>
           </button>
 
           <button
             type="button"
-            onClick={() => setIsParametersDrawerOpen(!isParametersDrawerOpen)}
-            className={`px-4 py-2 rounded-xl text-xs font-bold border flex items-center gap-2 transition shadow-xs relative ${
-              isParametersDrawerOpen
-                ? "bg-olive-900 text-white border-olive-900 shadow-md"
-                : "bg-white text-olive-800 border-olive-200 hover:bg-olive-100"
-            }`}
+            onClick={() => handleNewPromptImmediate()}
+            disabled={isSaving}
+            className="px-3.5 py-1.5 rounded-lg bg-olive-700 hover:bg-olive-800 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-2xs cursor-pointer disabled:opacity-50"
           >
-            <SlidersHorizontal className="w-4 h-4" />
-            <span>Parameters</span>
-            {isCustomParametersActive && (
-              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-            )}
+            <Plus className="w-4 h-4" />
+            <span>{isSaving ? "Creating..." : "New Prompt"}</span>
           </button>
         </div>
       </header>
 
-      {/* Notification Toast Messages */}
+      {/* Notifications */}
       {errorMsg && (
-        <div className="px-6 py-2.5 bg-rose-50 border-b border-rose-200 text-rose-800 text-xs flex items-center justify-between shrink-0">
+        <div className="px-6 py-2 bg-rose-50 border-b border-rose-200 text-rose-700 text-xs flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
             <span>{errorMsg}</span>
           </div>
-          <button onClick={() => setErrorMsg(null)} className="text-rose-500 hover:text-rose-900 font-bold">
+          <button onClick={() => setErrorMsg(null)} className="text-rose-500 hover:text-rose-800 font-bold">
             ×
           </button>
         </div>
       )}
 
       {successMsg && (
-        <div className="px-6 py-2.5 bg-emerald-50 border-b border-emerald-200 text-emerald-800 text-xs flex items-center justify-between shrink-0">
+        <div className="px-6 py-2 bg-emerald-50 border-b border-emerald-200 text-emerald-800 text-xs flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
             <Check className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>{successMsg}</span>
@@ -727,34 +677,30 @@ export const PromptPlaygroundPage: React.FC<PromptPlaygroundPageProps> = ({
         </div>
       )}
 
-      {/* Main Full-Page Grid Workspace */}
-      <div className="flex-1 min-h-0 relative flex overflow-hidden">
-        {/* LEFT SIDEBAR: Folders & Prompts Browser (Col 1) */}
-        <aside className="w-72 border-r border-olive-200 bg-white flex flex-col shrink-0 overflow-hidden">
-          {/* Search Box */}
-          <div className="p-3.5 border-b border-olive-200 bg-olive-50/50">
+      {/* 2. Main Workspace Layout */}
+      <div className="flex-1 min-h-0 relative flex overflow-hidden w-full">
+        {/* LEFT COLUMN: Prompt Navigation (Fixed Width ~280px) */}
+        <aside className="w-72 border-r border-gray-200 bg-gray-50/40 flex flex-col shrink-0 overflow-hidden">
+          <div className="p-3 border-b border-gray-200">
+            <div className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
+              Prompts & Templates
+            </div>
             <div className="relative">
-              <Search className="w-3.5 h-3.5 text-olive-400 absolute left-3 top-2.5" />
+              <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-2.5" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search prompts or tags..."
-                className="w-full bg-white border border-olive-200 rounded-xl pl-8 pr-3 py-1.5 text-xs text-olive-950 placeholder-olive-400 focus:outline-none focus:border-olive-400 focus:ring-4 focus:ring-olive-700/5 transition"
+                className="w-full bg-white border border-gray-200 rounded-lg pl-8 pr-3 py-1.5 text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:border-olive-500 focus:ring-1 focus:ring-olive-500 transition"
               />
             </div>
           </div>
 
-          {/* Folders & Prompts List */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar text-xs">
-            <div className="flex items-center justify-between text-[11px] font-bold text-olive-500 uppercase tracking-wider px-2">
-              <span>Folders & Templates</span>
-              <span className="font-mono">{filteredPrompts.length} prompts</span>
-            </div>
-
+          <div className="flex-1 overflow-y-auto p-2.5 space-y-3 custom-scrollbar text-xs">
             {isLoadingLibrary ? (
-              <div className="text-center py-10 text-olive-500 text-xs">
-                Loading workspace library...
+              <div className="text-center py-8 text-gray-400 text-xs">
+                Loading library...
               </div>
             ) : (
               <div className="space-y-3">
@@ -764,7 +710,7 @@ export const PromptPlaygroundPage: React.FC<PromptPlaygroundPageProps> = ({
                   const isExpanded = expandedFolders[folder._id] ?? true;
 
                   return (
-                    <div key={folder._id} className="space-y-1">
+                    <div key={folder._id} className="space-y-0.5">
                       <button
                         type="button"
                         onClick={() =>
@@ -773,62 +719,55 @@ export const PromptPlaygroundPage: React.FC<PromptPlaygroundPageProps> = ({
                             [folder._id]: !prev[folder._id],
                           }))
                         }
-                        className="w-full text-left px-2.5 py-1.5 rounded-lg bg-olive-50 hover:bg-olive-100 text-olive-900 font-bold flex items-center justify-between transition"
+                        className="w-full text-left px-2 py-1 rounded hover:bg-gray-100/70 text-gray-600 font-semibold text-[11px] uppercase tracking-wider flex items-center justify-between transition cursor-pointer"
                       >
-                        <div className="flex items-center gap-2 truncate">
+                        <div className="flex items-center gap-1.5 truncate">
                           {isExpanded ? (
-                            <FolderOpen className="w-3.5 h-3.5 text-olive-700 shrink-0" />
+                            <FolderOpen className="w-3.5 h-3.5 text-gray-500 shrink-0" />
                           ) : (
-                            <FolderIcon className="w-3.5 h-3.5 text-olive-600 shrink-0" />
+                            <FolderIcon className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                           )}
                           <span className="truncate">{folder.name}</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <span className="text-[10px] font-mono text-olive-600 bg-olive-200 px-1.5 py-0.2 rounded-full">
+                          <span className="text-[10px] font-mono text-gray-500 bg-gray-200/60 px-1.5 py-0.2 rounded">
                             {folderPrompts.length}
                           </span>
-                          {isExpanded ? (
-                            <ChevronDown className="w-3.5 h-3.5 text-olive-500" />
-                          ) : (
-                            <ChevronRight className="w-3.5 h-3.5 text-olive-500" />
-                          )}
                         </div>
                       </button>
 
                       {isExpanded && (
-                        <div className="pl-3 space-y-1 border-l-2 border-olive-200/80 ml-2">
+                        <div className="space-y-0.5 pl-1">
                           {folderPrompts.length === 0 ? (
-                            <div className="px-2 py-1 text-[11px] text-olive-400 italic">
-                              No prompts in folder
+                            <div className="px-3 py-1 text-[11px] text-gray-400 italic">
+                              No prompts
                             </div>
                           ) : (
                             folderPrompts.map((p) => {
                               const isSelected = selectedPromptId === p._id;
                               return (
-                                <button
+                                <div
                                   key={p._id}
-                                  type="button"
                                   onClick={() => handleSelectPrompt(p._id)}
-                                  className={`w-full text-left px-2.5 py-2 rounded-xl flex items-center justify-between transition group ${
+                                  className={`w-full text-left px-2.5 py-2 rounded-lg transition group cursor-pointer border ${
                                     isSelected
-                                      ? "bg-olive-900 text-white shadow-sm font-bold"
-                                      : "text-olive-800 hover:bg-olive-100/70"
+                                      ? "bg-olive-50/80 border-olive-300/80 text-olive-950 font-medium"
+                                      : "border-transparent text-gray-700 hover:bg-gray-100/80"
                                   }`}
                                 >
-                                  <div className="truncate pr-2">
-                                    <div className="truncate text-xs">{p.name}</div>
-                                    <div className="text-[10px] opacity-75 font-mono">
-                                      v{p.version} • {p.category}
+                                  <div className="flex items-start justify-between gap-1.5">
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      <FileText className={`w-3.5 h-3.5 shrink-0 ${isSelected ? "text-olive-700" : "text-gray-400"}`} />
+                                      <span className="truncate text-xs font-semibold">{p.name}</span>
                                     </div>
+                                    <span className="text-[10px] text-gray-400 shrink-0">
+                                      {p.version > 0 ? `v${p.version}` : "Draft"}
+                                    </span>
                                   </div>
-                                  <ChevronRight
-                                    className={`w-3.5 h-3.5 shrink-0 transition-transform ${
-                                      isSelected
-                                        ? "text-emerald-400"
-                                        : "text-olive-400 opacity-0 group-hover:opacity-100"
-                                    }`}
-                                  />
-                                </button>
+                                  <div className="text-[11px] text-gray-500 truncate mt-0.5 pl-5">
+                                    {p.description || "Created from Prompt Library"}
+                                  </div>
+                                </div>
                               );
                             })
                           )}
@@ -838,1187 +777,726 @@ export const PromptPlaygroundPage: React.FC<PromptPlaygroundPageProps> = ({
                   );
                 })}
 
-                {/* Uncategorized Section */}
-                <div className="space-y-1 pt-2 border-t border-olive-200">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setExpandedFolders((prev) => ({
-                        ...prev,
-                        uncategorized: !prev.uncategorized,
-                      }))
-                    }
-                    className="w-full text-left px-2.5 py-1.5 rounded-lg bg-olive-50 hover:bg-olive-100 text-olive-900 font-bold flex items-center justify-between transition"
-                  >
-                    <div className="flex items-center gap-2 truncate">
-                      <Layers className="w-3.5 h-3.5 text-olive-600 shrink-0" />
-                      <span>Uncategorized Prompts</span>
-                    </div>
-                    <span className="text-[10px] font-mono text-olive-600 bg-olive-200 px-1.5 py-0.2 rounded-full">
+                {/* All Prompts */}
+                <div className="space-y-0.5 pt-2 border-t border-gray-200">
+                  <div className="px-2 py-1 text-[11px] font-semibold text-gray-500 uppercase tracking-wider flex items-center justify-between">
+                    <span>ALL PROMPTS</span>
+                    <span className="text-[10px] text-gray-400 font-mono">
                       {(promptsByFolder.uncategorized || []).length}
                     </span>
-                  </button>
+                  </div>
 
-                  {(expandedFolders.uncategorized ?? true) && (
-                    <div className="pl-3 space-y-1 border-l-2 border-olive-200/80 ml-2">
-                      {(promptsByFolder.uncategorized || []).map((p) => {
-                        const isSelected = selectedPromptId === p._id;
-                        return (
-                          <button
-                            key={p._id}
-                            type="button"
-                            onClick={() => handleSelectPrompt(p._id)}
-                            className={`w-full text-left px-2.5 py-2 rounded-xl flex items-center justify-between transition group ${
-                              isSelected
-                                ? "bg-olive-900 text-white shadow-sm font-bold"
-                                : "text-olive-800 hover:bg-olive-100/70"
-                            }`}
-                          >
-                            <div className="truncate pr-2">
-                              <div className="truncate text-xs">{p.name}</div>
-                              <div className="text-[10px] opacity-75 font-mono">
-                                v{p.version} • {p.category}
-                              </div>
+                  <div className="space-y-0.5">
+                    {(promptsByFolder.uncategorized || []).map((p) => {
+                      const isSelected = selectedPromptId === p._id;
+                      return (
+                        <div
+                          key={p._id}
+                          onClick={() => handleSelectPrompt(p._id)}
+                          className={`w-full text-left px-2.5 py-2 rounded-lg transition group cursor-pointer border ${
+                            isSelected
+                              ? "bg-olive-50/80 border-olive-300/80 text-olive-950 font-medium"
+                              : "border-transparent text-gray-700 hover:bg-gray-100/80"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-1.5">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <FileText className={`w-3.5 h-3.5 shrink-0 ${isSelected ? "text-olive-700" : "text-gray-400"}`} />
+                              <span className="truncate text-xs font-semibold">{p.name}</span>
                             </div>
-                            <ChevronRight
-                              className={`w-3.5 h-3.5 shrink-0 transition-transform ${
-                                isSelected
-                                  ? "text-emerald-400"
-                                  : "text-olive-400 opacity-0 group-hover:opacity-100"
-                              }`}
-                            />
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
+                            <span className="text-[10px] text-gray-400 shrink-0">
+                              {p.version > 0 ? `v${p.version}` : "Draft"}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-gray-500 truncate mt-0.5 pl-5">
+                            {p.description || "Created from Prompt Library"}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             )}
           </div>
         </aside>
 
-        {/* CENTER WORKSPACE: Main Content Workspace Area (Col 2) */}
-        <main className="flex-1 flex flex-col h-full overflow-y-auto custom-scrollbar p-6 space-y-6 bg-white">
+        {/* RIGHT COLUMN: Main Prompt Workspace */}
+        <main className="flex-1 min-w-0 w-full flex flex-col h-full overflow-y-auto custom-scrollbar p-6 space-y-6 bg-white">
           {!selectedPromptId && !isCreatingNewPrompt ? (
             /* Empty State */
-            <div className="flex-1 flex flex-col items-center justify-center p-12 text-center space-y-4 max-w-md mx-auto">
-              <div className="p-4 rounded-2xl bg-olive-100 text-olive-900 border border-olive-200 shadow-sm">
-                <Sparkles className="w-8 h-8" />
+            <div className="flex-1 flex flex-col items-center justify-center p-12 text-center space-y-3 max-w-sm mx-auto">
+              <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500">
+                <FileText className="w-5 h-5" />
               </div>
-              <h2 className="text-lg font-bold text-olive-950">Prompt Playground</h2>
-              <p className="text-xs text-olive-600 leading-relaxed">
-                Select a prompt from the left panel to test Handlebars variable resolution, experiment with AI model parameters, or create a brand new prompt template.
+              <h3 className="text-sm font-bold text-gray-900">No Prompt Selected</h3>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Select an existing prompt from the left navigation or create a new prompt to get started.
               </p>
               <button
                 type="button"
-                onClick={handleStartNewPrompt}
-                className="px-5 py-2.5 rounded-xl bg-olive-900 hover:bg-black text-white text-xs font-bold shadow-md shadow-olive-900/20 transition flex items-center gap-2"
+                onClick={() => handleNewPromptImmediate()}
+                className="px-4 py-2 rounded-lg bg-olive-700 hover:bg-olive-800 text-white text-xs font-bold transition shadow-2xs flex items-center gap-1.5"
               >
-                <Plus className="w-4 h-4" /> Create New Prompt Template
+                <Plus className="w-4 h-4" /> Create New Prompt
               </button>
             </div>
-          ) : isCreatingNewPrompt ? (
-            /* Inline Prompt Creator Workspace */
-            <div className="space-y-6 max-w-4xl">
-              <div className="flex items-center justify-between pb-4 border-b border-olive-200">
-                <div>
-                  <h2 className="text-base font-bold text-olive-950 flex items-center gap-2">
-                    <Plus className="w-5 h-5 text-olive-800" />
-                    Create New Prompt Template
-                  </h2>
-                  <p className="text-xs text-olive-600">
-                    DefineHandlebars placeholders ({`{{variable_name}}`}) and schema directly in the Playground workspace.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsCreatingNewPrompt(false)}
-                  className="px-3 py-1.5 text-xs text-olive-600 hover:text-olive-950 hover:bg-olive-100 rounded-lg transition"
-                >
-                  Cancel
-                </button>
-              </div>
-
-              {/* Creator Metadata Fields */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-olive-800 mb-1">
-                    Prompt Name <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={newPromptName}
-                    onChange={(e) => setNewPromptName(e.target.value)}
-                    placeholder="e.g. Code Review Assistant"
-                    className="w-full bg-white border border-olive-200 rounded-xl px-3.5 py-2 text-xs text-olive-950 focus:outline-none focus:border-olive-400"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-olive-800 mb-1">Category</label>
-                  <select
-                    value={newPromptCategory}
-                    onChange={(e) => setNewPromptCategory(e.target.value)}
-                    className="w-full bg-white border border-olive-200 rounded-xl px-3.5 py-2 text-xs text-olive-950 focus:outline-none focus:border-olive-400"
-                  >
-                    <option value="general">General</option>
-                    <option value="development">Development</option>
-                    <option value="backend">Backend</option>
-                    <option value="frontend">Frontend</option>
-                    <option value="database">Database</option>
-                    <option value="testing">Testing</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-olive-800 mb-1">Folder</label>
-                  <select
-                    value={newPromptFolderId}
-                    onChange={(e) => setNewPromptFolderId(e.target.value)}
-                    className="w-full bg-white border border-olive-200 rounded-xl px-3.5 py-2 text-xs text-olive-950 focus:outline-none focus:border-olive-400"
-                  >
-                    <option value="">No Folder (Root)</option>
-                    {folders.map((f) => (
-                      <option key={f._id} value={f._id}>
-                        {f.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-olive-800 mb-1">
-                    Tags <span className="text-olive-500 font-normal">(comma separated)</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={newPromptTags}
-                    onChange={(e) => setNewPromptTags(e.target.value)}
-                    placeholder="code-review, typescript, ai"
-                    className="w-full bg-white border border-olive-200 rounded-xl px-3.5 py-2 text-xs text-olive-950 focus:outline-none focus:border-olive-400"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-olive-800 mb-1">Description</label>
-                <textarea
-                  value={newPromptDesc}
-                  onChange={(e) => setNewPromptDesc(e.target.value)}
-                  placeholder="Describe the purpose and expected outputs..."
-                  rows={2}
-                  className="w-full bg-white border border-olive-200 rounded-xl p-3 text-xs text-olive-950 focus:outline-none focus:border-olive-400 resize-none"
-                />
-              </div>
-
-              {/* Creator Mode Switcher & Content */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between border-b border-olive-200 pb-2">
-                  <span className="text-xs font-bold text-olive-950 uppercase tracking-wider">
-                    Prompt Structure
-                  </span>
-                  <div className="flex items-center gap-1 bg-olive-100 p-1 rounded-lg">
-                    <button
-                      type="button"
-                      onClick={() => setEditorMode("blocks")}
-                      className={`px-3 py-1 rounded text-xs font-semibold transition ${
-                        editorMode === "blocks"
-                          ? "bg-white text-olive-950 shadow-xs"
-                          : "text-olive-600 hover:text-olive-950"
-                      }`}
-                    >
-                      Multi-Role Blocks Mode
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEditorMode("raw")}
-                      className={`px-3 py-1 rounded text-xs font-semibold transition ${
-                        editorMode === "raw"
-                          ? "bg-white text-olive-950 shadow-xs"
-                          : "text-olive-600 hover:text-olive-950"
-                      }`}
-                    >
-                      Raw Text Mode
-                    </button>
-                  </div>
-                </div>
-
-                {editorMode === "blocks" ? (
-                  <div className="space-y-3">
-                    {messages.map((msg, idx) => (
-                      <div key={idx} className="p-4 rounded-xl bg-olive-50/60 border border-olive-200 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <select
-                            value={msg.role}
-                            onChange={(e) => {
-                              const updated = [...messages];
-                              updated[idx].role = e.target.value as IPromptMessage["role"];
-                              setMessages(updated);
-                            }}
-                            className="bg-white border border-olive-200 text-olive-900 font-bold text-xs rounded-lg px-2.5 py-1 uppercase"
-                          >
-                            <option value="system">SYSTEM</option>
-                            <option value="user">USER</option>
-                            <option value="assistant">ASSISTANT</option>
-                          </select>
-                          {messages.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => setMessages(messages.filter((_, i) => i !== idx))}
-                              className="text-olive-400 hover:text-rose-600 p-1 transition"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
-                        <textarea
-                          value={msg.content}
-                          onChange={(e) => {
-                            const updated = [...messages];
-                            updated[idx].content = e.target.value;
-                            setMessages(updated);
-                          }}
-                          placeholder={`Enter ${msg.role} message with {{variable}} placeholders...`}
-                          rows={3}
-                          className="w-full bg-white border border-olive-200 rounded-lg p-3 text-xs font-mono text-olive-950 focus:outline-none focus:border-olive-400"
-                        />
-                      </div>
-                    ))}
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setMessages([...messages, { role: "user", content: "" }])}
-                        className="px-3 py-1.5 rounded-lg bg-olive-100 hover:bg-olive-200 text-olive-800 text-xs font-semibold flex items-center gap-1"
-                      >
-                        <Plus className="w-3.5 h-3.5" /> Add User Block
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setMessages([...messages, { role: "assistant", content: "" }])}
-                        className="px-3 py-1.5 rounded-lg bg-olive-100 hover:bg-olive-200 text-olive-800 text-xs font-semibold flex items-center gap-1"
-                      >
-                        <Plus className="w-3.5 h-3.5" /> Add Assistant Block
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <textarea
-                    value={body}
-                    onChange={(e) => setBody(e.target.value)}
-                    placeholder="Write system and user content with {{variable}} placeholders..."
-                    rows={8}
-                    className="w-full bg-white border border-olive-200 rounded-xl p-4 font-mono text-xs text-olive-950 focus:outline-none focus:border-olive-400"
-                  />
-                )}
-              </div>
-
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsCreatingNewPrompt(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-olive-600 hover:bg-olive-100"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCreatePromptSubmit}
-                  disabled={isSaving}
-                  className="px-5 py-2 rounded-xl bg-olive-900 hover:bg-black text-white text-xs font-bold shadow-md shadow-olive-900/20 transition"
-                >
-                  {isSaving ? "Saving..." : "Create Prompt"}
-                </button>
-              </div>
-            </div>
           ) : (
-            /* Selected Prompt Workspace View & Execution Panel */
-            <div className="space-y-6">
-              {/* Header Title & Version Selector Tabs */}
-              <div className="p-5 rounded-2xl bg-olive-50/70 border border-olive-200 space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            /* Active Prompt Workspace */
+            <div className="space-y-6 w-full">
+              {/* Prompt Header */}
+              <div className="p-4 rounded-xl border border-gray-200 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs w-full">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-gray-100 text-gray-700 shrink-0 mt-0.5">
+                    <FileText className="w-4 h-4" />
+                  </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h2 className="text-base font-bold text-olive-950">
-                        {activePrompt?.name}
+                      <h2 className="text-base font-bold text-gray-900">
+                        {activePrompt?.name || "New Prompt"}
                       </h2>
-                      <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-olive-900 text-white">
-                        v{selectedVersionNum}
+                      <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-gray-100 text-gray-700 border border-gray-200">
+                        {selectedVersionNum > 0 ? `v${selectedVersionNum}` : "No saved version yet"}
                       </span>
-                      <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-olive-200 text-olive-800">
-                        {activePrompt?.category}
-                      </span>
+                      {hasVersionedConfigurationChanged ? (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 animate-pulse">
+                          Unsaved changes
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          Saved
+                        </span>
+                      )}
                     </div>
-                    <p className="text-xs text-olive-600 mt-1">
-                      {activePrompt?.description || "No description provided."}
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Created from Prompt Library • Last updated just now
                     </p>
                   </div>
+                </div>
+
+                <div className="flex items-center gap-2 self-start sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={handleSavePrompt}
+                    disabled={isSaving || (!hasVersionedConfigurationChanged && selectedVersionNum > 0)}
+                    className={`px-3.5 py-1.5 rounded-lg font-bold text-xs transition flex items-center gap-1.5 cursor-pointer ${
+                      hasVersionedConfigurationChanged || selectedVersionNum === 0
+                        ? "bg-olive-700 hover:bg-olive-800 text-white shadow-2xs"
+                        : "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
+                    }`}
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    {isSaving ? "Saving..." : "Save"}
+                  </button>
 
                   <button
                     type="button"
                     onClick={() => setIsEditingPromptContent(!isEditingPromptContent)}
-                    className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-olive-100 border border-olive-200 text-olive-900 font-bold text-xs transition flex items-center gap-1.5 self-start sm:self-auto"
+                    className="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 font-semibold text-xs transition flex items-center gap-1.5 cursor-pointer"
                   >
-                    <Code2 className="w-3.5 h-3.5 text-olive-700" />
-                    {isEditingPromptContent ? "Close Editor" : "Edit Prompt Structure"}
+                    <Code2 className="w-3.5 h-3.5 text-gray-500" />
+                    {isEditingPromptContent ? "Done Editing" : "Edit Structure"}
                   </button>
-                </div>
-
-                {/* Canonical Version Tabs */}
-                <div className="flex items-center gap-2 pt-2 border-t border-olive-200/80 overflow-x-auto custom-scrollbar">
-                  <span className="text-xs font-semibold text-olive-600 shrink-0">
-                    Versions:
-                  </span>
-                  {versionsList.map((v) => {
-                    const isVerActive = v.version === selectedVersionNum;
-                    return (
-                      <button
-                        key={v.version}
-                        type="button"
-                        onClick={() => handleVersionChange(v.version)}
-                        className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition shrink-0 ${
-                          isVerActive
-                            ? "bg-olive-900 text-white shadow-xs"
-                            : "bg-white text-olive-700 hover:bg-olive-200 border border-olive-200"
-                        }`}
-                      >
-                        v{v.version}
-                      </button>
-                    );
-                  })}
                 </div>
               </div>
 
-              {/* Inline Editor Workspace (if toggled on) */}
-              {isEditingPromptContent && (
-                <div className="p-5 rounded-2xl bg-white border border-olive-300 shadow-md space-y-4 animate-in fade-in duration-200">
-                  <div className="flex items-center justify-between border-b border-olive-200 pb-3">
-                    <h3 className="text-xs font-bold text-olive-950 uppercase tracking-wider flex items-center gap-2">
-                      <Code2 className="w-4 h-4 text-olive-700" />
-                      Workspace Prompt Content Editor (v{selectedVersionNum})
-                    </h3>
-                    <div className="flex items-center gap-1 bg-olive-100 p-1 rounded-lg">
-                      <button
-                        type="button"
-                        onClick={() => setEditorMode("blocks")}
-                        className={`px-2.5 py-1 rounded text-[11px] font-semibold transition ${
-                          editorMode === "blocks"
-                            ? "bg-white text-olive-950 shadow-xs"
-                            : "text-olive-600 hover:text-olive-950"
-                        }`}
-                      >
-                        Multi-Role Blocks
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditorMode("raw")}
-                        className={`px-2.5 py-1 rounded text-[11px] font-semibold transition ${
-                          editorMode === "raw"
-                            ? "bg-white text-olive-950 shadow-xs"
-                            : "text-olive-600 hover:text-olive-950"
-                        }`}
-                      >
-                        Raw Text
-                      </button>
-                    </div>
-                  </div>
+              {/* Tabs Navigation */}
+              <div className="border-b border-gray-200 flex items-center gap-6 text-xs font-semibold w-full">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("prompt")}
+                  className={`pb-2.5 transition relative cursor-pointer ${
+                    activeTab === "prompt"
+                      ? "text-olive-800 font-bold border-b-2 border-olive-700"
+                      : "text-gray-500 hover:text-gray-900"
+                  }`}
+                >
+                  Prompt
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("versions")}
+                  className={`pb-2.5 transition relative cursor-pointer ${
+                    activeTab === "versions"
+                      ? "text-olive-800 font-bold border-b-2 border-olive-700"
+                      : "text-gray-500 hover:text-gray-900"
+                  }`}
+                >
+                  Versions ({versionsList.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("variables")}
+                  className={`pb-2.5 transition relative cursor-pointer ${
+                    activeTab === "variables"
+                      ? "text-olive-800 font-bold border-b-2 border-olive-700"
+                      : "text-gray-500 hover:text-gray-900"
+                  }`}
+                >
+                  Variables ({activeDetectedVariables.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("test")}
+                  className={`pb-2.5 transition relative cursor-pointer ${
+                    activeTab === "test"
+                      ? "text-olive-800 font-bold border-b-2 border-olive-700"
+                      : "text-gray-500 hover:text-gray-900"
+                  }`}
+                >
+                  Test & Output
+                </button>
+              </div>
 
-                  {editorMode === "blocks" ? (
-                    <div className="space-y-3">
-                      {messages.map((msg, idx) => (
-                        <div key={idx} className="p-3.5 rounded-xl bg-olive-50/70 border border-olive-200 space-y-2">
-                          <div className="flex items-center justify-between">
-                            <select
-                              value={msg.role}
-                              onChange={(e) => {
-                                const updated = [...messages];
-                                updated[idx].role = e.target.value as IPromptMessage["role"];
-                                setMessages(updated);
-                              }}
-                              className="bg-white border border-olive-200 text-olive-900 font-bold text-xs rounded-lg px-2.5 py-1 uppercase"
-                            >
-                              <option value="system">SYSTEM</option>
-                              <option value="user">USER</option>
-                              <option value="assistant">ASSISTANT</option>
-                            </select>
-                            {messages.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() => setMessages(messages.filter((_, i) => i !== idx))}
-                                className="text-olive-400 hover:text-rose-600 p-1 transition"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            )}
+              {/* 1. VERSIONS TAB: Strictly renders ONLY the versions list */}
+              {activeTab === "versions" && (
+                <div className="p-4 rounded-xl border border-gray-200 bg-white space-y-3 w-full">
+                  <div className="text-xs font-bold text-gray-800 uppercase tracking-wider">
+                    Prompt Version History
+                  </div>
+                  {versionsList.length === 0 ? (
+                    <div className="p-6 text-center text-xs text-gray-500 border border-dashed border-gray-200 rounded-lg">
+                      No saved versions yet. Make changes and click "Save" to record Version 1.
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-gray-200">
+                      {versionsList.map((v) => (
+                        <div
+                          key={v.version}
+                          onClick={() => handleVersionChange(v.version)}
+                          className={`py-3 px-3 rounded-lg flex items-center justify-between cursor-pointer transition ${
+                            v.version === selectedVersionNum
+                              ? "bg-olive-50 text-olive-900 font-semibold"
+                              : "hover:bg-gray-50 text-gray-700"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="font-mono font-bold text-xs bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                              v{v.version}
+                            </span>
+                            <span className="text-xs">{v.changeNote || `Version ${v.version}`}</span>
                           </div>
-                          <textarea
-                            value={msg.content}
-                            onChange={(e) => {
-                              const updated = [...messages];
-                              updated[idx].content = e.target.value;
-                              setMessages(updated);
-                            }}
-                            placeholder={`Enter ${msg.role} message content...`}
-                            rows={3}
-                            className="w-full bg-white border border-olive-200 rounded-lg p-3 text-xs font-mono text-olive-950 focus:outline-none focus:border-olive-400"
-                          />
+                          <span className="text-[11px] text-gray-400 font-mono">
+                            {new Date(v.createdAt).toLocaleDateString()}
+                          </span>
                         </div>
                       ))}
                     </div>
-                  ) : (
-                    <textarea
-                      value={body}
-                      onChange={(e) => setBody(e.target.value)}
-                      placeholder="Write system and user content with {{variable}} placeholders..."
-                      rows={6}
-                      className="w-full bg-white border border-olive-200 rounded-xl p-4 font-mono text-xs text-olive-950 focus:outline-none focus:border-olive-400"
-                    />
+                  )}
+                </div>
+              )}
+
+              {/* 2. PROMPT TAB: Prompt Content & Structure Editor */}
+              {activeTab === "prompt" && (
+                <div className="space-y-6 w-full">
+                  {/* Inline Editor Drawer (if Edit Structure clicked) */}
+                  {isEditingPromptContent && (
+                    <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 space-y-3 w-full">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-gray-800 uppercase tracking-wider">
+                          Edit Structure & Prompt Body
+                        </span>
+                        <div className="flex items-center gap-1 bg-white border border-gray-200 p-0.5 rounded-md">
+                          <button
+                            type="button"
+                            onClick={() => setEditorMode("blocks")}
+                            className={`px-2.5 py-1 rounded text-[11px] font-semibold transition ${
+                              editorMode === "blocks"
+                                ? "bg-gray-100 text-gray-900 font-bold"
+                                : "text-gray-500 hover:text-gray-900"
+                            }`}
+                          >
+                            Messages
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditorMode("raw")}
+                            className={`px-2.5 py-1 rounded text-[11px] font-semibold transition ${
+                              editorMode === "raw"
+                                ? "bg-gray-100 text-gray-900 font-bold"
+                                : "text-gray-500 hover:text-gray-900"
+                            }`}
+                          >
+                            Raw Body
+                          </button>
+                        </div>
+                      </div>
+
+                      {editorMode === "blocks" ? (
+                        <div className="space-y-2">
+                          {messages.map((msg, idx) => (
+                            <div key={idx} className="p-3 rounded-lg bg-white border border-gray-200 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <select
+                                  value={msg.role}
+                                  onChange={(e) => {
+                                    const updated = [...messages];
+                                    updated[idx].role = e.target.value as IPromptMessage["role"];
+                                    setMessages(updated);
+                                  }}
+                                  className="bg-gray-50 border border-gray-200 text-gray-900 font-bold text-xs rounded px-2 py-0.5 uppercase"
+                                >
+                                  <option value="system">SYSTEM</option>
+                                  <option value="user">USER</option>
+                                  <option value="assistant">ASSISTANT</option>
+                                </select>
+                                {messages.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setMessages(messages.filter((_, i) => i !== idx))}
+                                    className="text-gray-400 hover:text-rose-600 p-1"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                              <textarea
+                                value={msg.content}
+                                onChange={(e) => {
+                                  const updated = [...messages];
+                                  updated[idx].content = e.target.value;
+                                  setMessages(updated);
+                                }}
+                                placeholder={`Enter ${msg.role} message...`}
+                                rows={3}
+                                className="w-full bg-white border border-gray-200 rounded p-2.5 text-xs font-mono text-gray-900 focus:outline-none focus:border-olive-500"
+                              />
+                            </div>
+                          ))}
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setMessages([...messages, { role: "user", content: "" }])}
+                              className="px-2.5 py-1 rounded bg-white border border-gray-200 text-gray-700 text-xs font-medium hover:bg-gray-50"
+                            >
+                              + User Message
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setMessages([...messages, { role: "assistant", content: "" }])}
+                              className="px-2.5 py-1 rounded bg-white border border-gray-200 text-gray-700 text-xs font-medium hover:bg-gray-50"
+                            >
+                              + Assistant Message
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <textarea
+                          value={body}
+                          onChange={(e) => setBody(e.target.value)}
+                          placeholder="Write your prompt content..."
+                          rows={6}
+                          className="w-full bg-white border border-gray-200 rounded-lg p-3 text-xs font-mono text-gray-900 focus:outline-none focus:border-olive-500"
+                        />
+                      )}
+
+                      <div className="flex justify-end gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingPromptContent(false)}
+                          className="px-3 py-1.5 rounded text-xs font-medium text-gray-600 hover:bg-gray-100"
+                        >
+                          Done Editing
+                        </button>
+                      </div>
+                    </div>
                   )}
 
-                  <div className="flex justify-end gap-2 pt-2 border-t border-olive-200">
-                    <button
-                      type="button"
-                      onClick={() => setIsEditingPromptContent(false)}
-                      className="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-olive-600 hover:bg-olive-100"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleSaveExistingPromptChanges}
-                      disabled={isSaving}
-                      className="px-4 py-1.5 rounded-xl bg-olive-900 hover:bg-black text-white text-xs font-bold shadow-md transition"
-                    >
-                      {isSaving ? "Saving..." : "Save & Bump Version"}
-                    </button>
+                  {/* Prompt Content Preview View */}
+                  <div className="space-y-2 w-full">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider flex items-center gap-1.5">
+                        <span>Prompt Content</span>
+                      </h3>
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-lg border border-gray-200">
+                          <button
+                            type="button"
+                            onClick={() => setPreviewMode("template")}
+                            className={`px-2.5 py-1 rounded text-xs font-medium transition cursor-pointer ${
+                              previewMode === "template"
+                                ? "bg-white text-gray-900 shadow-2xs font-semibold"
+                                : "text-gray-500 hover:text-gray-900"
+                            }`}
+                          >
+                            Template View
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPreviewMode("resolved")}
+                            className={`px-2.5 py-1 rounded text-xs font-medium transition cursor-pointer ${
+                              previewMode === "resolved"
+                                ? "bg-white text-gray-900 shadow-2xs font-semibold"
+                                : "text-gray-500 hover:text-gray-900"
+                            }`}
+                          >
+                            Resolved View
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-lg border border-gray-200 bg-gray-50/30 overflow-hidden flex flex-col w-full">
+                      <div className="p-3 bg-white border-b border-gray-200 text-xs font-mono flex w-full">
+                        <div className="w-8 shrink-0 border-r border-gray-100 pr-2">
+                          {previewMode === "template"
+                            ? renderLineNumbers(messages.length > 0 ? messages.map((m) => `[${m.role}]\n${m.content}`).join("\n\n") : body)
+                            : renderLineNumbers(Array.isArray(resolvedPreview) ? resolvedPreview.map((m) => `[${m.role}]\n${m.content}`).join("\n\n") : resolvedPreview)}
+                        </div>
+                        <div className="flex-1 min-w-0 pl-3 text-gray-800 leading-6 whitespace-pre-wrap font-mono">
+                          {previewMode === "template" ? (
+                            messages.length > 0 ? (
+                              messages.map((m, idx) => (
+                                <div key={idx} className="mb-2">
+                                  <span className="text-olive-700 font-bold font-sans text-[11px] block uppercase">
+                                    [{m.role}]
+                                  </span>
+                                  <span>{m.content}</span>
+                                </div>
+                              ))
+                            ) : (
+                              <span>{body}</span>
+                            )
+                          ) : Array.isArray(resolvedPreview) ? (
+                            resolvedPreview.map((m, idx) => (
+                              <div key={idx} className="mb-2">
+                                <span className="text-amber-700 font-bold font-sans text-[11px] block uppercase">
+                                  [{m.role}]
+                                </span>
+                                <span>{m.content}</span>
+                              </div>
+                            ))
+                          ) : (
+                            <span>{resolvedPreview}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
 
-              {/* Prompt Content Preview & Resolved View Toggle */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold text-olive-950 uppercase tracking-wider flex items-center gap-2">
-                    <Code2 className="w-4 h-4 text-olive-700" />
-                    Prompt Content & Substitution Preview
-                  </h3>
-
-                  <div className="flex items-center gap-1 bg-olive-100 p-1 rounded-lg">
-                    <button
-                      type="button"
-                      onClick={() => setPreviewMode("template")}
-                      className={`px-3 py-1 rounded text-xs font-semibold transition ${
-                        previewMode === "template"
-                          ? "bg-white text-olive-950 shadow-xs font-bold"
-                          : "text-olive-600 hover:text-olive-950"
-                      }`}
-                    >
-                      Template View
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPreviewMode("resolved")}
-                      className={`px-3 py-1 rounded text-xs font-semibold transition ${
-                        previewMode === "resolved"
-                          ? "bg-white text-olive-950 shadow-xs font-bold"
-                          : "text-olive-600 hover:text-olive-950"
-                      }`}
-                    >
-                      Resolved View
-                    </button>
-                  </div>
-                </div>
-
-                <div className="p-4 rounded-xl bg-olive-950 text-olive-100 font-mono text-xs max-h-56 overflow-y-auto space-y-3 shadow-inner custom-scrollbar">
-                  {previewMode === "template" ? (
-                    messages.length > 0 ? (
-                      messages.map((m, idx) => (
-                        <div key={idx} className="border-b border-olive-800/60 pb-2 last:border-0 last:pb-0">
-                          <span className="text-emerald-400 font-bold uppercase text-[10px] block mb-1">
-                            [{m.role}]
-                          </span>
-                          <div className="whitespace-pre-wrap">{m.content}</div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="whitespace-pre-wrap">{body}</div>
-                    )
-                  ) : Array.isArray(resolvedPreview) ? (
-                    resolvedPreview.map((m, idx) => (
-                      <div key={idx} className="border-b border-olive-800/60 pb-2 last:border-0 last:pb-0">
-                        <span className="text-amber-300 font-bold uppercase text-[10px] block mb-1">
-                          [{m.role}]
-                        </span>
-                        <div className="whitespace-pre-wrap text-white">{m.content}</div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="whitespace-pre-wrap text-white">{resolvedPreview}</div>
-                  )}
-                </div>
-              </div>
-
-              {/* Dynamic Handlebars Variables (Definition vs Runtime Test Values) */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold text-olive-950 uppercase tracking-wider flex items-center gap-2">
-                    <Sliders className="w-4 h-4 text-olive-700" />
-                    Handlebars Variables ({activeDetectedVariables.length})
-                  </h3>
-                  <span className="text-[11px] text-olive-500">
-                    Runtime test values remain isolated and will NOT overwrite canonical prompt templates.
-                  </span>
-                </div>
-
-                {activeDetectedVariables.length === 0 ? (
-                  <div className="p-4 rounded-xl bg-olive-50 border border-olive-200 text-center text-xs text-olive-600">
-                    No Handlebars variables detected. Insert <code className="text-olive-950 font-bold font-mono">{`{{var_name}}`}</code> in prompt content to define test inputs.
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {activeDetectedVariables.map((varName) => {
-                      const schemaDef = variablesSchema.find((s) => s.name === varName);
-                      const varType = schemaDef?.type || "string";
-                      const isRequired = schemaDef?.required ?? true;
-                      const testVal = runtimeValues[varName] ?? "";
-
-                      return (
-                        <div
-                          key={varName}
-                          className="p-4 rounded-2xl bg-olive-50/70 border border-olive-200 space-y-3 shadow-xs"
-                        >
-                          <div className="flex items-center justify-between border-b border-olive-200 pb-2">
-                            <label className="font-mono font-bold text-xs text-olive-950 flex items-center gap-1.5">
-                              {`{{${varName}}}`}
-                              {isRequired && <span className="text-rose-500 font-bold">*</span>}
-                            </label>
-                            <span className="text-[10px] text-olive-700 uppercase font-mono px-2 py-0.5 rounded bg-olive-200 font-bold">
-                              {varType}
-                            </span>
-                          </div>
-
-                          {/* Runtime Test Value Input */}
-                          <div>
-                            <span className="text-[10px] font-bold text-olive-600 uppercase tracking-wider block mb-1">
-                              Runtime Test Value
-                            </span>
-
-                            {varType === "boolean" ? (
-                              <div className="flex items-center gap-4 pt-1">
-                                <label className="flex items-center gap-2 text-xs font-medium text-olive-900 cursor-pointer">
-                                  <input
-                                    type="radio"
-                                    name={`var-${varName}`}
-                                    checked={testVal === true || testVal === "true"}
-                                    onChange={() => setRuntimeValues({ ...runtimeValues, [varName]: true })}
-                                    className="text-olive-900 focus:ring-0"
-                                  />
-                                  true
-                                </label>
-                                <label className="flex items-center gap-2 text-xs font-medium text-olive-900 cursor-pointer">
-                                  <input
-                                    type="radio"
-                                    name={`var-${varName}`}
-                                    checked={testVal === false || testVal === "false"}
-                                    onChange={() => setRuntimeValues({ ...runtimeValues, [varName]: false })}
-                                    className="text-olive-900 focus:ring-0"
-                                  />
-                                  false
-                                </label>
-                              </div>
-                            ) : varType === "enum" && schemaDef?.options ? (
-                              <select
-                                value={testVal}
-                                onChange={(e) => setRuntimeValues({ ...runtimeValues, [varName]: e.target.value })}
-                                className="w-full bg-white border border-olive-200 rounded-lg px-3 py-1.5 text-xs text-olive-950"
-                              >
-                                <option value="">Select enum option...</option>
-                                {schemaDef.options.map((opt) => (
-                                  <option key={opt} value={opt}>
-                                    {opt}
-                                  </option>
-                                ))}
-                              </select>
-                            ) : String(testVal).length > 50 || varType === "json" ? (
-                              <textarea
-                                value={testVal}
-                                onChange={(e) => setRuntimeValues({ ...runtimeValues, [varName]: e.target.value })}
-                                placeholder={`Enter test value for ${varName}...`}
-                                rows={3}
-                                className="w-full bg-white border border-olive-200 rounded-lg p-2.5 text-xs font-mono text-olive-950 focus:outline-none focus:border-olive-400"
-                              />
-                            ) : (
-                              <input
-                                type={varType === "number" ? "number" : "text"}
-                                value={testVal}
-                                onChange={(e) => setRuntimeValues({ ...runtimeValues, [varName]: e.target.value })}
-                                placeholder={`Enter test value for ${varName}...`}
-                                className="w-full bg-white border border-olive-200 rounded-lg px-3 py-1.5 text-xs text-olive-950 font-mono focus:outline-none focus:border-olive-400"
-                              />
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* Primary Run Button & Actions Bar */}
-              <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-olive-200">
-                <button
-                  type="button"
-                  onClick={handleRunPlayground}
-                  disabled={isExecuting}
-                  className="w-full sm:w-auto px-8 py-3 rounded-xl bg-olive-900 hover:bg-black disabled:opacity-50 text-white font-bold text-sm shadow-md shadow-olive-900/20 transition flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  {isExecuting ? (
-                    <>
-                      <Zap className="w-4 h-4 animate-spin text-amber-300" />
-                      Executing Prompt via AI Service...
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-4 h-4 fill-current text-emerald-400" />
-                      Run Prompt in Playground
-                    </>
-                  )}
-                </button>
-
-                {runHistory.length >= 2 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsComparingRuns(!isComparingRuns);
-                      if (!compareRunIdA && runHistory.length >= 2) {
-                        setCompareRunIdA(runHistory[0].id);
-                        setCompareRunIdB(runHistory[1].id);
-                      }
-                    }}
-                    className={`px-4 py-2 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition ${
-                      isComparingRuns
-                        ? "bg-olive-900 text-white border-olive-900"
-                        : "bg-white text-olive-800 border-olive-200 hover:bg-olive-100"
-                    }`}
-                  >
-                    <GitCompare className="w-4 h-4" />
-                    {isComparingRuns ? "Exit Comparison" : `Compare Runs (${runHistory.length})`}
-                  </button>
-                )}
-              </div>
-
-              {/* EXECUTION RESULT & HISTORY SECTION */}
-              {isComparingRuns ? (
-                /* Run Comparison Mode */
-                <div className="p-5 rounded-2xl bg-white border border-olive-200 space-y-4 shadow-sm">
-                  <div className="flex items-center justify-between pb-2 border-b border-olive-200">
-                    <h3 className="text-xs font-bold text-olive-950 uppercase tracking-wider flex items-center gap-2">
-                      <GitCompare className="w-4 h-4 text-olive-700" />
-                      Side-by-Side Playground Run Comparison
-                    </h3>
-                    <button
-                      type="button"
-                      onClick={() => setIsComparingRuns(false)}
-                      className="text-xs text-olive-600 hover:text-olive-950 underline"
-                    >
-                      Back to Single Output View
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-olive-600 block mb-1">
-                        Run A
-                      </span>
-                      <select
-                        value={compareRunIdA}
-                        onChange={(e) => setCompareRunIdA(e.target.value)}
-                        className="w-full bg-white border border-olive-200 rounded-lg px-3 py-1.5 text-xs text-olive-950"
-                      >
-                        {runHistory.map((r, i) => (
-                          <option key={r.id} value={r.id}>
-                            Run #{runHistory.length - i} ({r.timestamp}) — {r.modelName}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-olive-600 block mb-1">
-                        Run B
-                      </span>
-                      <select
-                        value={compareRunIdB}
-                        onChange={(e) => setCompareRunIdB(e.target.value)}
-                        className="w-full bg-white border border-olive-200 rounded-lg px-3 py-1.5 text-xs text-olive-950"
-                      >
-                        {runHistory.map((r, i) => (
-                          <option key={r.id} value={r.id}>
-                            Run #{runHistory.length - i} ({r.timestamp}) — {r.modelName}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  {runA && runB && (
-                    <div className="space-y-4">
-                      {/* Differences Table */}
-                      <div className="p-3.5 rounded-xl bg-olive-50/70 border border-olive-200 space-y-2 text-xs">
-                        <div className="font-bold text-olive-900 border-b border-olive-200 pb-1">
-                          Parameter & Variable Differences
-                        </div>
-                        <div className="grid grid-cols-3 font-mono text-[11px] gap-2">
-                          <div className="text-olive-600 font-sans">Model / Temp</div>
-                          <div className="text-olive-950">{runA.modelName} (t={runA.parameters.temperature})</div>
-                          <div className="text-olive-950">{runB.modelName} (t={runB.parameters.temperature})</div>
-                        </div>
-                        <div className="grid grid-cols-3 font-mono text-[11px] gap-2">
-                          <div className="text-olive-600 font-sans">Latency</div>
-                          <div className="text-olive-950">{runA.latencyMs} ms</div>
-                          <div className="text-olive-950">{runB.latencyMs} ms</div>
-                        </div>
-                        {Object.keys({ ...runA.variableValues, ...runB.variableValues }).map((vKey) => (
-                          <div key={vKey} className="grid grid-cols-3 font-mono text-[11px] gap-2">
-                            <div className="text-olive-700 font-sans font-bold">{`{{${vKey}}}`}</div>
-                            <div className="truncate text-olive-950">{String(runA.variableValues[vKey] ?? "—")}</div>
-                            <div className="truncate text-olive-950">{String(runB.variableValues[vKey] ?? "—")}</div>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Outputs Side-by-Side */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="p-4 rounded-xl bg-white border border-olive-200 space-y-2">
-                          <div className="text-xs font-bold text-olive-900 border-b border-olive-200 pb-1">
-                            Output Run A ({runA.timestamp})
-                          </div>
-                          <pre className="font-mono text-xs text-olive-950 whitespace-pre-wrap leading-relaxed max-h-72 overflow-y-auto">
-                            {runA.output}
-                          </pre>
-                        </div>
-
-                        <div className="p-4 rounded-xl bg-white border border-olive-200 space-y-2">
-                          <div className="text-xs font-bold text-olive-900 border-b border-olive-200 pb-1">
-                            Output Run B ({runB.timestamp})
-                          </div>
-                          <pre className="font-mono text-xs text-olive-950 whitespace-pre-wrap leading-relaxed max-h-72 overflow-y-auto">
-                            {runB.output}
-                          </pre>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                /* Single Run Output View */
-                <div className="space-y-4">
+              {/* 3. VARIABLES TAB: Renders ONLY the Variables table */}
+              {activeTab === "variables" && (
+                <div className="space-y-3 w-full">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-bold text-olive-950 uppercase tracking-wider flex items-center gap-2">
-                      <Eye className="w-4 h-4 text-olive-700" />
-                      Execution Result Output
-                    </h3>
+                    <div>
+                      <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
+                        Variables
+                      </h3>
+                      <p className="text-xs text-gray-500">
+                        Add variables to make your prompt dynamic
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAddVariableRow}
+                      className="px-2.5 py-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold flex items-center gap-1 transition cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Add Variable
+                    </button>
+                  </div>
 
-                    {currentActiveRun && (
+                  {activeDetectedVariables.length === 0 && variablesSchema.length === 0 ? (
+                    <div className="p-6 rounded-lg border border-dashed border-gray-200 bg-gray-50/50 text-center space-y-1 w-full">
+                      <div className="text-xs font-semibold text-gray-700">No variables yet</div>
+                      <p className="text-xs text-gray-500">
+                        Create variables to use in your prompt. They will appear here.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="border border-gray-200 rounded-lg overflow-hidden w-full">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-gray-50 border-b border-gray-200 text-gray-500 font-semibold text-[11px] uppercase tracking-wider">
+                          <tr>
+                            <th className="px-4 py-2.5">Variable</th>
+                            <th className="px-4 py-2.5">Type</th>
+                            <th className="px-4 py-2.5">Test Value</th>
+                            <th className="px-4 py-2.5 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 bg-white">
+                          {variablesSchema.map((v) => {
+                            const testVal = (runtimeValues[v.name] as string | number | undefined) ?? "";
+                            return (
+                              <tr key={v.name} className="hover:bg-gray-50/50">
+                                <td className="px-4 py-2.5 font-mono font-semibold text-gray-900">
+                                  {`{{${v.name}}}`}
+                                </td>
+                                <td className="px-4 py-2.5 text-gray-500 uppercase font-mono text-[11px]">
+                                  {v.type}
+                                </td>
+                                <td className="px-4 py-2.5">
+                                  <input
+                                    type="text"
+                                    value={testVal}
+                                    onChange={(e) =>
+                                      setRuntimeValues({ ...runtimeValues, [v.name]: e.target.value })
+                                    }
+                                    placeholder={`Enter test value...`}
+                                    className="w-full max-w-md bg-white border border-gray-200 rounded px-2.5 py-1 text-xs font-mono text-gray-900 focus:outline-none focus:border-olive-500"
+                                  />
+                                </td>
+                                <td className="px-4 py-2.5 text-right">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setVariablesSchema(variablesSchema.filter((x) => x.name !== v.name))
+                                    }
+                                    className="text-gray-400 hover:text-rose-600 transition"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 4. TEST & OUTPUT TAB: Model Selector & Run Bar + Execution Result Output */}
+              {activeTab === "test" && (
+                <div className="space-y-6 w-full">
+                  {/* Model Configuration & Run Prompt Action Bar */}
+                  <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/40 flex flex-col sm:flex-row items-center justify-between gap-4 w-full">
+                    <div className="flex items-center gap-3 w-full sm:w-auto">
+                      <span className="text-xs font-semibold text-gray-700">Model</span>
+                      <select
+                        value={parameters.modelName}
+                        onChange={(e) => setParameters({ ...parameters, modelName: e.target.value })}
+                        className="bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-xs font-medium text-gray-900 focus:outline-none focus:border-olive-500 cursor-pointer shadow-2xs"
+                      >
+                        <option value="gemini-3.6-flash">Google Gemini 3.6 Flash</option>
+                        <option value="gpt-4o">OpenAI GPT-4o</option>
+                        <option value="claude-3-5-sonnet-20240620">Anthropic Claude 3.5 Sonnet</option>
+                      </select>
+
                       <button
                         type="button"
-                        onClick={() => handleCopyOutput(currentActiveRun.output)}
-                        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-olive-200 text-olive-800 hover:bg-olive-100 transition flex items-center gap-1.5"
+                        onClick={handleOpenParametersModal}
+                        className="p-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:text-gray-900 transition cursor-pointer"
+                        title="Open Parameters Modal"
                       >
-                        {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                        {copied ? "Copied" : "Copy Output"}
+                        <Settings className="w-4 h-4" />
                       </button>
-                    )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleRunPlayground}
+                      disabled={isExecuting}
+                      className="w-full sm:w-auto px-6 py-2 rounded-lg bg-olive-700 hover:bg-olive-800 disabled:opacity-50 text-white font-bold text-xs shadow-2xs transition flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      {isExecuting ? (
+                        <>
+                          <Zap className="w-3.5 h-3.5 animate-spin text-amber-300" />
+                          Running Prompt...
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-3.5 h-3.5 fill-current text-emerald-300" />
+                          Run Prompt
+                        </>
+                      )}
+                    </button>
                   </div>
 
-                  {isExecuting ? (
-                    <div className="p-12 rounded-2xl bg-white border border-olive-200 flex flex-col items-center justify-center text-center space-y-3 shadow-xs">
-                      <Zap className="w-8 h-8 animate-bounce text-olive-900" />
-                      <div className="text-sm font-bold text-olive-950">Generating AI Output...</div>
-                      <p className="text-xs text-olive-600 max-w-xs">
-                        Sending substituted prompt payload to backend AI provider ({modelName}).
-                      </p>
-                    </div>
-                  ) : currentActiveRun ? (
-                    <div className="space-y-4">
-                      {/* Execution Metadata Banner */}
-                      <div className="p-4 rounded-2xl bg-olive-900 text-white space-y-2 text-xs shadow-md">
-                        <div className="flex items-center justify-between font-mono">
-                          <span className="font-bold text-amber-300 flex items-center gap-1.5">
-                            <Cpu className="w-4 h-4" />
-                            {currentActiveRun.modelName}
-                          </span>
-                          <span className="text-olive-300 flex items-center gap-1">
-                            <Clock className="w-3.5 h-3.5" />
-                            {currentActiveRun.latencyMs} ms
-                          </span>
+                  {/* Execution Result Section */}
+                  <div className="space-y-3 pt-2 w-full">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
+                        Execution Result
+                      </h3>
+
+                      {currentActiveRun && (
+                        <div className="flex items-center gap-3 text-xs text-gray-500 font-mono">
+                          <span>{currentActiveRun.latencyMs} ms</span>
+                          <span>•</span>
+                          <span>{currentActiveRun.tokens?.totalTokens || 0} tokens</span>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyOutput(currentActiveRun.output)}
+                            className="px-2.5 py-1 rounded bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 font-sans font-semibold flex items-center gap-1 transition cursor-pointer"
+                          >
+                            {copied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                            {copied ? "Copied" : "Copy"}
+                          </button>
                         </div>
-
-                        <div className="grid grid-cols-3 text-[11px] font-mono text-olive-200 pt-2 border-t border-olive-800">
-                          <div>
-                            Input Tokens:{" "}
-                            <span className="text-white font-bold">
-                              {currentActiveRun.tokens?.inputTokens ?? "Unavailable"}
-                            </span>
-                          </div>
-                          <div>
-                            Output Tokens:{" "}
-                            <span className="text-white font-bold">
-                              {currentActiveRun.tokens?.outputTokens ?? "Unavailable"}
-                            </span>
-                          </div>
-                          <div>
-                            Total Tokens:{" "}
-                            <span className="text-white font-bold">
-                              {currentActiveRun.tokens?.totalTokens ?? "Unavailable"}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Output Text */}
-                      <div className="p-5 rounded-2xl bg-white border border-olive-200 shadow-xs max-h-[450px] overflow-y-auto custom-scrollbar">
-                        <pre className="font-mono text-xs text-olive-950 whitespace-pre-wrap leading-relaxed">
-                          {currentActiveRun.output}
-                        </pre>
-                      </div>
-
-                      {/* Experiment Save Actions */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                        <button
-                          type="button"
-                          onClick={() => setShowSaveVersionModal(true)}
-                          className="py-2.5 px-4 rounded-xl bg-white hover:bg-olive-100 border border-olive-200 text-olive-950 font-bold text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-xs"
-                        >
-                          <Save className="w-4 h-4 text-olive-700" />
-                          Save as New Version
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setShowSaveNewPromptModal(true)}
-                          className="py-2.5 px-4 rounded-xl bg-white hover:bg-olive-100 border border-olive-200 text-olive-950 font-bold text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-xs"
-                        >
-                          <Plus className="w-4 h-4 text-olive-700" />
-                          Save as New Prompt
-                        </button>
-                      </div>
+                      )}
                     </div>
-                  ) : (
-                    <div className="p-12 rounded-2xl bg-white border border-olive-200 flex flex-col items-center justify-center text-center space-y-2 text-olive-500 shadow-xs">
-                      <Play className="w-8 h-8 text-olive-300 mb-1" />
-                      <div className="text-sm font-bold text-olive-800">No Execution Run Yet</div>
-                      <p className="text-xs text-olive-600 max-w-xs">
-                        Enter runtime test values above and click "Run Prompt in Playground" to generate AI outputs.
-                      </p>
-                    </div>
-                  )}
 
-                  {/* Session Run History Drawer */}
-                  {runHistory.length > 0 && (
-                    <div className="space-y-2 pt-4 border-t border-olive-200">
-                      <h4 className="text-xs font-bold text-olive-800 uppercase tracking-wider flex items-center gap-2">
-                        <Clock className="w-3.5 h-3.5 text-olive-600" />
-                        Session Run History ({runHistory.length})
-                      </h4>
-
-                      <div className="space-y-1.5 max-h-40 overflow-y-auto custom-scrollbar">
-                        {runHistory.map((run, idx) => {
-                          const isSelected = currentActiveRun?.id === run.id;
-                          return (
-                            <div
-                              key={run.id}
-                              onClick={() => setSelectedRunId(run.id)}
-                              className={`p-3 rounded-xl border text-xs cursor-pointer flex items-center justify-between transition ${
-                                isSelected
-                                  ? "bg-olive-900 text-white border-olive-900 shadow-sm"
-                                  : "bg-white text-olive-900 border-olive-200 hover:bg-olive-100"
-                              }`}
-                            >
-                              <div className="flex items-center gap-2 truncate">
-                                <span className="font-mono font-bold text-[10px] opacity-75">
-                                  #{runHistory.length - idx}
-                                </span>
-                                <span className="font-semibold">{run.modelName}</span>
-                                <span className="text-[10px] opacity-75">({run.timestamp})</span>
-                              </div>
-                              <div className="flex items-center gap-2 font-mono text-[10px]">
-                                <span>{run.latencyMs}ms</span>
-                                <ChevronRight className="w-3.5 h-3.5" />
-                              </div>
-                            </div>
-                          );
-                        })}
+                    {isExecuting ? (
+                      <div className="p-8 rounded-lg border border-gray-200 bg-white text-center space-y-2 w-full">
+                        <Zap className="w-6 h-6 animate-bounce text-olive-700 mx-auto" />
+                        <div className="text-xs font-bold text-gray-900">Executing Prompt...</div>
+                        <p className="text-xs text-gray-500">
+                          Generating output using {parameters.modelName}...
+                        </p>
                       </div>
-                    </div>
-                  )}
+                    ) : currentActiveRun ? (
+                      <div className="p-4 rounded-lg border border-gray-200 bg-white font-mono text-xs text-gray-900 leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto custom-scrollbar w-full">
+                        {currentActiveRun.output}
+                      </div>
+                    ) : (
+                      <div className="p-8 rounded-lg border border-dashed border-gray-200 bg-gray-50/50 text-center space-y-1 w-full">
+                        <div className="text-xs font-semibold text-gray-700">No execution run yet</div>
+                        <p className="text-xs text-gray-500">
+                          Enter runtime values and click "Run Prompt" to generate an output.
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
           )}
         </main>
-
-        {/* RIGHT PARAMETERS DRAWER (Sliding / Overlay from Right Side) */}
-        {isParametersDrawerOpen && (
-          <aside className="w-80 border-l border-olive-200 bg-white shadow-2xl flex flex-col h-full shrink-0 z-30 animate-in slide-in-from-right duration-300">
-            {/* Drawer Header */}
-            <div className="px-5 py-4 border-b border-olive-200 bg-olive-50/70 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <SlidersHorizontal className="w-4 h-4 text-olive-900" />
-                <h3 className="text-sm font-bold text-olive-950">AI Parameters Drawer</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsParametersDrawerOpen(false)}
-                className="p-1 rounded-lg text-olive-400 hover:text-olive-950 hover:bg-olive-100 transition"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Drawer Body */}
-            <div className="p-5 flex-1 overflow-y-auto space-y-6 text-xs custom-scrollbar">
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-olive-800 mb-1">
-                    AI Provider Integration
-                  </label>
-                  <select
-                    value={provider}
-                    onChange={(e) => setProvider(e.target.value)}
-                    className="w-full bg-white border border-olive-200 rounded-xl px-3 py-2 text-xs font-medium text-olive-950 focus:outline-none focus:border-olive-400"
-                  >
-                    <option value="gemini">Google Gemini AI</option>
-                    <option value="openai">OpenAI</option>
-                    <option value="anthropic">Anthropic Claude</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-olive-800 mb-1">
-                    Model Architecture
-                  </label>
-                  <select
-                    value={modelName}
-                    onChange={(e) => setModelName(e.target.value)}
-                    className="w-full bg-white border border-olive-200 rounded-xl px-3 py-2 text-xs font-medium text-olive-950 focus:outline-none focus:border-olive-400"
-                  >
-                    {provider === "gemini" && (
-                      <>
-                        <option value="gemini-3.6-flash">Gemini 3.6 Flash (Recommended)</option>
-                        <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
-                        <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
-                      </>
-                    )}
-                    {provider === "openai" && (
-                      <>
-                        <option value="gpt-4o">GPT-4o (Omni)</option>
-                        <option value="gpt-4-turbo">GPT-4 Turbo</option>
-                        <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                      </>
-                    )}
-                    {provider === "anthropic" && (
-                      <>
-                        <option value="claude-3-5-sonnet-20240620">Claude 3.5 Sonnet</option>
-                        <option value="claude-3-haiku-20240307">Claude 3 Haiku</option>
-                      </>
-                    )}
-                  </select>
-                </div>
-
-                {/* Hyperparameters Sliders */}
-                <div className="space-y-4 pt-2 border-t border-olive-200">
-                  <div>
-                    <div className="flex justify-between text-xs font-semibold text-olive-800 mb-1">
-                      <span>Temperature</span>
-                      <span className="font-mono text-olive-950">{temperature}</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.05"
-                      value={temperature}
-                      onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                      className="w-full accent-olive-900 cursor-pointer"
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between text-xs font-semibold text-olive-800 mb-1">
-                      <span>Max Tokens</span>
-                      <span className="font-mono text-olive-950">{maxTokens}</span>
-                    </div>
-                    <input
-                      type="number"
-                      value={maxTokens}
-                      onChange={(e) => setMaxTokens(parseInt(e.target.value, 10) || 100)}
-                      className="w-full bg-white border border-olive-200 rounded-xl px-3 py-1.5 text-xs font-mono text-olive-950 focus:outline-none focus:border-olive-400"
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between text-xs font-semibold text-olive-800 mb-1">
-                      <span>Top P</span>
-                      <span className="font-mono text-olive-950">{topP}</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.05"
-                      value={topP}
-                      onChange={(e) => setTopP(parseFloat(e.target.value))}
-                      className="w-full accent-olive-900 cursor-pointer"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Drawer Footer Actions */}
-            <div className="p-4 border-t border-olive-200 bg-olive-50/70 flex items-center justify-between gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setProvider("gemini");
-                  setModelName("gemini-3.6-flash");
-                  setTemperature(0.7);
-                  setMaxTokens(2048);
-                  setTopP(0.95);
-                }}
-                className="px-3 py-1.5 rounded-xl text-xs font-semibold text-olive-600 hover:text-olive-950 hover:bg-olive-100 transition flex items-center gap-1.5"
-              >
-                <RotateCcw className="w-3.5 h-3.5" /> Reset Defaults
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsParametersDrawerOpen(false)}
-                className="px-4 py-1.5 rounded-xl bg-olive-900 text-white font-bold text-xs transition"
-              >
-                Done
-              </button>
-            </div>
-          </aside>
-        )}
       </div>
 
-      {/* Save as New Version Modal */}
-      {showSaveVersionModal && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center bg-olive-950/60 backdrop-blur-xs p-4">
-          <div className="bg-white border border-olive-200 rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl text-olive-950">
-            <h3 className="text-base font-bold text-olive-950 flex items-center gap-2">
-              <Save className="w-5 h-5 text-olive-800" />
-              Save Experiment as New Version
-            </h3>
-            <p className="text-xs text-olive-600">
-              Creates a new immutable canonical version for{" "}
-              <span className="font-bold text-olive-950">{activePrompt?.name}</span>. Handlebars placeholders ({`{{variables}}`}) are preserved intact without baking in test inputs.
-            </p>
-
-            <div>
-              <label className="block text-xs font-semibold text-olive-800 mb-1">
-                Version Change Note
-              </label>
-              <input
-                type="text"
-                value={saveVersionNote}
-                onChange={(e) => setSaveVersionNote(e.target.value)}
-                placeholder="e.g. Optimized instructions after playground run"
-                className="w-full bg-white border border-olive-200 rounded-xl px-3.5 py-2 text-xs text-olive-950 focus:outline-none focus:border-olive-400"
-              />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2">
+      {/* 4. Context-Aware Parameters Modal */}
+      {isParametersModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="px-5 py-3.5 border-b border-gray-200 flex items-center justify-between bg-gray-50/50">
+              <h3 className="text-sm font-bold text-gray-900">Prompt Parameters</h3>
               <button
                 type="button"
-                onClick={() => setShowSaveVersionModal(false)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-olive-600 hover:bg-olive-100"
+                onClick={handleCancelParametersModal}
+                className="p-1 rounded-lg text-gray-400 hover:text-gray-900 transition cursor-pointer"
               >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveAsVersionSubmit}
-                disabled={isSaving}
-                className="px-5 py-2 rounded-xl bg-olive-900 hover:bg-black text-white text-xs font-bold transition"
-              >
-                {isSaving ? "Saving..." : "Confirm & Save Version"}
+                <X className="w-4 h-4" />
               </button>
             </div>
-          </div>
-        </div>
-      )}
 
-      {/* Save as New Prompt Modal */}
-      {showSaveNewPromptModal && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center bg-olive-950/60 backdrop-blur-xs p-4">
-          <div className="bg-white border border-olive-200 rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl text-olive-950">
-            <h3 className="text-base font-bold text-olive-950 flex items-center gap-2">
-              <Plus className="w-5 h-5 text-olive-800" />
-              Save Experiment as New Prompt
-            </h3>
-            <p className="text-xs text-olive-600">
-              Create a brand new standalone prompt template based on your playground changes.
-            </p>
-
-            <div className="space-y-3">
+            {/* Modal Body */}
+            <div className="p-5 space-y-4 text-xs">
               <div>
-                <label className="block text-xs font-semibold text-olive-800 mb-1">
-                  Prompt Name *
+                <label className="block font-semibold text-gray-700 mb-1">
+                  Temperature
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={modalTempParams.temperature}
+                    onChange={(e) =>
+                      setModalTempParams({
+                        ...modalTempParams,
+                        temperature: parseFloat(e.target.value),
+                      })
+                    }
+                    className="flex-1 accent-olive-700 cursor-pointer"
+                  />
+                  <span className="w-12 font-mono text-right text-gray-900 font-semibold bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                    {modalTempParams.temperature}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1">
+                  Max Tokens
                 </label>
                 <input
-                  type="text"
-                  value={saveNewPromptTitle}
-                  onChange={(e) => setSaveNewPromptTitle(e.target.value)}
-                  placeholder="e.g. Refactored Code Reviewer"
-                  className="w-full bg-white border border-olive-200 rounded-xl px-3.5 py-2 text-xs text-olive-950 focus:outline-none focus:border-olive-400"
+                  type="number"
+                  value={modalTempParams.maxTokens}
+                  onChange={(e) =>
+                    setModalTempParams({
+                      ...modalTempParams,
+                      maxTokens: parseInt(e.target.value, 10) || 100,
+                    })
+                  }
+                  className="w-full bg-white border border-gray-200 rounded-lg px-3 py-1.5 font-mono text-gray-900 focus:outline-none focus:border-olive-500"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-olive-800 mb-1">Category</label>
+                <label className="block font-semibold text-gray-700 mb-1">
+                  Top P
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={modalTempParams.topP}
+                    onChange={(e) =>
+                      setModalTempParams({
+                        ...modalTempParams,
+                        topP: parseFloat(e.target.value),
+                      })
+                    }
+                    className="flex-1 accent-olive-700 cursor-pointer"
+                  />
+                  <span className="w-12 font-mono text-right text-gray-900 font-semibold bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                    {modalTempParams.topP}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1">
+                  Response Format
+                </label>
                 <select
-                  value={saveNewPromptCategory}
-                  onChange={(e) => setSaveNewPromptCategory(e.target.value)}
-                  className="w-full bg-white border border-olive-200 rounded-xl px-3.5 py-2 text-xs text-olive-950 focus:outline-none focus:border-olive-400"
+                  value={modalTempParams.responseFormat}
+                  onChange={(e) =>
+                    setModalTempParams({
+                      ...modalTempParams,
+                      responseFormat: e.target.value as "text" | "json",
+                    })
+                  }
+                  className="w-full bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-gray-900 focus:outline-none focus:border-olive-500 cursor-pointer"
                 >
-                  <option value="general">General</option>
-                  <option value="development">Development</option>
-                  <option value="backend">Backend</option>
-                  <option value="frontend">Frontend</option>
-                  <option value="testing">Testing</option>
+                  <option value="text">Text</option>
+                  <option value="json">JSON Object</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-olive-800 mb-1">Description</label>
-                <textarea
-                  value={saveNewPromptDesc}
-                  onChange={(e) => setSaveNewPromptDesc(e.target.value)}
-                  placeholder="Short description..."
-                  rows={2}
-                  className="w-full bg-white border border-olive-200 rounded-xl p-3 text-xs text-olive-950 focus:outline-none focus:border-olive-400"
-                />
+                <label className="block font-semibold text-gray-700 mb-1">
+                  Provider
+                </label>
+                <select
+                  value={modalTempParams.provider}
+                  onChange={(e) =>
+                    setModalTempParams({
+                      ...modalTempParams,
+                      provider: e.target.value,
+                    })
+                  }
+                  className="w-full bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-gray-900 focus:outline-none focus:border-olive-500 cursor-pointer"
+                >
+                  <option value="gemini">Google Gemini AI</option>
+                  <option value="openai">OpenAI</option>
+                  <option value="anthropic">Anthropic Claude</option>
+                </select>
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
+            {/* Modal Footer */}
+            <div className="px-5 py-3 border-t border-gray-200 flex items-center justify-end gap-2 bg-gray-50/50">
               <button
                 type="button"
-                onClick={() => setShowSaveNewPromptModal(false)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-olive-600 hover:bg-olive-100"
+                onClick={handleCancelParametersModal}
+                className="px-4 py-1.5 rounded-lg border border-gray-200 text-gray-600 font-semibold text-xs hover:bg-gray-100 transition cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                onClick={handleSaveAsNewPromptSubmit}
-                disabled={isSaving}
-                className="px-5 py-2 rounded-xl bg-olive-900 hover:bg-black text-white text-xs font-bold transition"
+                onClick={handleSaveParametersModal}
+                className="px-4 py-1.5 rounded-lg bg-olive-700 hover:bg-olive-800 text-white font-bold text-xs transition cursor-pointer"
               >
-                {isSaving ? "Creating..." : "Create Prompt"}
+                Save
               </button>
             </div>
           </div>

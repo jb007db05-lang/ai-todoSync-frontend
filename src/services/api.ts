@@ -2,7 +2,8 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { showGlobalToast } from '@/context/ToastContext';
 import { normalizeApiError } from '@/utils/apiError';
 
-const baseURL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api';
+export const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api';
+const baseURL = API_BASE_URL;
 const TOKEN_STORAGE_KEY = 'todo_token';
 
 const api = axios.create({

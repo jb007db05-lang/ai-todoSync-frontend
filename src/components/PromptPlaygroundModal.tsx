@@ -4,7 +4,6 @@ import {
   Play,
   Copy,
   Check,
-  RotateCcw,
   Sparkles,
   GitCompare,
   Sliders,
@@ -34,7 +33,7 @@ export interface PlaygroundRunItem {
   timestamp: string;
   promptName: string;
   versionNumber?: number;
-  variableValues: Record<string, any>;
+  variableValues: Record<string, unknown>;
   provider: string;
   modelName: string;
   parameters: {
@@ -75,13 +74,12 @@ export const PromptPlaygroundModal: React.FC<PromptPlaygroundModalProps> = ({
   const [activePrompt, setActivePrompt] = useState<PromptItem | null>(null);
   const [versionsList, setVersionsList] = useState<PromptVersion[]>([]);
   const [selectedVersionNum, setSelectedVersionNum] = useState<number>(1);
-  const [activeVersionDoc, setActiveVersionDoc] = useState<PromptVersion | null>(null);
 
   // Template & Content State
   const [body, setBody] = useState<string>("");
   const [messages, setMessages] = useState<IPromptMessage[]>([]);
   const [variablesSchema, setVariablesSchema] = useState<IPromptVariable[]>([]);
-  const [variableValues, setVariableValues] = useState<Record<string, any>>({});
+  const [variableValues, setVariableValues] = useState<Record<string, unknown>>({});
   const [previewMode, setPreviewMode] = useState<"template" | "resolved">("resolved");
 
   // AI Execution Settings
@@ -163,7 +161,6 @@ export const PromptPlaygroundModal: React.FC<PromptPlaygroundModalProps> = ({
 
   // Apply template & variable state when version or prompt changes
   const applyPromptVersionState = (prompt: PromptItem, verDoc: PromptVersion | null) => {
-    setActiveVersionDoc(verDoc);
     const contentBody = verDoc ? verDoc.body : prompt.body || "";
     const contentMsgs = verDoc
       ? verDoc.messages || []
@@ -181,7 +178,7 @@ export const PromptPlaygroundModal: React.FC<PromptPlaygroundModalProps> = ({
     const schemaMap = new Map(schema.map((v) => [v.name, v]));
 
     setVariableValues((prevValues) => {
-      const nextValues: Record<string, any> = {};
+      const nextValues: Record<string, unknown> = {};
       detectedNames.forEach((varName) => {
         if (prevValues[varName] !== undefined && prevValues[varName] !== "") {
           nextValues[varName] = prevValues[varName];
@@ -245,7 +242,7 @@ export const PromptPlaygroundModal: React.FC<PromptPlaygroundModalProps> = ({
   }, [body, messages, activeDetectedVariables, variableValues]);
 
   // Handle variable input changes
-  const handleVariableValChange = (varName: string, val: any) => {
+  const handleVariableValChange = (varName: string, val: unknown) => {
     setVariableValues((prev) => ({
       ...prev,
       [varName]: val,
@@ -630,7 +627,7 @@ export const PromptPlaygroundModal: React.FC<PromptPlaygroundModalProps> = ({
                     const schemaDef = variablesSchema.find((s) => s.name === varName);
                     const varType = schemaDef?.type || "string";
                     const isRequired = schemaDef?.required ?? true;
-                    const val = variableValues[varName] ?? "";
+                    const val = (variableValues[varName] as string | number | boolean | undefined) ?? "";
 
                     return (
                       <div key={varName} className="p-3.5 rounded-xl bg-olive-50/60 border border-olive-200 space-y-1.5">
@@ -674,7 +671,7 @@ export const PromptPlaygroundModal: React.FC<PromptPlaygroundModalProps> = ({
                           </div>
                         ) : varType === "enum" && schemaDef?.options ? (
                           <select
-                            value={val}
+                            value={String(val)}
                             onChange={(e) => handleVariableValChange(varName, e.target.value)}
                             className="w-full bg-white border border-olive-200 rounded-lg px-3 py-1.5 text-xs text-olive-950 focus:outline-none focus:border-olive-400"
                           >
@@ -687,7 +684,7 @@ export const PromptPlaygroundModal: React.FC<PromptPlaygroundModalProps> = ({
                           </select>
                         ) : String(val).length > 60 || varType === "json" ? (
                           <textarea
-                            value={val}
+                            value={String(val)}
                             onChange={(e) => handleVariableValChange(varName, e.target.value)}
                             placeholder={`Enter ${varName}...`}
                             rows={3}
@@ -696,7 +693,7 @@ export const PromptPlaygroundModal: React.FC<PromptPlaygroundModalProps> = ({
                         ) : (
                           <input
                             type={varType === "number" ? "number" : "text"}
-                            value={val}
+                            value={String(val)}
                             onChange={(e) => handleVariableValChange(varName, e.target.value)}
                             placeholder={`Enter ${varName}...`}
                             className="w-full bg-white border border-olive-200 rounded-lg px-3 py-1.5 text-xs text-olive-950 placeholder-olive-400 focus:outline-none focus:border-olive-400 font-mono"
