@@ -28,8 +28,8 @@ export function WorkspaceDangerZone({ workspace }: WorkspaceDangerZoneProps): JS
       await workspaceService.deleteWorkspace(workspace.id);
       await refreshWorkspaces();
       // Navigation handled by refreshWorkspaces → workspace list changes
-    } catch (err: any) {
-      setError(err?.message ?? 'Failed to delete workspace');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to delete workspace');
       setIsDeleting(false);
     }
   };

@@ -35,8 +35,8 @@ export function WorkspaceGeneralSettings({ workspace }: WorkspaceGeneralSettings
       await refreshWorkspaces();
       setSuccess('Workspace settings saved.');
       setTimeout(() => setSuccess(''), 3000);
-    } catch (err: any) {
-      setError(err?.message ?? 'Failed to save settings');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to save settings');
     } finally {
       setIsSaving(false);
     }

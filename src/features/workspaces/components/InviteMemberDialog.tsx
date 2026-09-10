@@ -28,8 +28,8 @@ export function InviteMemberDialog({
     try {
       await onInvite(email.trim().toLowerCase(), role);
       onClose();
-    } catch (err: any) {
-      setError(err?.message ?? 'Failed to invite member');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to invite member');
     } finally {
       setLoading(false);
     }

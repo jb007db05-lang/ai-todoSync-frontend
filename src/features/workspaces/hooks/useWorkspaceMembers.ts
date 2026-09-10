@@ -14,8 +14,8 @@ export function useWorkspaceMembers(workspaceId: string | null | undefined) {
     try {
       const list = await workspaceService.listMembers(workspaceId);
       setMembers(list);
-    } catch (err: any) {
-      setError(err?.message ?? 'Failed to load members');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load members');
     } finally {
       setIsLoading(false);
     }
