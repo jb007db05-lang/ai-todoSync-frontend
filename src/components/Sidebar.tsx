@@ -13,7 +13,7 @@ import {
   Play,
 } from 'lucide-react';
 import logoImg from '@/assets/logo.png';
-import { Workspace } from '../services/workspaces';
+import { WorkspaceSwitcher } from '@/features/workspaces';
 
 export type SidebarView =
   | 'dashboard'
@@ -31,8 +31,6 @@ interface SidebarProps {
   activeView: SidebarView;
   selectedProjectView: string;
   allProjectsValue: string;
-  currentWorkspaceId?: string;
-  onSelectWorkspace?: (workspace: Workspace) => void;
   onProjectSelect: (projectId: string) => void;
   onViewChange: (view: SidebarView, tab?: string) => void;
   onNewProject: () => void;
@@ -121,6 +119,11 @@ const Sidebar: React.FC<SidebarProps> = ({
         >
           Pristine
         </span>
+      </div>
+
+      {/* Workspace Switcher */}
+      <div className="px-3 py-2.5" style={{ borderBottom: `1px solid ${BORDER}` }}>
+        <WorkspaceSwitcher />
       </div>
 
       {/* Nav Link Lists */}

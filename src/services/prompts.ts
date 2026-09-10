@@ -259,6 +259,26 @@ export const promptService = {
     );
     return res.data.data;
   },
+
+  async getPrompt(workspaceId: string, promptId: string): Promise<PromptItem> {
+    return this.getPromptDetails(workspaceId, promptId);
+  },
+
+  async listVersions(workspaceId: string, promptId: string): Promise<PromptVersion[]> {
+    return this.getPromptVersions(workspaceId, promptId);
+  },
+
+  async createVersion(
+    workspaceId: string,
+    promptId: string,
+    payload: { changelog?: string; body?: string; messages?: IPromptMessage[]; variables?: IPromptVariable[]; parameters?: PromptParametersPayload; provider?: string; modelName?: string }
+  ): Promise<PromptVersion> {
+    const res = await api.post<{ status: string; data: PromptVersion }>(
+      `/workspaces/${workspaceId}/prompts/${promptId}/versions`,
+      payload
+    );
+    return res.data.data;
+  },
 };
 
 export interface PlaygroundRunPayload {
