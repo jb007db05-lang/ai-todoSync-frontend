@@ -9,10 +9,11 @@ import {
   BookOpen,
   Target,
   Plug,
-  Sparkles
+  Sparkles,
+  Play,
 } from 'lucide-react';
 import logoImg from '@/assets/logo.png';
-import { Workspace } from '../services/workspaces';
+import { WorkspaceSwitcher } from '@/features/workspaces';
 
 export type SidebarView =
   | 'dashboard'
@@ -20,6 +21,7 @@ export type SidebarView =
   | 'event-tracking'
   | 'semantic-intelligence'
   | 'prompts'
+  | 'playground'
   | 'sdk-docs'
   | 'engagement'
   | 'sdk-integrations'
@@ -29,8 +31,6 @@ interface SidebarProps {
   activeView: SidebarView;
   selectedProjectView: string;
   allProjectsValue: string;
-  currentWorkspaceId?: string;
-  onSelectWorkspace?: (workspace: Workspace) => void;
   onProjectSelect: (projectId: string) => void;
   onViewChange: (view: SidebarView, tab?: string) => void;
   onNewProject: () => void;
@@ -121,6 +121,11 @@ const Sidebar: React.FC<SidebarProps> = ({
         </span>
       </div>
 
+      {/* Workspace Switcher */}
+      <div className="px-3 py-2.5" style={{ borderBottom: `1px solid ${BORDER}` }}>
+        <WorkspaceSwitcher />
+      </div>
+
       {/* Nav Link Lists */}
       <div className="flex flex-col flex-1 overflow-y-auto p-4 gap-1.5 scrollbar-thin">
         {activeIntegrationId ? (
@@ -200,6 +205,10 @@ const Sidebar: React.FC<SidebarProps> = ({
             <NavBtn isActive={activeView === 'prompts'} onClick={() => onViewChange('prompts')}>
               <Sparkles size={14} className={activeView === 'prompts' ? 'text-[#e2f2d1]' : 'text-white/50 group-hover:text-white/80'} strokeWidth={1.8} />
               Prompt Library
+            </NavBtn>
+            <NavBtn isActive={activeView === 'playground'} onClick={() => onViewChange('playground')}>
+              <Play size={14} className={activeView === 'playground' ? 'text-[#e2f2d1]' : 'text-white/50 group-hover:text-white/80'} strokeWidth={1.8} />
+              Prompt Playground
             </NavBtn>
             <NavBtn isActive={activeView === 'sdk-integrations'} onClick={() => onViewChange('sdk-integrations')}>
               <Plug size={14} className={activeView === 'sdk-integrations' ? 'text-[#e2f2d1]' : 'text-white/50 group-hover:text-white/80'} strokeWidth={1.8} />

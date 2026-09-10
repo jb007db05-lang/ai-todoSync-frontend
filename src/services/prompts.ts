@@ -23,6 +23,13 @@ export interface PromptFolder {
   createdAt?: string;
 }
 
+export interface PromptParametersPayload {
+  temperature?: number;
+  maxTokens?: number;
+  topP?: number;
+  responseFormat?: "text" | "json";
+}
+
 export interface PromptItem {
   _id: string;
   workspaceId: string;
@@ -36,6 +43,9 @@ export interface PromptItem {
   body: string;
   messages?: IPromptMessage[];
   variables: IPromptVariable[];
+  provider?: string;
+  modelName?: string;
+  parameters?: PromptParametersPayload;
   visibility: "private" | "project" | "organization";
   createdBy: {
     _id: string;
@@ -63,6 +73,9 @@ export interface PromptVersion {
   body: string;
   messages?: IPromptMessage[];
   variables: IPromptVariable[];
+  provider?: string;
+  modelName?: string;
+  parameters?: PromptParametersPayload;
   changedBy: {
     _id: string;
     name: string;
@@ -81,6 +94,9 @@ export interface CreatePromptPayload {
   body: string;
   messages?: IPromptMessage[];
   variables?: IPromptVariable[];
+  provider?: string;
+  modelName?: string;
+  parameters?: PromptParametersPayload;
   folderId?: string | null;
   visibility?: "private" | "project" | "organization";
   isTemplate?: boolean;
@@ -94,6 +110,9 @@ export interface UpdatePromptPayload {
   body?: string;
   messages?: IPromptMessage[];
   variables?: IPromptVariable[];
+  provider?: string;
+  modelName?: string;
+  parameters?: PromptParametersPayload;
   folderId?: string | null;
   visibility?: "private" | "project" | "organization";
   changeNote?: string;
@@ -226,4 +245,70 @@ export const promptService = {
     }>(`/workspaces/${workspaceId}/prompts/${promptId}`);
     return res.data.data;
   },
+
+  async runPlayground(
+    workspaceId: string,
+    payload: PlaygroundRunPayload,
+  ): Promise<PlaygroundRunResult> {
+    const endpoint = payload.promptId
+      ? `/workspaces/${workspaceId}/prompts/${payload.promptId}/playground/run`
+      : `/workspaces/${workspaceId}/prompts/playground/run`;
+    const res = await api.post<{ status: string; data: PlaygroundRunResult }>(
+      endpoint,
+      payload,
+    );
+    return res.data.data;
+  },
+
+  async getPrompt(workspaceId: string, promptId: string): Promise<PromptItem> {
+    return this.getPromptDetails(workspaceId, promptId);
+  },
+
+  async listVersions(workspaceId: string, promptId: string): Promise<PromptVersion[]> {
+    return this.getPromptVersions(workspaceId, promptId);
+  },
+
+  async createVersion(
+    workspaceId: string,
+    promptId: string,
+    payload: { changelog?: string; body?: string; messages?: IPromptMessage[]; variables?: IPromptVariable[]; parameters?: PromptParametersPayload; provider?: string; modelName?: string }
+  ): Promise<PromptVersion> {
+    const res = await api.post<{ status: string; data: PromptVersion }>(
+      `/workspaces/${workspaceId}/prompts/${promptId}/versions`,
+      payload
+    );
+    return res.data.data;
+  },
 };
+
+export interface PlaygroundRunPayload {
+  promptId?: string;
+  versionNumber?: number;
+  body?: string;
+  messages?: IPromptMessage[];
+  variables?: Record<string, unknown>;
+  provider?: string;
+  modelName?: string;
+  parameters?: {
+    temperature?: number;
+    maxTokens?: number;
+    topP?: number;
+  };
+}
+
+export interface PlaygroundRunResult {
+  output: string;
+  resolvedPrompt: string | IPromptMessage[];
+  metadata: {
+    modelName: string;
+    provider: string;
+    latencyMs: number;
+    inputTokens?: number;
+    outputTokens?: number;
+    totalTokens?: number;
+    timestamp: string;
+    promptId?: string;
+    versionNumber?: number;
+  };
+}
+

@@ -216,11 +216,6 @@ export default function LandingPage(): JSX.Element {
           transition={{ duration: 0.5 }}
           className="space-y-6"
         >
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-neutral-200/50 border border-neutral-300/40 rounded-full">
-            <Sparkles size={11} className="text-emerald-700" />
-            <span className="text-[9px] font-bold text-neutral-600 uppercase tracking-widest">Version 1.2 Enterprise Active</span>
-          </div>
-
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-neutral-900 max-w-4xl mx-auto leading-tight">
             Operational Control for <br />
             <span className="text-emerald-700 font-black">High-Performance Teams</span>

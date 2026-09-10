@@ -1,8 +1,9 @@
 import { FormEvent, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Eye, EyeOff, Sparkles } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 
 import { useAuth } from '@/context/AuthContext';
+import api, { API_BASE_URL } from '@/services/api';
 import logoImg from '@/assets/logo.png';
 
 const inputCls =
@@ -22,7 +23,7 @@ function RegisterPage(): JSX.Element {
   const [firstName, setFirstName] = useState<string>('');
   const [lastName, setLastName] = useState<string>('');
   const apiBase = useMemo(
-    () => (import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api').replace(/\/$/, ''),
+    () => (api.defaults.baseURL ?? API_BASE_URL).replace(/\/$/, ''),
     []
   );
 
@@ -67,10 +68,6 @@ function RegisterPage(): JSX.Element {
         <div className="relative z-10 my-auto w-full grid lg:grid-cols-2 gap-16 items-center">
           {/* Text Centerpiece */}
           <div className="flex flex-col gap-6 max-w-[500px]">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 rounded-full w-fit backdrop-blur-sm">
-              <Sparkles size={13} className="text-emerald-400" />
-              <span className="text-xs font-bold text-olive-200 uppercase tracking-widest">Version 1.2 Active</span>
-            </div>
             <h2 className="text-5xl font-black leading-[1.15] text-white tracking-tight">
               Elevate your workflow with{' '}
               <span className="bg-gradient-to-r from-emerald-400 to-olive-300 bg-clip-text text-transparent">

@@ -8,6 +8,7 @@ import PrivateRoute from '@/routes/PrivateRoute';
 import PublicRoute from '@/routes/PublicRoute';
 import Loader from '@/components/Loader';
 import { GuideRuntimeProvider } from '@/lib/guide-runtime/GuideRuntimeProvider';
+import { WorkspaceProvider } from '@/features/workspaces';
 
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
 const LoginPage = lazy(() => import('@/pages/LoginPage'));
@@ -24,7 +25,8 @@ function App(): JSX.Element {
     <ToastProvider>
       <LoadingProvider>
         <AuthProvider>
-          <ChatProvider>.
+          <WorkspaceProvider>
+            <ChatProvider>
             <ConfirmationProvider>
               <BrowserRouter>
                 <GuideRuntimeProvider>
@@ -51,6 +53,7 @@ function App(): JSX.Element {
                     <Route path="/dashboard" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
                     <Route path="/intelligence" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
                     <Route path="/prompts" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
+                    <Route path="/playground" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
                     <Route path="/event-tracking" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
                     <Route path="/engagement" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
                     <Route path="/sdk-integrations" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
@@ -68,6 +71,7 @@ function App(): JSX.Element {
               <GlobalLoadingSpinner />
             </ConfirmationProvider>
           </ChatProvider>
+          </WorkspaceProvider>
         </AuthProvider>
       </LoadingProvider>
     </ToastProvider>

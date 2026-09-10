@@ -35,7 +35,9 @@ export function GuideRuntimeProvider({ children }: GuideRuntimeProviderProps): J
 
   const evaluate = useCallback(
     async (event?: RuntimeEventDetail) => {
-      if (!user || evaluatingRef.current) {
+      // Auto guide popups disabled by default to prevent unwanted overlays
+      if (!user || evaluatingRef.current || localStorage.getItem('hide_guide_popups') !== 'false') {
+        setExperiences([]);
         return;
       }
 
@@ -184,7 +186,7 @@ export function GuideRuntimeProvider({ children }: GuideRuntimeProviderProps): J
   );
 
   const runtimeOverlay = useMemo(() => {
-    if (!activeGuide) {
+    if (!activeGuide || localStorage.getItem('hide_guide_popups') !== 'false') {
       return null;
     }
 

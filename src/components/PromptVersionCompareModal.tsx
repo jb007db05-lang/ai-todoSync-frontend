@@ -18,6 +18,7 @@ interface PromptVersionCompareModalProps {
   onClose: () => void;
   workspaceId: string;
   prompt: PromptItem;
+  onOpenPlayground?: (prompt: PromptItem, versionNum?: number) => void;
 }
 
 export const PromptVersionCompareModal: React.FC<PromptVersionCompareModalProps> = ({
@@ -25,6 +26,7 @@ export const PromptVersionCompareModal: React.FC<PromptVersionCompareModalProps>
   onClose,
   workspaceId,
   prompt,
+  onOpenPlayground,
 }) => {
   const [versions, setVersions] = useState<PromptVersion[]>([]);
   const [v1Number, setV1Number] = useState<number>(1);
@@ -143,40 +145,40 @@ export const PromptVersionCompareModal: React.FC<PromptVersionCompareModalProps>
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-5xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden text-slate-100">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-olive-950/60 backdrop-blur-sm p-4 overflow-y-auto">
+      <div className="bg-white border border-olive-200 rounded-2xl w-full max-w-5xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden text-olive-950">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-900/50">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-olive-200 bg-olive-50/70">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+            <div className="p-2.5 rounded-xl bg-olive-100 text-olive-800 border border-olive-200">
               <GitCompare className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-white">
+              <h2 className="text-lg font-bold text-olive-950">
                 5-Tab Version Compare — {prompt.name}
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-olive-600">
                 Compare immutable SHA-256 content hashes, variables, and multi-role prompt structures.
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            className="p-2 rounded-lg text-olive-400 hover:text-olive-950 hover:bg-olive-100 transition"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Version Selector Bar */}
-        <div className="px-6 py-3 bg-slate-950 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4">
+        <div className="px-6 py-3 bg-olive-50 border-b border-olive-200 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4 text-xs">
             <div className="flex items-center gap-2">
-              <span className="text-slate-400 font-medium">Base Version (v1):</span>
+              <span className="text-olive-600 font-semibold">Base Version (v1):</span>
               <select
                 value={v1Number}
                 onChange={(e) => handleSelectV1(Number(e.target.value))}
-                className="bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-1 font-mono focus:outline-none"
+                className="bg-white border border-olive-200 text-olive-900 rounded-lg px-3 py-1 font-mono focus:outline-none"
               >
                 {versions.map((v) => (
                   <option key={v.version} value={v.version}>
@@ -186,14 +188,14 @@ export const PromptVersionCompareModal: React.FC<PromptVersionCompareModalProps>
               </select>
             </div>
 
-            <span className="text-slate-600 font-semibold">vs</span>
+            <span className="text-olive-400 font-bold">vs</span>
 
             <div className="flex items-center gap-2">
-              <span className="text-slate-400 font-medium">Candidate Version (v2):</span>
+              <span className="text-olive-600 font-semibold">Candidate Version (v2):</span>
               <select
                 value={v2Number}
                 onChange={(e) => handleSelectV2(Number(e.target.value))}
-                className="bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-1 font-mono focus:outline-none"
+                className="bg-white border border-olive-200 text-olive-900 rounded-lg px-3 py-1 font-mono focus:outline-none"
               >
                 {versions.map((v) => (
                   <option key={v.version} value={v.version}>
@@ -207,12 +209,12 @@ export const PromptVersionCompareModal: React.FC<PromptVersionCompareModalProps>
           {compareData && (
             <div className="flex items-center gap-2 text-xs">
               {compareData.hashMatch ? (
-                <span className="flex items-center gap-1.5 text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20 font-mono">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Canonical SHA-256 Match
+                <span className="flex items-center gap-1.5 text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 font-mono">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Canonical SHA-256 Match
                 </span>
               ) : (
-                <span className="flex items-center gap-1.5 text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20 font-mono">
-                  <AlertTriangle className="w-3.5 h-3.5" /> Content Hash Modified
+                <span className="flex items-center gap-1.5 text-amber-800 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200 font-mono">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600" /> Content Hash Modified
                 </span>
               )}
             </div>
@@ -220,13 +222,13 @@ export const PromptVersionCompareModal: React.FC<PromptVersionCompareModalProps>
         </div>
 
         {/* 5-Tab Navigation Header */}
-        <div className="flex border-b border-slate-800 bg-slate-900/80 px-6 gap-2 text-xs font-medium">
+        <div className="flex border-b border-olive-200 bg-olive-50/50 px-6 gap-2 text-xs font-semibold">
           <button
             onClick={() => setActiveTab("side-by-side")}
             className={`py-3 px-4 border-b-2 transition ${
               activeTab === "side-by-side"
-                ? "border-indigo-500 text-indigo-400 font-semibold"
-                : "border-transparent text-slate-400 hover:text-slate-200"
+                ? "border-olive-900 text-olive-950 font-bold"
+                : "border-transparent text-olive-600 hover:text-olive-950"
             }`}
           >
             1. Side-by-Side
@@ -235,8 +237,8 @@ export const PromptVersionCompareModal: React.FC<PromptVersionCompareModalProps>
             onClick={() => setActiveTab("unified-diff")}
             className={`py-3 px-4 border-b-2 transition ${
               activeTab === "unified-diff"
-                ? "border-indigo-500 text-indigo-400 font-semibold"
-                : "border-transparent text-slate-400 hover:text-slate-200"
+                ? "border-olive-900 text-olive-950 font-bold"
+                : "border-transparent text-olive-600 hover:text-olive-950"
             }`}
           >
             2. Unified Diff
@@ -245,8 +247,8 @@ export const PromptVersionCompareModal: React.FC<PromptVersionCompareModalProps>
             onClick={() => setActiveTab("variables")}
             className={`py-3 px-4 border-b-2 transition ${
               activeTab === "variables"
-                ? "border-indigo-500 text-indigo-400 font-semibold"
-                : "border-transparent text-slate-400 hover:text-slate-200"
+                ? "border-olive-900 text-olive-950 font-bold"
+                : "border-transparent text-olive-600 hover:text-olive-950"
             }`}
           >
             3. Variables Schema
@@ -255,8 +257,8 @@ export const PromptVersionCompareModal: React.FC<PromptVersionCompareModalProps>
             onClick={() => setActiveTab("model-config")}
             className={`py-3 px-4 border-b-2 transition ${
               activeTab === "model-config"
-                ? "border-indigo-500 text-indigo-400 font-semibold"
-                : "border-transparent text-slate-400 hover:text-slate-200"
+                ? "border-olive-900 text-olive-950 font-bold"
+                : "border-transparent text-olive-600 hover:text-olive-950"
             }`}
           >
             4. SHA-256 & Audit
@@ -265,8 +267,8 @@ export const PromptVersionCompareModal: React.FC<PromptVersionCompareModalProps>
             onClick={() => setActiveTab("test-exec")}
             className={`py-3 px-4 border-b-2 transition ${
               activeTab === "test-exec"
-                ? "border-indigo-500 text-indigo-400 font-semibold"
-                : "border-transparent text-slate-400 hover:text-slate-200"
+                ? "border-olive-900 text-olive-950 font-bold"
+                : "border-transparent text-olive-600 hover:text-olive-950"
             }`}
           >
             5. Test Preview
@@ -276,11 +278,11 @@ export const PromptVersionCompareModal: React.FC<PromptVersionCompareModalProps>
         {/* Tab Body Content */}
         <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
           {isLoading ? (
-            <div className="text-center py-12 text-slate-500 text-sm">
+            <div className="text-center py-12 text-olive-500 text-sm">
               Loading version data...
             </div>
           ) : !compareData ? (
-            <div className="text-center py-12 text-slate-500 text-sm">
+            <div className="text-center py-12 text-olive-500 text-sm">
               Select two versions to compare.
             </div>
           ) : (
@@ -288,26 +290,26 @@ export const PromptVersionCompareModal: React.FC<PromptVersionCompareModalProps>
               {/* TAB 1: SIDE-BY-SIDE */}
               {activeTab === "side-by-side" && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
-                    <div className="flex items-center justify-between text-xs font-semibold text-slate-400 border-b border-slate-800 pb-2">
+                  <div className="p-4 rounded-xl bg-olive-50/50 border border-olive-200 space-y-3">
+                    <div className="flex items-center justify-between text-xs font-semibold text-olive-700 border-b border-olive-200 pb-2">
                       <span>v{compareData.v1.version} Prompt Body</span>
-                      <span className="font-mono text-[10px] text-slate-500">
+                      <span className="font-mono text-[10px] text-olive-500">
                         {compareData.v1.hash ? compareData.v1.hash.slice(0, 8) : "N/A"}
                       </span>
                     </div>
-                    <pre className="font-mono text-xs text-slate-300 whitespace-pre-wrap leading-relaxed">
+                    <pre className="font-mono text-xs text-olive-900 whitespace-pre-wrap leading-relaxed">
                       {compareData.v1.body}
                     </pre>
                   </div>
 
-                  <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
-                    <div className="flex items-center justify-between text-xs font-semibold text-indigo-400 border-b border-slate-800 pb-2">
+                  <div className="p-4 rounded-xl bg-olive-50/50 border border-olive-200 space-y-3">
+                    <div className="flex items-center justify-between text-xs font-semibold text-olive-900 border-b border-olive-200 pb-2">
                       <span>v{compareData.v2.version} Prompt Body</span>
-                      <span className="font-mono text-[10px] text-indigo-500">
+                      <span className="font-mono text-[10px] text-olive-600">
                         {compareData.v2.hash ? compareData.v2.hash.slice(0, 8) : "N/A"}
                       </span>
                     </div>
-                    <pre className="font-mono text-xs text-slate-300 whitespace-pre-wrap leading-relaxed">
+                    <pre className="font-mono text-xs text-olive-900 whitespace-pre-wrap leading-relaxed">
                       {compareData.v2.body}
                     </pre>
                   </div>
@@ -316,8 +318,8 @@ export const PromptVersionCompareModal: React.FC<PromptVersionCompareModalProps>
 
               {/* TAB 2: UNIFIED DIFF */}
               {activeTab === "unified-diff" && (
-                <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
-                  <div className="text-xs font-semibold text-slate-400 pb-2 border-b border-slate-800">
+                <div className="p-4 rounded-xl bg-white border border-olive-200 space-y-2">
+                  <div className="text-xs font-semibold text-olive-700 pb-2 border-b border-olive-200">
                     Line-by-Line Diff (v{compareData.v1.version} → v{compareData.v2.version})
                   </div>
                   <div className="py-2">
@@ -329,26 +331,26 @@ export const PromptVersionCompareModal: React.FC<PromptVersionCompareModalProps>
               {/* TAB 3: VARIABLES SCHEMA */}
               {activeTab === "variables" && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
-                  <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
-                    <h4 className="font-semibold text-slate-400 border-b border-slate-800 pb-2">
+                  <div className="p-4 rounded-xl bg-olive-50/50 border border-olive-200 space-y-3">
+                    <h4 className="font-bold text-olive-800 border-b border-olive-200 pb-2">
                       v{compareData.v1.version} Variables ({compareData.v1.variables?.length || 0})
                     </h4>
                     {(compareData.v1.variables || []).map((v) => (
-                      <div key={v.name} className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 font-mono">
-                        <span className="text-indigo-400 font-semibold">{`{{${v.name}}}`}</span> ({v.type || "string"})
-                        <p className="text-[11px] text-slate-400 mt-1 font-sans">{v.description || "No description"}</p>
+                      <div key={v.name} className="p-2.5 rounded-lg bg-white border border-olive-200 font-mono">
+                        <span className="text-olive-900 font-bold">{`{{${v.name}}}`}</span> ({v.type || "string"})
+                        <p className="text-[11px] text-olive-600 mt-1 font-sans">{v.description || "No description"}</p>
                       </div>
                     ))}
                   </div>
 
-                  <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
-                    <h4 className="font-semibold text-indigo-400 border-b border-slate-800 pb-2">
+                  <div className="p-4 rounded-xl bg-olive-50/50 border border-olive-200 space-y-3">
+                    <h4 className="font-bold text-olive-950 border-b border-olive-200 pb-2">
                       v{compareData.v2.version} Variables ({compareData.v2.variables?.length || 0})
                     </h4>
                     {(compareData.v2.variables || []).map((v) => (
-                      <div key={v.name} className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 font-mono">
-                        <span className="text-indigo-400 font-semibold">{`{{${v.name}}}`}</span> ({v.type || "string"})
-                        <p className="text-[11px] text-slate-400 mt-1 font-sans">{v.description || "No description"}</p>
+                      <div key={v.name} className="p-2.5 rounded-lg bg-white border border-olive-200 font-mono">
+                        <span className="text-olive-900 font-bold">{`{{${v.name}}}`}</span> ({v.type || "string"})
+                        <p className="text-[11px] text-olive-600 mt-1 font-sans">{v.description || "No description"}</p>
                       </div>
                     ))}
                   </div>
@@ -358,34 +360,34 @@ export const PromptVersionCompareModal: React.FC<PromptVersionCompareModalProps>
               {/* TAB 4: MODEL CONFIG & SHA-256 AUDIT */}
               {activeTab === "model-config" && (
                 <div className="space-y-4 text-xs">
-                  <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
-                    <h4 className="font-semibold text-white flex items-center gap-2">
-                      <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  <div className="p-4 rounded-xl bg-olive-50/50 border border-olive-200 space-y-3">
+                    <h4 className="font-bold text-olive-950 flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600" />
                       Canonical Version Hashes & Immutability Ledger
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                      <div className="p-3 rounded-lg bg-slate-900 border border-slate-800">
-                        <div className="text-slate-400 font-medium">v{compareData.v1.version} SHA-256 Hash</div>
-                        <div className="font-mono text-emerald-400 break-all text-[11px] mt-1">
+                      <div className="p-3 rounded-lg bg-white border border-olive-200">
+                        <div className="text-olive-700 font-medium">v{compareData.v1.version} SHA-256 Hash</div>
+                        <div className="font-mono text-emerald-700 font-bold break-all text-[11px] mt-1">
                           {compareData.v1.hash || "Legacy unhashed version"}
                         </div>
-                        <div className="text-slate-500 mt-2">
+                        <div className="text-olive-500 mt-2">
                           Changed by: {compareData.v1.changedBy?.name || "System"} on{" "}
                           {new Date(compareData.v1.createdAt).toLocaleString()}
                         </div>
-                        <div className="text-slate-400 italic mt-1">{compareData.v1.changeNote || "Initial creation"}</div>
+                        <div className="text-olive-600 italic mt-1">{compareData.v1.changeNote || "Initial creation"}</div>
                       </div>
 
-                      <div className="p-3 rounded-lg bg-slate-900 border border-slate-800">
-                        <div className="text-indigo-400 font-medium">v{compareData.v2.version} SHA-256 Hash</div>
-                        <div className="font-mono text-indigo-300 break-all text-[11px] mt-1">
+                      <div className="p-3 rounded-lg bg-white border border-olive-200">
+                        <div className="text-olive-800 font-medium">v{compareData.v2.version} SHA-256 Hash</div>
+                        <div className="font-mono text-olive-950 font-bold break-all text-[11px] mt-1">
                           {compareData.v2.hash || "Legacy unhashed version"}
                         </div>
-                        <div className="text-slate-500 mt-2">
+                        <div className="text-olive-500 mt-2">
                           Changed by: {compareData.v2.changedBy?.name || "System"} on{" "}
                           {new Date(compareData.v2.createdAt).toLocaleString()}
                         </div>
-                        <div className="text-slate-400 italic mt-1">{compareData.v2.changeNote || "Updated version"}</div>
+                        <div className="text-olive-600 italic mt-1">{compareData.v2.changeNote || "Updated version"}</div>
                       </div>
                     </div>
                   </div>
@@ -395,17 +397,17 @@ export const PromptVersionCompareModal: React.FC<PromptVersionCompareModalProps>
               {/* TAB 5: TEST PREVIEW */}
               {activeTab === "test-exec" && (
                 <div className="space-y-4 text-xs">
-                  <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
-                    <h4 className="font-semibold text-white flex items-center gap-2">
-                      <Play className="w-4 h-4 text-indigo-400" />
+                  <div className="p-4 rounded-xl bg-olive-50/50 border border-olive-200 space-y-3">
+                    <h4 className="font-bold text-olive-950 flex items-center gap-2">
+                      <Play className="w-4 h-4 text-olive-800" />
                       Test Execution Preview (v{compareData.v2.version})
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                       <div className="space-y-3">
-                        <span className="text-slate-400 font-medium">Populate Test Variables:</span>
+                        <span className="text-olive-700 font-semibold">Populate Test Variables:</span>
                         {(compareData.v2.variables || []).map((v) => (
                           <div key={v.name}>
-                            <label className="block text-[11px] font-mono text-indigo-300 mb-1">
+                            <label className="block text-[11px] font-mono text-olive-900 font-bold mb-1">
                               {`{{${v.name}}}`}
                             </label>
                             <input
@@ -415,22 +417,22 @@ export const PromptVersionCompareModal: React.FC<PromptVersionCompareModalProps>
                                 setTestVars({ ...testVars, [v.name]: e.target.value })
                               }
                               placeholder={v.defaultValue || `Enter ${v.name}...`}
-                              className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-white font-mono focus:outline-none focus:border-indigo-500"
+                              className="w-full bg-white border border-olive-200 rounded-lg px-3 py-1.5 text-olive-950 font-mono focus:outline-none focus:border-olive-400"
                             />
                           </div>
                         ))}
                         <button
                           type="button"
                           onClick={runTestPreview}
-                          className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-500 transition flex items-center gap-2 mt-2"
+                          className="px-4 py-2 rounded-lg bg-olive-900 text-white font-semibold hover:bg-black transition flex items-center gap-2 mt-2"
                         >
                           <Play className="w-3.5 h-3.5" /> Render Template Preview
                         </button>
                       </div>
 
                       <div className="space-y-2">
-                        <span className="text-slate-400 font-medium">Rendered Output:</span>
-                        <div className="p-3 rounded-lg bg-slate-900 border border-slate-800 font-mono text-slate-200 min-h-[160px] whitespace-pre-wrap">
+                        <span className="text-olive-700 font-semibold">Rendered Output:</span>
+                        <div className="p-3 rounded-lg bg-white border border-olive-200 font-mono text-olive-900 min-h-[160px] whitespace-pre-wrap">
                           {executedOutput || "Click 'Render Template Preview' to inspect resolved prompt..."}
                         </div>
                       </div>
@@ -443,11 +445,25 @@ export const PromptVersionCompareModal: React.FC<PromptVersionCompareModalProps>
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end px-6 py-4 border-t border-slate-800 bg-slate-900/50">
+        <div className="flex items-center justify-between px-6 py-4 border-t border-olive-200 bg-olive-50/70">
+          <div>
+            {onOpenPlayground && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenPlayground(prompt, v2Number);
+                }}
+                className="px-4 py-2 rounded-xl bg-olive-900 hover:bg-black text-white text-xs font-bold shadow-sm transition flex items-center gap-2 cursor-pointer"
+              >
+                <Play className="w-4 h-4 text-emerald-400 fill-current" /> Open v{v2Number} in Playground
+              </button>
+            )}
+          </div>
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl text-slate-300 bg-slate-800 hover:bg-slate-700 text-sm font-medium transition"
+            className="px-4 py-2 rounded-xl text-olive-700 bg-white hover:bg-olive-100 border border-olive-200 text-sm font-semibold transition"
           >
             Close Comparison
           </button>

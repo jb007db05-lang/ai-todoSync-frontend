@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React from 'react';
 import {
   Activity,
   AlertTriangle,
@@ -10,7 +10,6 @@ import {
   Database,
   Gauge,
   GitBranch,
-  History,
   Loader2,
   RefreshCw,
   ShieldCheck,
@@ -19,73 +18,21 @@ import {
   Workflow
 } from 'lucide-react';
 import noDataImg from '@/assets/no_data.png';
-import api from '@/services/api';
-
-import {
-  compareMetrics,
-  drilldownMetric,
-  explainMetric,
-  getOperationalAnomalies,
-  getOperationalTrends,
-  getMetricGovernance,
-  getMetricLineage,
-  getReasoningSummary,
-  listMetrics,
-  recordDashboardOpened,
-  replayTimeline,
-  type AdvancedMetricName,
-  type MetricExplanation,
-  type MetricDefinition,
-  type MetricDrilldownResult,
-  type MetricName,
-  type OperationalAnomaly,
-  type OperationalReasoningSummary,
-  type OperationalTrend,
-  type TimelineReplayEvent,
-  type MetricResult,
-  type MetricTimeRange,
-  type CausalReplayChain,
-  type SemanticGovernanceResult,
-  type SemanticLineageResult,
-  forecastOperationalState,
-  simulateOperationalIntervention,
-  type OperationalForecast,
-  type OperationalSimulation
-} from '@/services/semanticAnalytics';
 import type { Project } from '@/types/project';
+import {
+  useSemanticIntelligence,
+  timeRangeOptions,
+  getValueRecord,
+  getMetricNumber,
+  formatMetricValue
+} from '@/features/semantic-intelligence';
+import type { MetricName } from '@/services/semanticAnalytics';
 
 interface SemanticIntelligencePageProps {
   projects: Project[];
   selectedProjectId: string;
   allProjectsValue: string;
 }
-
-const dashboardMetrics: MetricName[] = [
-  'project_health_score',
-  'task_completion_rate',
-  'tasks_created',
-  'tasks_completed',
-  'overdue_tasks',
-  'stale_tasks',
-  'active_users',
-  'avg_completion_time',
-  'tasks_completed_per_user',
-  'inactive_projects'
-];
-
-const compareMetricsBatchSize = 6;
-
-const timeRangeOptions: Array<{ value: MetricTimeRange; label: string }> = [
-  { value: 'today', label: 'Today' },
-  { value: 'last_7_days', label: '7 days' },
-  { value: 'last_30_days', label: '30 days' },
-  { value: 'last_90_days', label: '90 days' },
-  { value: 'all_time', label: 'All time' }
-];
-
-// ─────────────────────────────────────────────────────────────
-// VISUAL UTILITIES
-// ─────────────────────────────────────────────────────────────
 
 const ScoreRing = ({ score, size = 60, stroke = 5, color = 'var(--color-olive-700)' }: { score: number, size?: number, stroke?: number, color?: string }) => {
   const radius = (size - stroke) / 2;
@@ -96,7 +43,7 @@ const ScoreRing = ({ score, size = 60, stroke = 5, color = 'var(--color-olive-70
     <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
       <svg className="rotate-[-90deg]" height={size} width={size}>
         <circle
-          className="text-olive-100 "
+          className="text-olive-100"
           cx={size / 2}
           cy={size / 2}
           fill="transparent"
@@ -117,7 +64,7 @@ const ScoreRing = ({ score, size = 60, stroke = 5, color = 'var(--color-olive-70
           style={{ transition: 'stroke-dashoffset 0.8s ease-out' }}
         />
       </svg>
-      <span className="absolute text-[11px] font-semibold text-olive-800 ">
+      <span className="absolute text-[11px] font-semibold text-olive-800">
         {Math.round(score)}
       </span>
     </div>
@@ -143,14 +90,14 @@ const Sparkline = ({ data }: { data: number[] }) => {
   return (
     <svg className="overflow-visible" height={height} width={width}>
       <polyline
-        className="text-olive-700/30 "
+        className="text-olive-700/30"
         fill="none"
         points={points}
         stroke="currentColor"
         strokeWidth="1.5"
       />
       <circle
-        className="text-olive-700 "
+        className="text-olive-700"
         cx={width}
         cy={height - ((data[data.length - 1] - min) / range) * height}
         fill="currentColor"
@@ -163,10 +110,10 @@ const Sparkline = ({ data }: { data: number[] }) => {
 const FactorBar = ({ label, share, color = 'var(--color-olive-700)' }: { label: string, share: number, color?: string }) => (
   <div className="space-y-1.5">
     <div className="flex justify-between text-[11px] font-semibold uppercase tracking-wider">
-      <span className="text-olive-500 ">{label}</span>
-      <span className="text-olive-700 ">{share}%</span>
+      <span className="text-olive-500">{label}</span>
+      <span className="text-olive-700">{share}%</span>
     </div>
-    <div className="h-2 rounded-full bg-olive-100  overflow-hidden">
+    <div className="h-2 rounded-full bg-olive-100 overflow-hidden">
       <div
         className="h-full transition-all duration-1000 ease-out"
         style={{ width: `${share}%`, backgroundColor: color }}
@@ -175,245 +122,16 @@ const FactorBar = ({ label, share, color = 'var(--color-olive-700)' }: { label: 
   </div>
 );
 
-// ─────────────────────────────────────────────────────────────
-// CORE COMPONENT
-// ─────────────────────────────────────────────────────────────
-
-const getValueRecord = (result: MetricResult | undefined): Record<string, unknown> => {
-  if (!result || typeof result.value !== 'object' || result.value === null) {
-    return {};
-  }
-
-  return result.value as Record<string, unknown>;
-};
-
-const getMetricNumber = (result: MetricResult | undefined, keys: string[]): number => {
-  const record = getValueRecord(result);
-  for (const key of keys) {
-    const value = record[key];
-    if (typeof value === 'number') {
-      return value;
-    }
-  }
-
-  return 0;
-};
-
-const formatMetricValue = (result: MetricResult | undefined): string => {
-  if (!result) return '--';
-  const value = getValueRecord(result);
-
-  if (typeof value.score === 'number') return `${value.score}/100`;
-  if (typeof value.percent === 'number') return `${value.percent}%`;
-  if (typeof value.averageHours === 'number') return `${value.averageHours}h`;
-  if (typeof value.count === 'number') return String(value.count);
-  if (Array.isArray(value.rows)) return String(value.rows.length);
-
-  return '--';
-};
-
-const scopedFilters = (
-  projectId: string | undefined,
-  definition: MetricDefinition | undefined
-): { projectId?: string } => {
-  if (!projectId || !definition?.allowedFilters.includes('projectId')) {
-    return {};
-  }
-
-  return { projectId };
-};
-
 export default function SemanticIntelligencePage({
   projects,
   selectedProjectId,
   allProjectsValue
 }: SemanticIntelligencePageProps): JSX.Element {
-  const [metrics, setMetrics] = useState<MetricDefinition[]>([]);
-  const [results, setResults] = useState<MetricResult[]>([]);
-  const [timeRange, setTimeRange] = useState<MetricTimeRange>('last_30_days');
-  const [activeProjectId, setActiveProjectId] = useState(selectedProjectId);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [drilldown, setDrilldown] = useState<MetricDrilldownResult | null>(null);
-  const [drilldownLoading, setDrilldownLoading] = useState<MetricName | null>(null);
-  const [reasoning, setReasoning] = useState<OperationalReasoningSummary | null>(null);
-  const [anomalies, setAnomalies] = useState<OperationalAnomaly[]>([]);
-  const [trends, setTrends] = useState<OperationalTrend[]>([]);
-  const [timeline, setTimeline] = useState<TimelineReplayEvent[]>([]);
-  const [causalChains, setCausalChains] = useState<CausalReplayChain[]>([]);
-  const [replayNarrative, setReplayNarrative] = useState('');
-  const [replayConfidence, setReplayConfidence] = useState<number | null>(null);
-  const [explanation, setExplanation] = useState<MetricExplanation | null>(null);
-  const [lineage, setLineage] = useState<SemanticLineageResult | null>(null);
-  const [governance, setGovernance] = useState<SemanticGovernanceResult | null>(null);
-  const [forecast, setForecast] = useState<OperationalForecast | null>(null);
-  const [simulation, setSimulation] = useState<OperationalSimulation | null>(null);
-  const [simulating, setSimulating] = useState(false);
-  const [, setProjectReport] = useState<Record<string, unknown> | null>(null);
+  const intel = useSemanticIntelligence(projects, selectedProjectId, allProjectsValue);
 
-  useEffect(() => {
-    setActiveProjectId(selectedProjectId);
-  }, [selectedProjectId]);
-
-  const projectFilter = activeProjectId === allProjectsValue ? undefined : activeProjectId;
-
-  const loadIntelligence = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const definitions = await listMetrics();
-      const definitionByName = new Map(definitions.map((definition) => [definition.name, definition]));
-      const metricQueries = dashboardMetrics.map((metric) => ({
-        metric,
-        timeRange,
-        filters: scopedFilters(projectFilter, definitionByName.get(metric))
-      }));
-      const metricQueryBatches = Array.from(
-        { length: Math.ceil(metricQueries.length / compareMetricsBatchSize) },
-        (_, index) =>
-          metricQueries.slice(
-            index * compareMetricsBatchSize,
-            (index + 1) * compareMetricsBatchSize
-          )
-      );
-      const metricResultBatches = await Promise.all(
-        metricQueryBatches.map((batch) => compareMetrics(batch))
-      );
-      const intelligenceQuery = {
-        timeRange,
-        filters: projectFilter ? { projectId: projectFilter } : {}
-      };
-      const [
-        summary,
-        anomalyResult,
-        trendResult,
-        replayResult,
-        deliveryRiskExplanation,
-        lineageResult,
-        governanceResult,
-        forecastResult
-      ] =
-        await Promise.all([
-          getReasoningSummary(intelligenceQuery),
-          getOperationalAnomalies(intelligenceQuery),
-          getOperationalTrends(intelligenceQuery),
-          replayTimeline(intelligenceQuery),
-          explainMetric({
-            ...intelligenceQuery,
-            metric: 'delivery_risk' as AdvancedMetricName
-          }),
-          getMetricLineage('delivery_risk'),
-          getMetricGovernance('delivery_risk'),
-          forecastOperationalState({
-            ...intelligenceQuery,
-            metric: 'delivery_risk' as AdvancedMetricName
-          })
-        ]);
-      setMetrics(definitions);
-      setResults(metricResultBatches.flat());
-      setDrilldown(null);
-      setReasoning(summary);
-      setAnomalies(anomalyResult.anomalies);
-      setTrends(trendResult.trends);
-      setTimeline(replayResult.events.slice(-12).reverse());
-      setCausalChains(replayResult.causalChains ?? []);
-      setReplayNarrative(replayResult.narrative ?? '');
-      setReplayConfidence(replayResult.confidence ?? null);
-      setExplanation(deliveryRiskExplanation);
-      setLineage(lineageResult);
-      setGovernance(governanceResult);
-      setForecast(forecastResult);
-
-      if (projectFilter) {
-        try {
-          const reportRes = await api.get<{ report: Record<string, unknown> }>(`/analytics/projects/${projectFilter}/report`);
-          setProjectReport(reportRes.data.report);
-        } catch {
-          setProjectReport(null);
-        }
-      } else {
-        setProjectReport(null);
-      }
-
-      void recordDashboardOpened(projectFilter ?? null).catch(() => undefined);
-    } catch {
-      setError('Unable to load semantic intelligence metrics.');
-      setResults([]);
-      setReasoning(null);
-      setAnomalies([]);
-      setTrends([]);
-      setTimeline([]);
-      setCausalChains([]);
-      setReplayNarrative('');
-      setReplayConfidence(null);
-      setExplanation(null);
-      setLineage(null);
-      setGovernance(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [projectFilter, timeRange]);
-
-  useEffect(() => {
-    void loadIntelligence();
-  }, [loadIntelligence]);
-
-  const resultByMetric = useMemo(
-    () => new Map(results.map((result) => [result.metric, result])),
-    [results]
-  );
-  const metricByName = useMemo(
-    () => new Map(metrics.map((metric) => [metric.name, metric])),
-    [metrics]
-  );
-
-  const openDrilldown = useCallback(
-    async (metric: MetricName) => {
-      const definition = metricByName.get(metric);
-      if (!definition?.drilldownSupport) return;
-
-      setDrilldownLoading(metric);
-      setError(null);
-      try {
-        const nextDrilldown = await drilldownMetric({
-          metric,
-          timeRange,
-          filters: scopedFilters(projectFilter, definition),
-          drilldown: definition.allowedDrilldowns[0],
-          pagination: { limit: 10, offset: 0 },
-          sort: { field: 'updatedAt', direction: 'desc' }
-        });
-        setDrilldown(nextDrilldown);
-      } catch {
-        setError('Unable to load semantic drilldown.');
-      } finally {
-        setDrilldownLoading(null);
-      }
-    },
-    [metricByName, projectFilter, timeRange]
-  );
-
-  const runSimulation = useCallback(async (type: OperationalSimulation['intervention']['type']) => {
-    setSimulating(true);
-    try {
-      const result = await simulateOperationalIntervention({
-        metric: 'delivery_risk',
-        timeRange,
-        filters: projectFilter ? { projectId: projectFilter } : {},
-        intervention: { type, intensity: 0.5 }
-      });
-      setSimulation(result);
-    } catch {
-      setError('Simulation failed');
-    } finally {
-      setSimulating(false);
-    }
-  }, [projectFilter, timeRange]);
-
-  const completion = resultByMetric.get('task_completion_rate');
-  const health = resultByMetric.get('project_health_score');
-  const perUserRows = (getValueRecord(resultByMetric.get('tasks_completed_per_user')).rows ?? []) as Array<{
+  const completion = intel.resultByMetric.get('task_completion_rate');
+  const health = intel.resultByMetric.get('project_health_score');
+  const perUserRows = (getValueRecord(intel.resultByMetric.get('tasks_completed_per_user')).rows ?? []) as Array<{
     userId: string;
     name?: string | null;
     email?: string;
@@ -422,7 +140,7 @@ export default function SemanticIntelligencePage({
   const healthStatus = String(getValueRecord(health).status ?? 'unknown');
   const maxCompleted = Math.max(...perUserRows.map((row) => row.count), 1);
 
-  if (loading && metrics.length === 0) {
+  if (intel.loading && intel.metrics.length === 0) {
     return (
       <div className="flex h-[80vh] items-center justify-center">
         <div className="text-center">
@@ -442,8 +160,8 @@ export default function SemanticIntelligencePage({
             <div className="relative group">
               <select
                 className="h-10 pl-10 pr-10 rounded-xl border border-olive-200 bg-white text-xs font-medium text-olive-700 shadow-sm appearance-none focus:ring-4 focus:ring-olive-700/5 focus:border-olive-400 outline-none transition-all cursor-pointer hover:border-olive-300"
-                onChange={(event) => setActiveProjectId(event.target.value)}
-                value={activeProjectId}
+                onChange={(event) => intel.setActiveProjectId(event.target.value)}
+                value={intel.activeProjectId}
               >
                 <option value={allProjectsValue}>All Workspaces</option>
                 {projects.map((project) => (
@@ -465,12 +183,12 @@ export default function SemanticIntelligencePage({
                 <button
                   className={[
                     'h-8 px-4 text-[10px] font-medium uppercase tracking-widest rounded-lg transition-all duration-300',
-                    timeRange === option.value
+                    intel.timeRange === option.value
                       ? 'bg-white text-olive-800 shadow-md ring-1 ring-olive-100'
                       : 'text-olive-500 hover:text-olive-800 hover:bg-white/50'
                   ].join(' ')}
                   key={option.value}
-                  onClick={() => setTimeRange(option.value)}
+                  onClick={() => intel.setTimeRange(option.value)}
                   type="button"
                 >
                   {option.label}
@@ -481,27 +199,26 @@ export default function SemanticIntelligencePage({
             <button
               className={[
                 'flex h-10 items-center gap-2 rounded-xl px-5 text-xs font-medium transition-all duration-300 transform active:scale-95 group',
-                loading
+                intel.loading
                   ? 'bg-olive-100 text-olive-400 cursor-not-allowed border border-olive-200'
                   : 'bg-olive-900 text-white shadow-lg shadow-olive-900/20 hover:bg-black hover:shadow-black/25'
               ].join(' ')}
-              disabled={loading}
-              onClick={() => void loadIntelligence()}
+              disabled={intel.loading}
+              onClick={() => void intel.loadIntelligence()}
               type="button"
             >
-              {loading ? <Loader2 className="animate-spin" size={14} /> : <RefreshCw size={14} className="group-hover:rotate-180 transition-transform duration-500" />}
+              {intel.loading ? <Loader2 className="animate-spin" size={14} /> : <RefreshCw size={14} className="group-hover:rotate-180 transition-transform duration-500" />}
               <span className="tracking-widest uppercase">Sync</span>
             </button>
           </div>
-
         </div>
       </div>
 
       <div className="p-8 space-y-8 animate-fadeIn">
-        {error ? (
-          <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-800   ">
+        {intel.error ? (
+          <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-800">
             <AlertTriangle size={18} />
-            {error}
+            {intel.error}
           </div>
         ) : null}
 
@@ -513,28 +230,28 @@ export default function SemanticIntelligencePage({
             { metric: 'overdue_tasks' as MetricName, icon: AlertTriangle, hint: 'open past due date', color: 'var(--color-red-600)' },
             { metric: 'stale_tasks' as MetricName, icon: Clock3, hint: 'not updated in 7 days', color: 'var(--color-amber-600)' }
           ].map(({ metric, icon: Icon, hint, color }) => {
-            const result = resultByMetric.get(metric);
-            const definition = metricByName.get(metric);
+            const result = intel.resultByMetric.get(metric);
+            const definition = intel.metricByName.get(metric);
             const scoreValue = typeof getValueRecord(result).score === 'number' ? (getValueRecord(result).score as number) : null;
 
             return (
               <section
-                className="group relative rounded-2xl border border-olive-200 bg-white p-6 shadow-sm transition-all hover:shadow-xl hover:-translate-y-1  "
+                className="group relative rounded-2xl border border-olive-200 bg-white p-6 shadow-sm transition-all hover:shadow-xl hover:-translate-y-1"
                 key={metric}
               >
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
-                    <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-olive-400 ">
+                    <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-olive-400">
                       {result?.label ?? metric.replace(/_/g, ' ')}
                     </p>
-                    <h4 className="text-3xl font-semibold text-olive-800  tabular-nums">
+                    <h4 className="text-3xl font-semibold text-olive-800 tabular-nums">
                       {formatMetricValue(result)}
                     </h4>
                   </div>
                   {scoreValue !== null ? (
                     <ScoreRing color={color} score={scoreValue} />
                   ) : (
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-olive-50 text-olive-700  ">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-olive-50 text-olive-700">
                       <Icon size={24} />
                     </div>
                   )}
@@ -542,14 +259,14 @@ export default function SemanticIntelligencePage({
 
                 <div className="mt-6 flex items-end justify-between">
                   <div className="space-y-1">
-                    <p className="text-xs font-medium text-olive-500  capitalize">{hint}</p>
+                    <p className="text-xs font-medium text-olive-500 capitalize">{hint}</p>
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="inline-flex items-center gap-1 rounded-md bg-olive-100 px-1.5 py-0.5 text-[9px] font-medium uppercase text-olive-500  ">
+                      <span className="inline-flex items-center gap-1 rounded-md bg-olive-100 px-1.5 py-0.5 text-[9px] font-medium uppercase text-olive-500">
                         <ShieldCheck size={10} />
                         {result?.semantic?.stability ?? definition?.stability ?? 'STABLE'}
                       </span>
                       {definition?.AIVisibility === 'safe' && (
-                        <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[9px] font-medium uppercase text-emerald-700  ">
+                        <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[9px] font-medium uppercase text-emerald-700">
                           AI-SAFE
                         </span>
                       )}
@@ -560,12 +277,12 @@ export default function SemanticIntelligencePage({
 
                 {definition?.drilldownSupport && (
                   <button
-                    className="mt-6 w-full flex h-9 items-center justify-center gap-2 rounded-lg border border-olive-100 bg-olive-50 text-[10px] font-medium uppercase tracking-widest text-olive-800 hover:bg-olive-50    "
-                    disabled={drilldownLoading === metric}
-                    onClick={() => void openDrilldown(metric)}
+                    className="mt-6 w-full flex h-9 items-center justify-center gap-2 rounded-lg border border-olive-100 bg-olive-50 text-[10px] font-medium uppercase tracking-widest text-olive-800 hover:bg-olive-50"
+                    disabled={intel.drilldownLoading === metric}
+                    onClick={() => void intel.openDrilldown(metric)}
                     type="button"
                   >
-                    {drilldownLoading === metric ? <Loader2 className="animate-spin" size={14} /> : <GitBranch size={14} />}
+                    {intel.drilldownLoading === metric ? <Loader2 className="animate-spin" size={14} /> : <GitBranch size={14} />}
                     Explore Lineage
                   </button>
                 )}
@@ -575,65 +292,65 @@ export default function SemanticIntelligencePage({
         </div>
 
         {/* Reasoning Panel */}
-        {reasoning && (
-          <section className="overflow-hidden rounded-3xl border border-olive-200 bg-white shadow-lg  ">
+        {intel.reasoning && (
+          <section className="overflow-hidden rounded-3xl border border-olive-200 bg-white shadow-lg">
             <div className="flex flex-col xl:flex-row">
               <div className="flex-1 p-8 space-y-6">
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-olive-100 text-olive-700  ">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-olive-100 text-olive-700">
                       <Sparkles size={20} />
                     </div>
-                    <h4 className="text-xl font-semibold text-olive-800 ">
+                    <h4 className="text-xl font-semibold text-olive-800">
                       Operational Reasoning
                     </h4>
                   </div>
                   <div className={[
                     'flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium uppercase tracking-widest ring-1 ring-inset',
-                    reasoning.status === 'at_risk'
+                    intel.reasoning.status === 'at_risk'
                       ? 'bg-red-50 text-red-700 ring-red-200'
-                      : reasoning.status === 'watch'
-                        ? 'bg-amber-50 text-amber-700 ring-amber-200'
-                        : 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+                      : intel.reasoning.status === 'watch'
+                      ? 'bg-amber-50 text-amber-700 ring-amber-200'
+                      : 'bg-emerald-50 text-emerald-700 ring-emerald-200'
                   ].join(' ')}>
                     <Activity size={12} className="animate-pulse" />
-                    {reasoning.status.replace(/_/g, ' ')}
+                    {intel.reasoning.status.replace(/_/g, ' ')}
                   </div>
                 </div>
 
                 <div className="space-y-4">
-                  <p className="text-lg font-medium leading-relaxed text-olive-700 ">
-                    {reasoning.narrative}
+                  <p className="text-lg font-medium leading-relaxed text-olive-700">
+                    {intel.reasoning.narrative}
                   </p>
-                  {reasoning.causalNarrative && (
-                    <div className="relative pl-6 before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1 before:rounded-full before:bg-olive-200 ">
-                      <p className="text-sm italic text-olive-500 ">
-                        {reasoning.causalNarrative}
+                  {intel.reasoning.causalNarrative && (
+                    <div className="relative pl-6 before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1 before:rounded-full before:bg-olive-200">
+                      <p className="text-sm italic text-olive-500">
+                        {intel.reasoning.causalNarrative}
                       </p>
                     </div>
                   )}
                 </div>
 
                 <div className="grid gap-6 md:grid-cols-2">
-                  <div className="rounded-2xl bg-olive-50/50 p-6  border border-olive-100 ">
+                  <div className="rounded-2xl bg-olive-50/50 p-6 border border-olive-100">
                     <p className="text-[10px] font-medium uppercase tracking-widest text-olive-400 mb-4">Semantic Context</p>
                     <div className="flex flex-wrap gap-2">
-                      {Object.entries(reasoning.semanticInterpretation ?? {}).map(([key, value]) => (
-                        <span className="rounded-lg bg-white px-3 py-1.5 text-[11px] font-semibold text-olive-700 shadow-sm border border-olive-100   " key={key}>
+                      {Object.entries(intel.reasoning.semanticInterpretation ?? {}).map(([key, value]) => (
+                        <span className="rounded-lg bg-white px-3 py-1.5 text-[11px] font-semibold text-olive-700 shadow-sm border border-olive-100" key={key}>
                           <span className="text-olive-400 mr-1">{key.replace(/([A-Z])/g, ' $1').toLowerCase()}:</span>
                           {value.replace(/_/g, ' ')}
                         </span>
                       ))}
                     </div>
                   </div>
-                  <div className="rounded-2xl bg-olive-50/50 p-6  border border-olive-100 ">
+                  <div className="rounded-2xl bg-olive-50/50 p-6 border border-olive-100">
                     <p className="text-[10px] font-medium uppercase tracking-widest text-olive-400 mb-4">Governance Recommendations</p>
                     <div className="space-y-3">
-                      {(reasoning.recommendations ?? []).slice(0, 3).map((rec, i) => (
+                      {(intel.reasoning.recommendations ?? []).slice(0, 3).map((rec, i) => (
                         <div key={i} className="flex items-start gap-3 group">
                           <CheckCircle2 className="mt-0.5 text-olive-600 flex-shrink-0" size={14} />
                           <div className="space-y-1">
-                            <p className="text-sm font-semibold text-olive-800  leading-tight">{rec}</p>
+                            <p className="text-sm font-semibold text-olive-800 leading-tight">{rec}</p>
                           </div>
                         </div>
                       ))}
@@ -642,21 +359,21 @@ export default function SemanticIntelligencePage({
                 </div>
               </div>
 
-              <div className="w-full xl:w-96 border-t xl:border-t-0 xl:border-l border-olive-200  bg-olive-50/30  p-8">
+              <div className="w-full xl:w-96 border-t xl:border-t-0 xl:border-l border-olive-200 bg-olive-50/30 p-8">
                 <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-olive-400 mb-8">Intelligence Vectors</p>
                 <div className="space-y-8">
                   {[
-                    { label: 'Delivery Risk', value: reasoning.scores.deliveryRisk, color: '#ef4444' },
-                    { label: 'Execution Confidence', value: reasoning.scores.executionConfidence, color: '#10b981' },
-                    { label: 'Workflow Friction', value: reasoning.scores.workflowFriction, color: '#f59e0b' },
-                    { label: 'Project Momentum', value: reasoning.scores.projectMomentum, color: '#3b82f6' }
+                    { label: 'Delivery Risk', value: intel.reasoning.scores.deliveryRisk, color: '#ef4444' },
+                    { label: 'Execution Confidence', value: intel.reasoning.scores.executionConfidence, color: '#10b981' },
+                    { label: 'Workflow Friction', value: intel.reasoning.scores.workflowFriction, color: '#f59e0b' },
+                    { label: 'Project Momentum', value: intel.reasoning.scores.projectMomentum, color: '#3b82f6' }
                   ].map((item) => (
                     <div key={item.label} className="group flex items-center justify-between">
                       <div className="space-y-1">
-                        <p className="text-xs font-medium text-olive-600  group-hover:text-olive-800  transition-colors uppercase tracking-tight">
+                        <p className="text-xs font-medium text-olive-600 group-hover:text-olive-800 transition-colors uppercase tracking-tight">
                           {item.label}
                         </p>
-                        <div className="h-1.5 w-40 rounded-full bg-olive-100  overflow-hidden">
+                        <div className="h-1.5 w-40 rounded-full bg-olive-100 overflow-hidden">
                           <div
                             className="h-full rounded-full transition-all duration-1000 ease-out"
                             style={{ width: `${item.value}%`, backgroundColor: item.color }}
@@ -672,112 +389,68 @@ export default function SemanticIntelligencePage({
               </div>
             </div>
           </section>
-        )
-        }
+        )}
 
         {/* Intelligence Grid */}
         <div className="grid gap-8 xl:grid-cols-2">
           {/* Anomalies Panel */}
-          <section className="rounded-3xl border border-olive-200 bg-white p-8 shadow-sm  ">
+          <section className="rounded-3xl border border-olive-200 bg-white p-8 shadow-sm">
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-50 text-red-600  ">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-50 text-red-600">
                   <AlertTriangle size={20} />
                 </div>
-                <h4 className="text-lg font-semibold text-olive-800 ">Operational Anomalies</h4>
+                <h4 className="text-lg font-semibold text-olive-800">Operational Anomalies</h4>
               </div>
               <span className="text-[10px] font-medium uppercase tracking-widest text-olive-400">Threshold: 2.5σ</span>
             </div>
 
             <div className="space-y-4">
-              {anomalies.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center bg-olive-50 rounded-2xl  border border-dashed border-olive-200 ">
+              {intel.anomalies.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center bg-olive-50 rounded-2xl border border-dashed border-olive-200">
                   <ShieldCheck size={32} className="text-emerald-500 mb-3" />
                   <p className="text-sm font-semibold text-olive-400">Operational state within expected semantic bounds.</p>
                 </div>
               ) : (
-                anomalies.slice(0, 4).map((anomaly) => (
-                  <div className="relative overflow-hidden group rounded-2xl border border-olive-100 bg-olive-50/50 p-6 transition-all hover:bg-white hover:shadow-md   " key={anomaly.metric}>
-                    <div className="absolute top-0 left-0 bottom-0 w-1 bg-red-500 opacity-20 group-hover:opacity-100 transition-opacity" />
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-semibold text-olive-800  uppercase tracking-tight">
-                            {anomaly.metric.replace(/_/g, ' ')}
-                          </p>
-                          <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-olive-200  text-olive-500  uppercase">
-                            {anomaly.category}
-                          </span>
-                        </div>
-                        <p className="text-sm text-olive-600  leading-snug">{anomaly.explanation}</p>
-                        {anomaly.mitigationHints?.[0] && (
-                          <div className="flex items-center gap-2 text-xs font-medium text-olive-700 ">
-                            <Bot size={14} />
-                            {anomaly.mitigationHints[0]}
-                          </div>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-semibold text-red-600  tracking-tighter">
-                          {anomaly.score}
-                        </div>
-                        <p className="text-[10px] font-medium text-olive-400 uppercase tracking-widest">Severity</p>
-                      </div>
+                intel.anomalies.slice(0, 4).map((anomaly) => (
+                  <div className="relative overflow-hidden group rounded-2xl border border-olive-100 bg-olive-50/50 p-6 transition-all hover:bg-white hover:shadow-md" key={anomaly.metric}>
+                    <div className="flex items-start justify-between gap-4 mb-2">
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-olive-400">{anomaly.metric}</span>
+                      <span className="text-xs font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">{anomaly.deviation}x deviation</span>
                     </div>
-                    <div className="mt-4 flex flex-wrap gap-1.5">
-                      {(anomaly.affectedWorkflows ?? []).map((w) => (
-                        <span key={w} className="text-[9px] font-medium uppercase px-2 py-1 rounded-md bg-white border border-olive-100 text-olive-500  ">
-                          {w.replace(/_/g, ' ')}
-                        </span>
-                      ))}
-                    </div>
+                    <p className="text-sm font-semibold text-olive-800 mb-2">{anomaly.explanation}</p>
+                    <p className="text-xs text-olive-500">{anomaly.mitigationHints?.[0] || 'No immediate action required'}</p>
                   </div>
                 ))
               )}
             </div>
           </section>
 
-          {/* Trends Panel */}
-          <section className="rounded-3xl border border-olive-200 bg-white p-8 shadow-sm  ">
+          {/* Operational Trends Panel */}
+          <section className="rounded-3xl border border-olive-200 bg-white p-8 shadow-sm">
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-olive-50 text-olive-700  ">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-olive-100 text-olive-700">
                   <TrendingUp size={20} />
                 </div>
-                <h4 className="text-lg font-semibold text-olive-800 ">Trend Intelligence</h4>
+                <h4 className="text-lg font-semibold text-olive-800">Operational Trends</h4>
               </div>
-              <History size={16} className="text-olive-400" />
+              <span className="text-[10px] font-medium uppercase tracking-widest text-olive-400">Causal Vectors</span>
             </div>
 
             <div className="space-y-4">
-              {trends.slice(0, 5).map((trend) => (
-                <div className="group flex items-center justify-between p-4 rounded-2xl border border-olive-100 hover:border-olive-200 transition-colors  " key={trend.metric}>
-                  <div className="space-y-1">
-                    <h5 className="text-sm font-semibold text-olive-800  uppercase tracking-tight">
-                      {trend.metric.replace(/_/g, ' ')}
-                    </h5>
-                    <p className="text-xs font-medium text-olive-500 ">{trend.interpretation}</p>
-                    <div className="flex items-center gap-3 pt-2">
-                      <div className="flex items-center gap-1 text-[10px] font-medium text-olive-400 uppercase">
-                        <Activity size={10} />
-                        Accel: {trend.acceleration ?? 0}
-                      </div>
-                      <div className="flex items-center gap-1 text-[10px] font-medium text-emerald-600  uppercase">
-                        <ShieldCheck size={10} />
-                        Confidence {trend.confidence}%
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right space-y-2">
-                    <span className={[
-                      'inline-block px-3 py-1 rounded-full text-[10px] font-medium uppercase tracking-widest',
-                      trend.direction === 'up' ? 'bg-emerald-50 text-emerald-700' :
-                        trend.direction === 'down' ? 'bg-red-50 text-red-700' :
-                          'bg-olive-100 text-olive-600',
-                    ].join(' ')}>
-                      {trend.direction}
+              {intel.trends.slice(0, 4).map((trend) => (
+                <div className="p-6 rounded-2xl border border-olive-100 bg-olive-50/50 hover:bg-white transition-all shadow-xs" key={trend.metric}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-olive-800 uppercase tracking-wider">{trend.metric}</span>
+                    <span className={`text-xs font-bold ${trend.direction === 'up' ? 'text-emerald-600' : 'text-amber-600'}`}>
+                      {trend.direction.toUpperCase()}
                     </span>
-                    <Sparkline data={[20, 30, 25, 45, 40, 55, 50]} />
+                  </div>
+                  <p className="text-sm text-olive-600 mb-3">{trend.interpretation}</p>
+                  <div className="flex items-center justify-between text-[11px] text-olive-400 font-mono">
+                    <span>Confidence: {Math.round(trend.confidence * 100)}%</span>
+                    <span>Delta: {trend.delta}</span>
                   </div>
                 </div>
               ))}
@@ -785,467 +458,151 @@ export default function SemanticIntelligencePage({
           </section>
         </div>
 
-        {/* Predictive & Simulation Layer */}
-        <div className="grid gap-8 xl:grid-cols-[1fr_400px] items-start">
-          {/* Forecast Panel */}
-          <section className="rounded-3xl border border-olive-200 bg-white p-8 shadow-sm">
-            <div className="flex items-center justify-between mb-10">
+        {/* Explainability & Causal Root Cause Section */}
+        {intel.explanation && (
+          <section className="rounded-3xl border border-olive-200 bg-white p-8 shadow-sm space-y-6">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-olive-50 text-olive-700">
-                  <TrendingUp size={20} />
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-olive-100 text-olive-700">
+                  <BarChart3 size={20} />
                 </div>
-                <h4 className="text-lg font-semibold text-olive-800 tracking-tight">Predictive Forecasting</h4>
-              </div>
-              <div className="text-[10px] font-bold text-olive-400 uppercase tracking-widest border-b border-olive-100 pb-1">
-                Protocol: Semantic Projection
-              </div>
-            </div>
-
-            {forecast ? (
-              <div className="space-y-10">
-                <div className="grid grid-cols-3 gap-1 divide-x divide-olive-100 border border-olive-100 rounded-2xl overflow-hidden bg-olive-50/30">
-                  {forecast.horizons.map((h: OperationalForecast['horizons'][number]) => (
-                    <div key={h.days} className="p-6 text-center bg-white transition-colors hover:bg-olive-50/50">
-                      <p className="text-[9px] font-bold text-olive-400 uppercase tracking-[0.2em] mb-4">{h.days}D Projection</p>
-                      <div className="text-4xl font-light text-olive-900 tabular-nums tracking-tighter mb-1">{h.projectedValue}</div>
-                      <span className={['text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md', h.trajectory === 'degrading' ? 'text-red-600 bg-red-50' : 'text-emerald-600 bg-emerald-50'].join(' ')}>
-                        {h.trajectory}
-                      </span>
-                      <div className="mt-6 flex items-center justify-between gap-2 px-2">
-                        <div className="flex-1 h-0.5 bg-olive-100 rounded-full overflow-hidden">
-                          <div className="h-full bg-olive-500" style={{ width: `${h.confidence}%` }} />
-                        </div>
-                        <span className="text-[9px] font-mono text-olive-400">{h.confidence}%</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="p-8 rounded-2xl bg-olive-50/30 border border-olive-100">
-                  <div className="flex items-center gap-2 mb-8 opacity-60">
-                    <Bot size={14} className="text-olive-700" />
-                    <p className="text-[10px] font-bold text-olive-500 uppercase tracking-[0.3em]">Causal Momentum Matrix</p>
-                  </div>
-                  <div className="grid lg:grid-cols-[1fr_200px] gap-12">
-                    <div className="space-y-6">
-                      <p className="text-[10px] font-bold text-olive-400 uppercase tracking-widest">Active Risk Drivers</p>
-                      <div className="grid gap-5">
-                        {forecast.riskDrivers.map((d: OperationalForecast['riskDrivers'][number]) => (
-                          <FactorBar key={d.key} label={d.label} share={d.value} color="var(--color-olive-600)" />
-                        ))}
-                      </div>
-                    </div>
-                    <div className="flex flex-col justify-center items-center text-center p-6 bg-white rounded-xl border border-olive-100">
-                      <div className="text-3xl font-bold text-olive-900 tabular-nums uppercase tracking-tighter mb-1">{forecast.momentum}</div>
-                      <p className="text-[9px] font-bold text-olive-400 uppercase tracking-widest">State Vector</p>
-                      <p className="text-[10px] text-olive-500 mt-4 leading-relaxed font-medium">
-                        Current trajectory has <span className="text-olive-900 font-bold">{forecast.propagationRisk}%</span> propagation probability.
-                      </p>
-                    </div>
-                  </div>
+                <div>
+                  <h4 className="text-lg font-semibold text-olive-800">Metric Explainability — Delivery Risk</h4>
+                  <p className="text-xs text-olive-500">Deconstructed semantic drivers and root cause attribution</p>
                 </div>
               </div>
-            ) : (
-              <div className="py-20 text-center text-olive-300 font-mono text-[10px] uppercase tracking-widest">Initialising Forecast Engine...</div>
-            )}
-          </section>
-
-          {/* Simulation Panel */}
-          <section className="rounded-3xl border border-olive-200 bg-white p-8 shadow-sm h-full">
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-olive-50 text-olive-700">
-                  <RefreshCw size={20} />
-                </div>
-                <h4 className="text-lg font-semibold text-olive-800 tracking-tight">Intervention Lab</h4>
+              <div className="flex items-center gap-2 text-xs font-semibold text-olive-600 bg-olive-50 px-3 py-1.5 rounded-xl border border-olive-100">
+                <ShieldCheck size={14} className="text-emerald-600" />
+                Lineage: {intel.lineage?.lineage?.sourceCollections?.join(', ') || 'N/A'}
               </div>
             </div>
 
-            <div className="space-y-6">
-              <p className="text-xs text-olive-500 leading-relaxed font-medium">Model the delta of discrete operational interventions on global delivery risk.</p>
-
-              <div className="grid gap-2">
-                {[
-                  { id: 'reduce_blockers', label: 'Unblock Work' },
-                  { id: 'resolve_overdue', label: 'Triage Overdue' },
-                  { id: 'increase_throughput', label: 'Boost Velocity' },
-                  { id: 'stabilize_ownership', label: 'Fix Ownership' }
-                ].map(opt => (
-                  <button
-                    key={opt.id}
-                    onClick={() => runSimulation(opt.id as OperationalSimulation['intervention']['type'])}
-                    disabled={simulating}
-                    className="group flex items-center justify-between h-10 px-4 rounded-lg border border-olive-100 bg-olive-50/30 hover:bg-white hover:border-olive-400 text-[10px] font-bold uppercase tracking-widest text-olive-600 transition-all active:scale-[0.99] disabled:opacity-50"
-                  >
-                    <span>{opt.label}</span>
-                    <ArrowRight size={12} className="opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
-                  </button>
-                ))}
-              </div>
-
-              {simulation && (
-                <div className="mt-8 p-6 rounded-xl bg-olive-900 text-white border border-olive-800">
-                  <div className="flex items-center justify-between mb-8">
-                    <div>
-                      <p className="text-[9px] font-bold text-olive-400 uppercase tracking-widest mb-1">Simulated Output</p>
-                      <h5 className="text-base font-bold tracking-tight capitalize">{simulation.intervention.type.replace(/_/g, ' ')}</h5>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-3xl font-bold text-white tabular-nums tracking-tighter">{simulation.simulatedValue}</div>
-                      <p className="text-[9px] font-bold text-olive-500 uppercase tracking-widest">Projected Score</p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 pt-6 border-t border-white/10">
-                    <div>
-                      <div className="text-lg font-bold text-emerald-400 tabular-nums">-{simulation.impact}</div>
-                      <p className="text-[8px] font-bold uppercase tracking-widest text-olive-500">Risk Delta</p>
-                    </div>
-                    <div>
-                      <div className="text-lg font-bold text-olive-300 tabular-nums">{simulation.confidence}%</div>
-                      <p className="text-[8px] font-bold uppercase tracking-widest text-olive-500">Certainty</p>
-                    </div>
-                  </div>
+            <div className="grid gap-6 md:grid-cols-3">
+              {intel.explanation.factors.map((factor) => (
+                <div key={factor.label} className="p-5 rounded-2xl bg-olive-50/50 border border-olive-100 space-y-3">
+                  <FactorBar label={factor.label} share={Math.round(factor.weight * 100)} />
+                  <p className="text-xs text-olive-600">{factor.explanation}</p>
                 </div>
-              )}
-
-              {!simulation && !simulating && (
-                <div className="py-12 flex flex-col items-center justify-center text-center border border-dashed border-olive-100 rounded-xl opacity-40">
-                  <RefreshCw size={24} className="text-olive-300 mb-4" />
-                  <p className="text-[9px] font-bold text-olive-400 uppercase tracking-[0.2em]">Ready for simulation input</p>
-                </div>
-              )}
-
-              {simulating && (
-                <div className="py-12 flex flex-col items-center justify-center text-center">
-                  <Loader2 size={24} className="animate-spin text-olive-600 mb-4" />
-                  <p className="text-[9px] font-bold text-olive-600 uppercase tracking-widest">Computing causal delta...</p>
-                </div>
-              )}
+              ))}
             </div>
           </section>
-        </div>
+        )}
 
-        {/* Explainability and Replay */}
-        <div className="grid gap-8 xl:grid-cols-[1.1fr_0.9fr]">
-          {/* Causal Propagation Panel */}
-          <section className="rounded-3xl border border-olive-200 bg-white p-8 shadow-sm  ">
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-olive-50 text-olive-600  ">
-                  <GitBranch size={20} />
-                </div>
-                <h4 className="text-lg font-semibold text-olive-800 ">Explainability Graph</h4>
+        {/* Predictive Simulation & Counterfactual Interventions */}
+        <section className="rounded-3xl border border-olive-200 bg-white p-8 shadow-sm space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+                <Bot size={20} />
               </div>
-              {explanation && (
-                <div className="px-3 py-1 rounded-full bg-emerald-50  text-[10px] font-medium text-emerald-700  uppercase tracking-widest">
-                  {explanation.confidence}% Confidence
-                </div>
-              )}
-            </div>
-
-            {explanation ? (
-              <div className="space-y-8">
-                <div className="p-6 rounded-2xl bg-olive-50  border border-olive-100 ">
-                  <p className="text-sm font-medium text-olive-700  leading-relaxed italic">
-                    "{explanation.narrative}"
-                  </p>
-                </div>
-
-                <div className="grid gap-8 lg:grid-cols-2">
-                  <div className="space-y-6">
-                    <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-olive-400">Contribution Factors</p>
-                    <div className="space-y-5">
-                      {(explanation.contributorWeights ?? explanation.factors).slice(0, 5).map((f) => (
-                        <FactorBar key={f.key} label={f.label} share={f.contributionShare ?? f.value} color={f.key.includes('risk') ? '#ef4444' : 'var(--color-olive-600)'} />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-6 border-t border-olive-100 ">
-                  <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-olive-400 mb-4">Reasoning Trace</p>
-                  <div className="grid gap-2">
-                    {explanation.reasoningChain.map((step, i) => (
-                      <div key={i} className="flex gap-3 text-xs text-olive-500 ">
-                        <span className="font-semibold text-olive-300  tabular-nums">{String(i + 1).padStart(2, '0')}</span>
-                        <p>{step}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="py-20 text-center">
-                <Loader2 size={32} className="mx-auto text-olive-200 animate-spin mb-4" />
-                <p className="text-sm font-semibold text-olive-400 uppercase tracking-widest">Awaiting Causal Input</p>
-              </div>
-            )}
-          </section>
-
-          {/* Operational Replay Panel */}
-          <section className="rounded-3xl border border-olive-200 bg-white p-8 shadow-sm flex flex-col h-full">
-            <div className="flex items-center justify-between mb-8 flex-shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-olive-50 text-olive-700 border border-olive-100">
-                  <Activity size={20} />
-                </div>
-                <h4 className="text-lg font-semibold text-olive-800">Operational Replay</h4>
-              </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-olive-50 border border-olive-100">
-                <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                <span className="text-[10px] font-medium uppercase tracking-widest text-olive-500">Live Stream</span>
+              <div>
+                <h4 className="text-lg font-semibold text-olive-800">Predictive Simulation Engine</h4>
+                <p className="text-xs text-olive-500">Simulate counterfactual interventions to evaluate impact prior to execution</p>
               </div>
             </div>
-
-            {replayNarrative && (
-              <div className="mb-8 p-6 rounded-2xl bg-olive-50/50 border border-olive-100 flex-shrink-0 relative overflow-hidden">
-                <div className="relative z-10">
-                  <div className="flex items-start justify-between gap-4 mb-4">
-                    <p className="text-base font-semibold leading-tight text-olive-900">{replayNarrative}</p>
-                    {replayConfidence && (
-                      <div className="px-2.5 py-1 rounded-lg bg-olive-100 border border-olive-200 text-[10px] font-medium uppercase tracking-widest text-olive-600">
-                        {replayConfidence}% Conf
-                      </div>
-                    )}
-                  </div>
-                  {causalChains.length > 0 && (
-                    <div className="space-y-2">
-                      {causalChains.slice(0, 2).map((chain) => (
-                        <div key={chain.id} className="p-3 rounded-xl bg-white border border-olive-100/50">
-                          <p className="text-xs font-medium mb-2 flex items-center gap-2 text-olive-700">
-                            <GitBranch size={12} className="text-olive-400" />
-                            {chain.meaning}
-                          </p>
-                          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
-                            {chain.stages.map((stage, i) => (
-                              <div key={i} className="flex items-center gap-2 flex-shrink-0">
-                                <span className="px-2 py-0.5 rounded-md bg-olive-50 text-[9px] font-medium uppercase tracking-widest text-olive-500 border border-olive-100">
-                                  {stage.replace(/_/g, ' ')}
-                                </span>
-                                {i < chain.stages.length - 1 && <ArrowRight size={10} className="text-olive-200" />}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            <div className="flex-1 overflow-y-auto pr-4 -mr-4 custom-scrollbar" style={{ maxHeight: '600px' }}>
-              <div className="relative pl-8 space-y-6 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-0.5 before:bg-olive-100">
-                {timeline.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-16 text-center opacity-60">
-                    <img src={noDataImg} alt="No events" className="" />
-                    <p className="text-xs font-medium text-olive-400 uppercase tracking-widest">Awaiting events...</p>
-                  </div>
-                ) : (
-                  timeline.map((event) => {
-                    const isPositive = event.eventName.includes('completed') || event.eventName.includes('unblocked');
-                    const isNegative = event.eventName.includes('blocked') || event.eventName.includes('degradation') || event.eventName.includes('collapse');
-
-                    return (
-                      <div className="relative" key={event.eventId}>
-                        <div className={[
-                          'absolute -left-[27px] top-1.5 h-3.5 w-3.5 rounded-full border-2 border-white bg-white shadow-sm ring-4 ring-olive-50 z-10',
-                          isPositive ? 'text-emerald-500' : isNegative ? 'text-red-500' : 'text-olive-400'
-                        ].join(' ')}>
-                          <div className="h-full w-full rounded-full bg-current opacity-20" />
-                        </div>
-
-                        <div className="p-5 rounded-xl border border-olive-100 bg-white hover:border-olive-200 transition-all duration-200">
-                          <div className="flex flex-wrap items-start justify-between gap-4">
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-3">
-                                <h5 className="text-sm font-semibold text-olive-900 uppercase tracking-tight">
-                                  {event.eventName.replace(/_/g, ' ')}
-                                </h5>
-                                <span className="text-[9px] font-medium text-olive-400 tabular-nums uppercase">
-                                  {new Date(event.occurredAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </span>
-                              </div>
-                              <p className="text-xs text-olive-600 leading-relaxed">{event.semanticMeaning}</p>
-                            </div>
-
-                            {event.operationalImpact?.score && (
-                              <div className={[
-                                'px-2 py-1 rounded text-[9px] font-medium uppercase tracking-widest border',
-                                event.operationalImpact.score > 70 ? 'bg-red-50 text-red-700 border-red-100' :
-                                  event.operationalImpact.score > 40 ? 'bg-amber-50 text-amber-700 border-amber-100' :
-                                    'bg-emerald-50 text-emerald-700 border-emerald-100',
-                              ].join(' ')}>
-                                {event.operationalImpact.score} pts
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="mt-4 flex flex-wrap gap-1.5">
-                            {(event.semanticTags ?? event.causalSignals ?? []).map((tag) => (
-                              <span key={tag} className="px-2 py-0.5 rounded bg-olive-50 text-[9px] font-medium text-olive-500 border border-olive-100 uppercase tracking-tight">
-                                {tag.replace(/_/g, ' ')}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void intel.runSimulation('reduce_blockers')}
+                disabled={intel.simulating}
+                className="px-4 py-2 bg-olive-900 text-white rounded-xl text-xs font-semibold hover:bg-black transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                {intel.simulating ? <Loader2 size={12} className="animate-spin" /> : <ArrowRight size={12} />}
+                Simulate Blockers Reduction
+              </button>
+              <button
+                type="button"
+                onClick={() => void intel.runSimulation('resolve_overdue')}
+                disabled={intel.simulating}
+                className="px-4 py-2 bg-white border border-olive-200 text-olive-700 rounded-xl text-xs font-semibold hover:bg-olive-50 transition-colors disabled:opacity-50"
+              >
+                Simulate Resolving Overdue
+              </button>
             </div>
-          </section>
-        </div>
+          </div>
 
-        {/* Drilldown Section */}
-        {
-          drilldown && (
-            <section className="rounded-3xl border border-olive-200 bg-white p-8 shadow-sm   animate-slideUp">
-              <div className="flex flex-wrap items-center justify-between gap-6 mb-8">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-olive-100 text-olive-700  ">
-                      <GitBranch size={20} />
-                    </div>
-                    <h4 className="text-xl font-semibold text-olive-800 ">
-                      {drilldown.label} Drilldown
-                    </h4>
-                  </div>
-                  <p className="text-sm font-medium text-olive-500 ">
-                    {drilldown.semanticContext.operationalMeaning}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-semibold text-olive-800  tabular-nums">{drilldown.pagination.total}</p>
-                  <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-olive-400">Contributing Entities</p>
-                </div>
+          {intel.simulation && (
+            <div className="p-6 rounded-2xl bg-emerald-50/50 border border-emerald-200/60 space-y-4 animate-fadeIn">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-emerald-800">Intervention Simulation Result</span>
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full">
+                  Expected Impact: {intel.simulation.impact > 0 ? `+${intel.simulation.impact}` : intel.simulation.impact} Risk Score
+                </span>
               </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                {drilldown.rows.map((row) => (
-                  <div className="group flex items-start gap-4 p-5 rounded-2xl border border-olive-100 bg-olive-50/50 hover:bg-white hover:shadow-md transition-all   " key={row.entityId}>
-                    <div className="flex-1 space-y-2">
-                      <h5 className="text-sm font-semibold text-olive-800  group-hover:text-olive-700 transition-colors">
-                        {row.title}
-                      </h5>
-                      <p className="text-xs text-olive-500  leading-snug">{row.reason}</p>
-                      <div className="flex items-center gap-3 pt-1">
-                        <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-white  text-olive-500 border border-olive-100  uppercase tracking-tight">
-                          {row.status}
-                        </span>
-                        <span className={[
-                          'text-[10px] font-medium px-2 py-0.5 rounded uppercase tracking-tight',
-                          row.priority === 'high' ? 'bg-red-50 text-red-700' :
-                            row.priority === 'medium' ? 'bg-amber-50 text-amber-700' :
-                              'bg-olive-100 text-olive-600',
-                        ].join(' ')}>
-                          {row.priority}
-                        </span>
-                      </div>
-                    </div>
-                    <ArrowRight size={16} className="text-olive-300 group-hover:text-olive-700 transition-colors mt-1" />
-                  </div>
-                ))}
-              </div>
-            </section>
-          )
-        }
-
-        {/* User Distribution and Governance */}
-        <div className="grid gap-8 xl:grid-cols-[1.1fr_0.9fr]">
-          <section className="rounded-3xl border border-olive-200 bg-white p-8 shadow-sm  ">
-            <div className="flex items-center gap-3 mb-8">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-olive-100 text-olive-700  ">
-                <BarChart3 size={20} />
-              </div>
-              <h4 className="text-lg font-semibold text-olive-800 ">Completion Distribution</h4>
+              <p className="text-sm font-medium text-emerald-900">{intel.simulation.explanation}</p>
             </div>
+          )}
+        </section>
 
-            <div className="space-y-6">
-              {perUserRows.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <img src={noDataImg} alt="No activity" className="w-72 opacity-20 grayscale" />
-                  <p className="text-xs font-medium text-olive-400 uppercase tracking-widest">No User Activity Detected</p>
-                </div>
-              ) : (
-                perUserRows.map((row) => (
-                  <div className="group space-y-2" key={row.userId}>
-                    <div className="flex justify-between items-center text-sm">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-olive-100 text-[10px] font-medium uppercase text-olive-500 ">
-                          {row.name ? row.name.slice(0, 2) : row.userId.slice(0, 2)}
-                        </div>
-                        <span className="font-semibold text-olive-700  group-hover:text-olive-700 transition-colors">
-                          {row.name || row.email || 'Anonymous System User'}
-                        </span>
-                      </div>
-                      <span className="font-semibold text-olive-800 tabular-nums">{row.count} Units</span>
-                    </div>
-                    <div className="h-2 rounded-full bg-olive-100  overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-olive-700  transition-all duration-1000 ease-out"
-                        style={{ width: `${Math.max((row.count / maxCompleted) * 100, 5)}%` }}
-                      />
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </section>
-
-          <section className="rounded-3xl border border-olive-200 bg-white p-8 shadow-sm  ">
-            <div className="flex items-center gap-3 mb-8">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-olive-100 text-olive-700  ">
+        {/* User Engagement Performance Grid */}
+        <section className="rounded-3xl border border-olive-200 bg-white p-8 shadow-sm space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-olive-100 text-olive-700">
                 <Database size={20} />
               </div>
-              <h4 className="text-lg font-semibold text-olive-800 ">Semantic Governance Explorer</h4>
+              <h4 className="text-lg font-semibold text-olive-800">Team Execution Breakdown</h4>
             </div>
+            <span className="text-xs font-mono text-olive-400">{perUserRows.length} active contributors</span>
+          </div>
 
-            <div className="space-y-4">
-              <div className="p-5 rounded-2xl bg-olive-50  border border-olive-100  group">
-                <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-olive-400 mb-3 group-hover:text-olive-700 transition-colors">Governed Asset</p>
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-olive-800  uppercase tracking-tight">
-                    Delivery Risk • {governance?.semanticMaturityLevel?.replace(/_/g, ' ') ?? 'Semantic Metric'}
-                  </p>
-                  <ShieldCheck size={16} className="text-emerald-500" />
-                </div>
-              </div>
-
-              <div className="p-5 rounded-2xl bg-olive-50  border border-olive-100 ">
-                <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-olive-400 mb-4">Source Signal Lineage</p>
-                <div className="flex flex-wrap gap-2">
-                  {(lineage?.lineage.sourceEvents ?? []).slice(0, 8).map((ev) => (
-                    <span key={ev} className="px-2 py-1 rounded bg-white text-[9px] font-medium uppercase tracking-tighter text-olive-500 border border-olive-100  ">
-                      {ev.replace(/_/g, ' ')}
+          {perUserRows.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <img alt="No activity" className="w-32 opacity-40 mb-3" src={noDataImg} />
+              <p className="text-xs font-semibold text-olive-400">No contributor records found in this window.</p>
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {perUserRows.map((row) => (
+                <div key={row.userId} className="p-5 rounded-2xl bg-olive-50/50 border border-olive-100 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-olive-800">{row.name || row.email || 'User'}</span>
+                    <span className="text-xs font-bold text-olive-700 bg-white px-2.5 py-1 rounded-lg shadow-xs border border-olive-100">
+                      {row.count} completed
                     </span>
-                  ))}
+                  </div>
+                  <div className="h-2 rounded-full bg-olive-100 overflow-hidden">
+                    <div
+                      className="h-full bg-olive-600 rounded-full transition-all duration-700"
+                      style={{ width: `${Math.min(100, (row.count / maxCompleted) * 100)}%` }}
+                    />
+                  </div>
                 </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Drilldown Modal */}
+        {intel.drilldown && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div className="bg-white border border-olive-200 rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-6">
+              <div className="flex items-center justify-between border-b border-olive-100 pb-4">
+                <div>
+                  <h4 className="text-lg font-bold text-olive-900 capitalize">{intel.drilldown.metric.replace(/_/g, ' ')} Lineage</h4>
+                  <p className="text-xs text-olive-500">Drilldown results: {intel.drilldown.pagination.total} records</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => intel.setDrilldown(null)}
+                  className="p-2 rounded-xl text-olive-400 hover:text-olive-800 hover:bg-olive-50 transition-colors"
+                >
+                  Close
+                </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-5 rounded-2xl bg-olive-50  border border-olive-100 ">
-                  <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-olive-400 mb-2">Stability</p>
-                  <p className="text-xs font-medium text-olive-700  uppercase tracking-widest">{governance?.lifecycleState ?? 'STABLE'}</p>
-                </div>
-                <div className="p-5 rounded-2xl bg-olive-50  border border-olive-100 ">
-                  <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-olive-400 mb-2">AI Visibility</p>
-                  <p className="text-xs font-medium text-emerald-600  uppercase tracking-widest">{governance?.aiVisibility ?? 'SAFE'}</p>
-                </div>
-              </div>
-
-              <div className="p-5 rounded-2xl bg-white text-white group cursor-help">
-                <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/40 mb-3 group-hover:text-emerald-400 transition-colors">Semantic Freshness Policy</p>
-                <div className="flex items-center gap-3">
-                  <RefreshCw size={14} className="animate-spin-slow" />
-                  <p className="text-xs font-medium">{governance?.freshnessPolicy?.replace(/_/g, ' ') ?? 'EVENT DRIVEN REALTIME'}</p>
-                </div>
+              <div className="max-h-96 overflow-y-auto space-y-3 custom-scrollbar">
+                {intel.drilldown.rows.map((row, idx) => (
+                  <div key={idx} className="p-4 rounded-xl bg-olive-50/60 border border-olive-100 text-xs space-y-1">
+                    <div className="font-bold text-olive-800">{String(row.title || `Record #${idx + 1}`)}</div>
+                    <div className="text-olive-500 font-mono text-[11px]">{JSON.stringify(row)}</div>
+                  </div>
+                ))}
               </div>
             </div>
-          </section>
-        </div>
-      </div >
-    </div >
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

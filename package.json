@@ -16,7 +16,7 @@
     "check:console": "tsx --tsconfig tsconfig.node.json src/scripts/checks/noConsoleCheck.ts",
     "check:branch": "tsx --tsconfig tsconfig.node.json src/scripts/checks/branchCheck.ts",
     "precommit": "npm run check:console && lint-staged",
-    "prepush": "npm run type-check && npm run build && npm run check:branch && npm run check:console"
+    "prepush": "npm run type-check && npm run build && npm run check:branch && npm run check:console && npm run lint"
   },
   "lint-staged": {
     ".{ts,tsx,js,jsx}": [

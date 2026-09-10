@@ -27,6 +27,7 @@ export interface AIProjectPlanFeature {
 export interface AIProjectPlanModule {
   name: string;
   purpose: string;
+  description?: string;
   features: AIProjectPlanFeature[];
 }
 
@@ -48,6 +49,7 @@ export interface AIProjectPlanTimeline {
     description?: string;
     estimatedHours: number;
     epicNames: string[];
+    targetWeek?: number;
   }>;
 }
 
@@ -55,6 +57,7 @@ export interface AIProjectPlanResponse {
   name: string;
   description: string;
   systemGoal: string;
+  recommendedStack?: string;
   coreWorkflow: string[];
   actors: AIProjectPlanActor[];
   suggestedStates: Array<{
