@@ -1,6 +1,6 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import AddTaskForm from '@/components/AddTaskForm';
-import DateNavigator from '@/components/DateNavigator';
+import { WorkspaceSwitcher } from '@/features/workspaces';
 import EditTaskForm from '@/components/EditTaskForm';
 import EmptyState from '@/components/EmptyState';
 import Modal from '@/components/Modal';
@@ -247,12 +247,8 @@ export function DashboardPage(): JSX.Element {
           }
           rightContent={
             <div className="flex items-center gap-3">
+              <WorkspaceSwitcher />
               <InvitationNotificationPanel />
-              {dash.activeView !== 'settings' && (
-                <div className="mr-2">
-                  <DateNavigator date={dash.selectedDate} disabled={dash.loading} onChange={dash.setSelectedDate} />
-                </div>
-              )}
             </div>
           }
         />

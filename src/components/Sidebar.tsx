@@ -13,7 +13,6 @@ import {
   Play,
 } from 'lucide-react';
 import logoImg from '@/assets/logo.png';
-import { WorkspaceSwitcher } from '@/features/workspaces';
 
 export type SidebarView =
   | 'dashboard'
@@ -119,11 +118,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         >
           Pristine
         </span>
-      </div>
-
-      {/* Workspace Switcher */}
-      <div className="px-3 py-2.5" style={{ borderBottom: `1px solid ${BORDER}` }}>
-        <WorkspaceSwitcher />
       </div>
 
       {/* Nav Link Lists */}
