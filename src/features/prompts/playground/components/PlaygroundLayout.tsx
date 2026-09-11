@@ -1,6 +1,13 @@
 import React from "react";
 import { FileText, Plus } from "lucide-react";
-import { PromptItem, PromptFolder, PromptVersion, promptService, PlaygroundRunResult } from "@/services/prompts";
+import {
+  PromptItem,
+  PromptFolder,
+  PromptVersion,
+  PromptCanaryDeployment,
+  promptService,
+  PlaygroundRunResult,
+} from "@/services/prompts";
 import { PlaygroundSidebar } from "./PlaygroundSidebar";
 import { PromptHeader } from "./PromptHeader";
 import { PromptEditor } from "./PromptEditor";
@@ -8,6 +15,8 @@ import { VersionSelector } from "./VersionSelector";
 import { VariableEditor } from "./VariableEditor";
 import { ParameterDrawer } from "./ParameterDrawer";
 import { PromptExecutionPanel } from "./PromptExecutionPanel";
+import { CanaryDeploymentBanner } from "./CanaryDeploymentBanner";
+import { DeployModal } from "./DeployModal";
 import { PromptMoveModal } from "../../library/components/PromptMoveModal";
 import { PromptVersionCompareModal } from "@/components/PromptVersionCompareModal";
 import { PromptParameters } from "../hooks/usePlayground";
@@ -28,6 +37,19 @@ interface PlaygroundLayoutProps {
   versionsList: PromptVersion[];
   selectedVersionNum: number;
   setSelectedVersionNum: (ver: number) => void;
+  activeCanary?: PromptCanaryDeployment | null;
+  isDeployModalOpen?: boolean;
+  setIsDeployModalOpen?: (open: boolean) => void;
+  isCanaryActionLoading?: boolean;
+  handleMoveToStaging?: (versionNum: number) => void;
+  handleMoveToDevelopment?: (versionNum: number) => void;
+  handleDeployDirect?: (versionNum: number) => void;
+  handleStartCanary?: (candidateVersionNum: number, options?: { minRequests?: number; errorThreshold?: number }) => void;
+  handleAdvanceCanary?: () => void;
+  handlePauseCanary?: () => void;
+  handleResumeCanary?: () => void;
+  handleRollbackCanary?: () => void;
+  handleCompleteCanary?: () => void;
   activeTab: "prompt" | "versions" | "variables" | "test";
   setActiveTab: (tab: "prompt" | "versions" | "variables" | "test") => void;
   isEditingPromptContent: boolean;
@@ -56,6 +78,8 @@ interface PlaygroundLayoutProps {
   setExecutionError: (err: string | null) => void;
   isSaving: boolean;
   setIsSaving: (saving: boolean) => void;
+  isPublishingProduction?: boolean;
+  onPublishProduction?: (versionNum: number) => void;
   moveModalPrompt: PromptItem | null;
   setMoveModalPrompt: (prompt: PromptItem | null) => void;
   targetFolderId: string | null;
@@ -83,6 +107,19 @@ export const PlaygroundLayout: React.FC<PlaygroundLayoutProps> = ({
   setActivePrompt,
   versionsList,
   selectedVersionNum,
+  activeCanary,
+  isDeployModalOpen = false,
+  setIsDeployModalOpen,
+  isCanaryActionLoading = false,
+  handleMoveToStaging,
+  handleMoveToDevelopment,
+  handleDeployDirect,
+  handleStartCanary,
+  handleAdvanceCanary,
+  handlePauseCanary,
+  handleResumeCanary,
+  handleRollbackCanary,
+  handleCompleteCanary,
   activeTab,
   setActiveTab,
   isEditingPromptContent,
@@ -110,6 +147,7 @@ export const PlaygroundLayout: React.FC<PlaygroundLayoutProps> = ({
   executionError,
   setExecutionError,
   isSaving,
+  isPublishingProduction,
   moveModalPrompt,
   setMoveModalPrompt,
   targetFolderId,
@@ -118,6 +156,7 @@ export const PlaygroundLayout: React.FC<PlaygroundLayoutProps> = ({
   setIsMoving,
   hasVersionedConfigurationChanged,
   onSavePrompt,
+  onPublishProduction,
   onNewPromptImmediate,
   loadPromptDetails,
 }) => {
@@ -130,6 +169,10 @@ export const PlaygroundLayout: React.FC<PlaygroundLayoutProps> = ({
     });
     return counts;
   }, [promptsByFolder]);
+
+  const selectedVersionObj = React.useMemo(() => {
+    return versionsList.find((v) => v.version === selectedVersionNum) || null;
+  }, [versionsList, selectedVersionNum]);
 
   return (
     <div className="flex h-full min-h-screen bg-gray-50 text-gray-900 font-sans overflow-hidden">
@@ -169,13 +212,30 @@ export const PlaygroundLayout: React.FC<PlaygroundLayoutProps> = ({
           </div>
         ) : (
           <div className="space-y-6 w-full">
+            {/* Canary Deployment Status Banner */}
+            {activeCanary && (
+              <CanaryDeploymentBanner
+                canary={activeCanary}
+                onAdvance={() => handleAdvanceCanary?.()}
+                onPause={() => handlePauseCanary?.()}
+                onResume={() => handleResumeCanary?.()}
+                onRollback={() => handleRollbackCanary?.()}
+                onComplete={() => handleCompleteCanary?.()}
+                isActionLoading={isCanaryActionLoading}
+              />
+            )}
+
             <PromptHeader
               activePrompt={activePrompt}
               selectedVersionNum={selectedVersionNum}
               hasVersionedConfigurationChanged={hasVersionedConfigurationChanged}
               isSaving={isSaving}
               isEditingPromptContent={isEditingPromptContent}
+              isPublishingProduction={isPublishingProduction}
+              activeCanary={activeCanary}
               onSavePrompt={onSavePrompt}
+              onPublishProduction={onPublishProduction}
+              onOpenDeployModal={() => setIsDeployModalOpen?.(true)}
               onToggleEditStructure={() => setIsEditingPromptContent(!isEditingPromptContent)}
               onOpenMoveModal={() => {
                 if (activePrompt) {
@@ -183,16 +243,20 @@ export const PlaygroundLayout: React.FC<PlaygroundLayoutProps> = ({
                   setTargetFolderId(activePrompt.folderId || null);
                 }
               }}
+              onOpenParametersModal={() => {
+                setModalTempParams(parameters);
+                setIsParametersModalOpen(true);
+              }}
             />
 
-            <div className="border-b border-gray-200 flex items-center gap-6 text-xs font-semibold w-full">
+            <div className="border-b border-gray-200 flex items-center gap-6 text-xs font-medium w-full">
               <button
                 type="button"
                 onClick={() => setActiveTab("prompt")}
                 className={`pb-2.5 transition relative cursor-pointer ${
                   activeTab === "prompt"
-                    ? "text-olive-800 font-bold border-b-2 border-olive-700"
-                    : "text-gray-500 hover:text-gray-900"
+                    ? "text-olive-800 font-semibold border-b-2 border-olive-700"
+                    : "text-gray-500 hover:text-gray-900 font-normal"
                 }`}
               >
                 Prompt
@@ -202,8 +266,8 @@ export const PlaygroundLayout: React.FC<PlaygroundLayoutProps> = ({
                 onClick={() => setActiveTab("versions")}
                 className={`pb-2.5 transition relative cursor-pointer ${
                   activeTab === "versions"
-                    ? "text-olive-800 font-bold border-b-2 border-olive-700"
-                    : "text-gray-500 hover:text-gray-900"
+                    ? "text-olive-800 font-semibold border-b-2 border-olive-700"
+                    : "text-gray-500 hover:text-gray-900 font-normal"
                 }`}
               >
                 Versions ({versionsList.length})
@@ -213,8 +277,8 @@ export const PlaygroundLayout: React.FC<PlaygroundLayoutProps> = ({
                 onClick={() => setActiveTab("variables")}
                 className={`pb-2.5 transition relative cursor-pointer ${
                   activeTab === "variables"
-                    ? "text-olive-800 font-bold border-b-2 border-olive-700"
-                    : "text-gray-500 hover:text-gray-900"
+                    ? "text-olive-800 font-semibold border-b-2 border-olive-700"
+                    : "text-gray-500 hover:text-gray-900 font-normal"
                 }`}
               >
                 Variables ({variablesSchema.length})
@@ -224,8 +288,8 @@ export const PlaygroundLayout: React.FC<PlaygroundLayoutProps> = ({
                 onClick={() => setActiveTab("test")}
                 className={`pb-2.5 transition relative cursor-pointer ${
                   activeTab === "test"
-                    ? "text-olive-800 font-bold border-b-2 border-olive-700"
-                    : "text-gray-500 hover:text-gray-900"
+                    ? "text-olive-800 font-semibold border-b-2 border-olive-700"
+                    : "text-gray-500 hover:text-gray-900 font-normal"
                 }`}
               >
                 Execution & Test
@@ -246,12 +310,16 @@ export const PlaygroundLayout: React.FC<PlaygroundLayoutProps> = ({
 
             {activeTab === "versions" && (
               <VersionSelector
+                activePrompt={activePrompt}
                 versionsList={versionsList}
                 selectedVersionNum={selectedVersionNum}
+                isPublishingProduction={isPublishingProduction}
+                activeCanary={activeCanary}
                 onSelectVersion={(verNum) => {
                   if (selectedPromptId) loadPromptDetails(selectedPromptId, verNum);
                 }}
                 onOpenCompare={() => setIsCompareOpen(true)}
+                onPublishProduction={onPublishProduction}
               />
             )}
 
@@ -298,6 +366,19 @@ export const PlaygroundLayout: React.FC<PlaygroundLayoutProps> = ({
           setParameters(modalTempParams);
           setIsParametersModalOpen(false);
         }}
+      />
+
+      <DeployModal
+        isOpen={isDeployModalOpen}
+        activePrompt={activePrompt}
+        selectedVersion={selectedVersionObj}
+        versionsList={versionsList}
+        onClose={() => setIsDeployModalOpen?.(false)}
+        onMoveToStaging={(ver) => handleMoveToStaging?.(ver)}
+        onMoveToDevelopment={(ver) => handleMoveToDevelopment?.(ver)}
+        onDeployDirect={(ver) => handleDeployDirect?.(ver)}
+        onStartCanary={(cand, opts) => handleStartCanary?.(cand, opts)}
+        isLoading={isCanaryActionLoading}
       />
 
       {moveModalPrompt && (

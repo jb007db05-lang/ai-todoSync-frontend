@@ -46,6 +46,31 @@ interface CustomRequestConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
 }
 
+const isAuthEndpoint = (url?: string): boolean => {
+  if (!url) return false;
+  return (
+    url.includes('/auth/login') ||
+    url.includes('/auth/register') ||
+    url.includes('/auth/refresh') ||
+    url.includes('/auth/verify-2fa') ||
+    url.includes('/auth/companion-login') ||
+    url.includes('/companion/pair/qr')
+  );
+};
+
+const clearAuthStorage = () => {
+  localStorage.removeItem(TOKEN_STORAGE_KEY);
+  localStorage.removeItem('todo_refresh_token');
+  localStorage.removeItem('todo_user');
+  localStorage.removeItem('todo_session');
+  localStorage.removeItem('todo_remember_me');
+
+  sessionStorage.removeItem(TOKEN_STORAGE_KEY);
+  sessionStorage.removeItem('todo_refresh_token');
+  sessionStorage.removeItem('todo_user');
+  sessionStorage.removeItem('todo_session');
+};
+
 api.interceptors.response.use(
   (response) => {
     return response;
@@ -54,7 +79,12 @@ api.interceptors.response.use(
     const originalRequest = error.config as CustomRequestConfig | undefined;
     const normalizedError = normalizeApiError(error);
 
-    if (error.response?.status === 401 && originalRequest && !originalRequest._retry && originalRequest.url !== '/auth/refresh') {
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !originalRequest._retry &&
+      !isAuthEndpoint(originalRequest.url)
+    ) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -95,16 +125,7 @@ api.interceptors.response.use(
           return api(originalRequest);
         } catch (refreshErr) {
           processQueue(refreshErr, null);
-          
-          localStorage.removeItem(TOKEN_STORAGE_KEY);
-          localStorage.removeItem('todo_refresh_token');
-          localStorage.removeItem('todo_user');
-          localStorage.removeItem('todo_session');
-          localStorage.removeItem('todo_remember_me');
-          sessionStorage.removeItem(TOKEN_STORAGE_KEY);
-          sessionStorage.removeItem('todo_refresh_token');
-          sessionStorage.removeItem('todo_user');
-          sessionStorage.removeItem('todo_session');
+          clearAuthStorage();
 
           if (window.location.pathname !== '/login') {
             window.location.assign('/login');
@@ -114,8 +135,9 @@ api.interceptors.response.use(
           isRefreshing = false;
         }
       } else {
-        localStorage.removeItem(TOKEN_STORAGE_KEY);
-        sessionStorage.removeItem(TOKEN_STORAGE_KEY);
+        isRefreshing = false;
+        processQueue(error, null);
+        clearAuthStorage();
         if (window.location.pathname !== '/login') {
           window.location.assign('/login');
         }

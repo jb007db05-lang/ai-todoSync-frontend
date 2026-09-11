@@ -5,6 +5,7 @@ import {
   PromptItem,
   PromptVersion,
   PromptFolder,
+  PromptCanaryDeployment,
   IPromptMessage,
   IPromptVariable,
   PlaygroundRunResult,
@@ -43,6 +44,9 @@ export function usePlayground(workspaceId: string) {
   const [activePrompt, setActivePrompt] = useState<PromptItem | null>(null);
   const [versionsList, setVersionsList] = useState<PromptVersion[]>([]);
   const [selectedVersionNum, setSelectedVersionNum] = useState<number>(initialVersion ? Number(initialVersion) : 0);
+  const [activeCanary, setActiveCanary] = useState<PromptCanaryDeployment | null>(null);
+  const [isDeployModalOpen, setIsDeployModalOpen] = useState<boolean>(false);
+  const [isCanaryActionLoading, setIsCanaryActionLoading] = useState<boolean>(false);
 
   const [activeTab, setActiveTab] = useState<"prompt" | "versions" | "variables" | "test">("prompt");
   const [isEditingPromptContent, setIsEditingPromptContent] = useState<boolean>(false);
@@ -119,13 +123,15 @@ export function usePlayground(workspaceId: string) {
   const loadPromptDetails = useCallback(
     async (promptId: string, versionNumber?: number) => {
       try {
-        const [promptData, versionsData] = await Promise.all([
+        const [promptData, versionsData, canaryData] = await Promise.all([
           promptService.getPrompt(workspaceId, promptId),
           promptService.listVersions(workspaceId, promptId),
+          promptService.getCanaryDeployment(workspaceId, promptId).catch(() => null),
         ]);
 
         setActivePrompt(promptData);
         setVersionsList(versionsData);
+        setActiveCanary(canaryData);
 
         let targetVersionObj: PromptVersion | undefined;
         let versionToSet = promptData.version;
@@ -217,6 +223,164 @@ export function usePlayground(workspaceId: string) {
     return map;
   }, [folders, filteredPrompts]);
 
+  const [isPublishingProduction, setIsPublishingProduction] = useState<boolean>(false);
+
+  const handlePublishProduction = useCallback(
+    async (versionNum?: number) => {
+      if (!activePrompt) return;
+      const targetVer = versionNum || selectedVersionNum || activePrompt.version;
+      if (!targetVer) return;
+      try {
+        setIsPublishingProduction(true);
+        await promptService.publishProductionVersion(workspaceId, activePrompt._id, targetVer);
+        await loadPromptDetails(activePrompt._id, selectedVersionNum);
+      } catch (err) {
+        console.error("Failed to publish production prompt version", err);
+      } finally {
+        setIsPublishingProduction(false);
+      }
+    },
+    [workspaceId, activePrompt, selectedVersionNum, loadPromptDetails]
+  );
+
+  // Canary & Deployment Actions
+  const handleMoveToStaging = useCallback(
+    async (versionNum: number) => {
+      if (!activePrompt) return;
+      try {
+        setIsCanaryActionLoading(true);
+        await promptService.moveToStaging(workspaceId, activePrompt._id, versionNum);
+        setIsDeployModalOpen(false);
+        await loadPromptDetails(activePrompt._id, selectedVersionNum);
+      } catch (err) {
+        console.error("Failed to move prompt version to staging", err);
+      } finally {
+        setIsCanaryActionLoading(false);
+      }
+    },
+    [workspaceId, activePrompt, selectedVersionNum, loadPromptDetails]
+  );
+
+  const handleMoveToDevelopment = useCallback(
+    async (versionNum: number) => {
+      if (!activePrompt) return;
+      try {
+        setIsCanaryActionLoading(true);
+        await promptService.moveToDevelopment(workspaceId, activePrompt._id, versionNum);
+        setIsDeployModalOpen(false);
+        await loadPromptDetails(activePrompt._id, selectedVersionNum);
+      } catch (err) {
+        console.error("Failed to move prompt version to development", err);
+      } finally {
+        setIsCanaryActionLoading(false);
+      }
+    },
+    [workspaceId, activePrompt, selectedVersionNum, loadPromptDetails]
+  );
+
+  const handleDeployDirect = useCallback(
+    async (versionNum: number) => {
+      if (!activePrompt) return;
+      try {
+        setIsCanaryActionLoading(true);
+        await promptService.deployDirectToProduction(workspaceId, activePrompt._id, versionNum);
+        setIsDeployModalOpen(false);
+        await loadPromptDetails(activePrompt._id, selectedVersionNum);
+      } catch (err) {
+        console.error("Failed to deploy directly to production", err);
+      } finally {
+        setIsCanaryActionLoading(false);
+      }
+    },
+    [workspaceId, activePrompt, selectedVersionNum, loadPromptDetails]
+  );
+
+  const handleStartCanary = useCallback(
+    async (candidateVersionNum: number, options?: { minRequests?: number; errorThreshold?: number }) => {
+      if (!activePrompt) return;
+      try {
+        setIsCanaryActionLoading(true);
+        const canary = await promptService.startCanary(workspaceId, activePrompt._id, candidateVersionNum, options);
+        setActiveCanary(canary);
+        setIsDeployModalOpen(false);
+        await loadPromptDetails(activePrompt._id, selectedVersionNum);
+      } catch (err) {
+        console.error("Failed to start canary deployment", err);
+      } finally {
+        setIsCanaryActionLoading(false);
+      }
+    },
+    [workspaceId, activePrompt, selectedVersionNum, loadPromptDetails]
+  );
+
+  const handleAdvanceCanary = useCallback(async () => {
+    if (!activePrompt) return;
+    try {
+      setIsCanaryActionLoading(true);
+      const canary = await promptService.advanceCanary(workspaceId, activePrompt._id);
+      setActiveCanary(canary);
+      await loadPromptDetails(activePrompt._id, selectedVersionNum);
+    } catch (err) {
+      console.error("Failed to advance canary deployment", err);
+    } finally {
+      setIsCanaryActionLoading(false);
+    }
+  }, [workspaceId, activePrompt, selectedVersionNum, loadPromptDetails]);
+
+  const handlePauseCanary = useCallback(async () => {
+    if (!activePrompt) return;
+    try {
+      setIsCanaryActionLoading(true);
+      const canary = await promptService.pauseCanary(workspaceId, activePrompt._id);
+      setActiveCanary(canary);
+    } catch (err) {
+      console.error("Failed to pause canary deployment", err);
+    } finally {
+      setIsCanaryActionLoading(false);
+    }
+  }, [workspaceId, activePrompt]);
+
+  const handleResumeCanary = useCallback(async () => {
+    if (!activePrompt) return;
+    try {
+      setIsCanaryActionLoading(true);
+      const canary = await promptService.resumeCanary(workspaceId, activePrompt._id);
+      setActiveCanary(canary);
+    } catch (err) {
+      console.error("Failed to resume canary deployment", err);
+    } finally {
+      setIsCanaryActionLoading(false);
+    }
+  }, [workspaceId, activePrompt]);
+
+  const handleRollbackCanary = useCallback(async () => {
+    if (!activePrompt) return;
+    try {
+      setIsCanaryActionLoading(true);
+      const canary = await promptService.rollbackCanary(workspaceId, activePrompt._id, "Manual rollback from Playground UI");
+      setActiveCanary(canary);
+      await loadPromptDetails(activePrompt._id, selectedVersionNum);
+    } catch (err) {
+      console.error("Failed to rollback canary deployment", err);
+    } finally {
+      setIsCanaryActionLoading(false);
+    }
+  }, [workspaceId, activePrompt, selectedVersionNum, loadPromptDetails]);
+
+  const handleCompleteCanary = useCallback(async () => {
+    if (!activePrompt) return;
+    try {
+      setIsCanaryActionLoading(true);
+      const canary = await promptService.completeCanary(workspaceId, activePrompt._id);
+      setActiveCanary(canary);
+      await loadPromptDetails(activePrompt._id, selectedVersionNum);
+    } catch (err) {
+      console.error("Failed to complete canary deployment", err);
+    } finally {
+      setIsCanaryActionLoading(false);
+    }
+  }, [workspaceId, activePrompt, selectedVersionNum, loadPromptDetails]);
+
   return {
     folders,
     prompts,
@@ -233,6 +397,19 @@ export function usePlayground(workspaceId: string) {
     setVersionsList,
     selectedVersionNum,
     setSelectedVersionNum,
+    activeCanary,
+    isDeployModalOpen,
+    setIsDeployModalOpen,
+    isCanaryActionLoading,
+    handleMoveToStaging,
+    handleMoveToDevelopment,
+    handleDeployDirect,
+    handleStartCanary,
+    handleAdvanceCanary,
+    handlePauseCanary,
+    handleResumeCanary,
+    handleRollbackCanary,
+    handleCompleteCanary,
     activeTab,
     setActiveTab,
     isEditingPromptContent,
@@ -267,6 +444,8 @@ export function usePlayground(workspaceId: string) {
     setExecutionError,
     isSaving,
     setIsSaving,
+    isPublishingProduction,
+    handlePublishProduction,
     moveModalPrompt,
     setMoveModalPrompt,
     targetFolderId,

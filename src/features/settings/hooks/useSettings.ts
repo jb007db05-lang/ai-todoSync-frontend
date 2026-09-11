@@ -22,7 +22,7 @@ export function useSettings() {
   const confirm = useConfirm();
   const { showToast } = useToast();
 
-  const [activeTab, setActiveTab] = useState<"profile" | "workspace" | "sla" | "chatgpt" | "companion">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "workspace" | "sla" | "chatgpt" | "companion" | "mcp">("profile");
   const [apiKeyCopied, setApiKeyCopied] = useState(false);
   const [schemaCopied, setSchemaCopied] = useState(false);
   const [instructionsCopied, setInstructionsCopied] = useState(false);
@@ -77,7 +77,7 @@ export function useSettings() {
   }, []);
 
   useEffect(() => {
-    if (activeTab === "companion") fetchCompanionDevices();
+    if (activeTab === "companion" || activeTab === "mcp") fetchCompanionDevices();
     if (activeTab === "sla") fetchSlaConfigs();
   }, [activeTab, fetchCompanionDevices, fetchSlaConfigs]);
 

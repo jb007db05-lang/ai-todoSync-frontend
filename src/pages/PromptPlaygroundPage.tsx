@@ -28,23 +28,8 @@ export const PromptPlaygroundPage: React.FC<PromptPlaygroundPageProps> = ({ work
         modelName: pg.parameters.modelName,
       });
 
-      const createdVer = await promptService.createVersion(workspaceId, pg.activePrompt._id, {
-        changelog: `Updated in Playground`,
-        body: pg.body,
-        messages: pg.messages,
-        variables: pg.variablesSchema,
-        parameters: {
-          temperature: pg.parameters.temperature,
-          maxTokens: pg.parameters.maxTokens,
-          topP: pg.parameters.topP,
-          responseFormat: pg.parameters.responseFormat,
-        },
-        provider: pg.parameters.provider,
-        modelName: pg.parameters.modelName,
-      });
-
       pg.setActivePrompt(updated);
-      pg.setSelectedVersionNum(createdVer.version);
+      pg.setSelectedVersionNum(updated.version);
       pg.setSavedSnapshot({
         body: pg.body,
         messages: pg.messages,
@@ -94,6 +79,19 @@ export const PromptPlaygroundPage: React.FC<PromptPlaygroundPageProps> = ({ work
       versionsList={pg.versionsList}
       selectedVersionNum={pg.selectedVersionNum}
       setSelectedVersionNum={pg.setSelectedVersionNum}
+      activeCanary={pg.activeCanary}
+      isDeployModalOpen={pg.isDeployModalOpen}
+      setIsDeployModalOpen={pg.setIsDeployModalOpen}
+      isCanaryActionLoading={pg.isCanaryActionLoading}
+      handleMoveToStaging={pg.handleMoveToStaging}
+      handleMoveToDevelopment={pg.handleMoveToDevelopment}
+      handleDeployDirect={pg.handleDeployDirect}
+      handleStartCanary={pg.handleStartCanary}
+      handleAdvanceCanary={pg.handleAdvanceCanary}
+      handlePauseCanary={pg.handlePauseCanary}
+      handleResumeCanary={pg.handleResumeCanary}
+      handleRollbackCanary={pg.handleRollbackCanary}
+      handleCompleteCanary={pg.handleCompleteCanary}
       activeTab={pg.activeTab}
       setActiveTab={pg.setActiveTab}
       isEditingPromptContent={pg.isEditingPromptContent}
@@ -122,6 +120,8 @@ export const PromptPlaygroundPage: React.FC<PromptPlaygroundPageProps> = ({ work
       setExecutionError={pg.setExecutionError}
       isSaving={pg.isSaving}
       setIsSaving={pg.setIsSaving}
+      isPublishingProduction={pg.isPublishingProduction}
+      onPublishProduction={pg.handlePublishProduction}
       moveModalPrompt={pg.moveModalPrompt}
       setMoveModalPrompt={pg.setMoveModalPrompt}
       targetFolderId={pg.targetFolderId}
