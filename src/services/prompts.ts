@@ -54,6 +54,9 @@ export interface PromptItem {
     avatar?: string;
   };
   version: number;
+  productionVersion?: number;
+  isProductionPublished?: boolean;
+  publishedAt?: string;
   hash?: string;
   isLatest: boolean;
   parentId?: string | null;
@@ -69,6 +72,7 @@ export interface PromptVersion {
   _id: string;
   promptId: string;
   version: number;
+  environment?: "development" | "staging" | "production";
   hash?: string;
   body: string;
   messages?: IPromptMessage[];
@@ -84,6 +88,54 @@ export interface PromptVersion {
   };
   changeNote?: string;
   createdAt: string;
+}
+
+export type CanaryStatus =
+  | "active"
+  | "paused"
+  | "completed"
+  | "rolled_back"
+  | "failed"
+  | "cancelled";
+
+export interface ICanaryMetrics {
+  totalRequests: number;
+  canaryRequests: number;
+  legacyRequests: number;
+  canaryErrors: number;
+  legacyErrors: number;
+  canaryLatencyMsTotal: number;
+  legacyLatencyMsTotal: number;
+  canaryTokensTotal: number;
+  legacyTokensTotal: number;
+  canaryCostTotal: number;
+  legacyCostTotal: number;
+}
+
+export interface PromptCanaryDeployment {
+  _id: string;
+  workspaceId: string;
+  promptId: string;
+  legacyVersion: number;
+  candidateVersion: number;
+  status: CanaryStatus;
+  currentPhase: number;
+  trafficWeight: {
+    canary: number;
+    legacy: number;
+  };
+  rolloutProgress: number;
+  minRequests: number;
+  errorThreshold: number;
+  rollbackReason?: string;
+  createdBy: string;
+  metrics: ICanaryMetrics;
+  startedAt: string;
+  completedAt?: string;
+  pausedAt?: string;
+  rolledBackAt?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CreatePromptPayload {
@@ -279,6 +331,138 @@ export const promptService = {
     );
     return res.data.data;
   },
+
+  async publishProductionVersion(
+    workspaceId: string,
+    promptId: string,
+    versionNumber: number
+  ): Promise<{ promptId: string; productionVersion: number; publishedAt: string }> {
+    return this.deployDirectToProduction(workspaceId, promptId, versionNumber);
+  },
+
+  // Environment & Deployment APIs
+  async moveToStaging(
+    workspaceId: string,
+    promptId: string,
+    versionNumber: number,
+  ): Promise<PromptVersion> {
+    const res = await api.post<{ status: string; data: PromptVersion }>(
+      `/workspaces/${workspaceId}/prompts/${promptId}/versions/${versionNumber}/staging`,
+    );
+    return res.data.data;
+  },
+
+  async moveToDevelopment(
+    workspaceId: string,
+    promptId: string,
+    versionNumber: number,
+  ): Promise<PromptVersion> {
+    const res = await api.post<{ status: string; data: PromptVersion }>(
+      `/workspaces/${workspaceId}/prompts/${promptId}/versions/${versionNumber}/development`,
+    );
+    return res.data.data;
+  },
+
+  async deployDirectToProduction(
+    workspaceId: string,
+    promptId: string,
+    versionNumber: number,
+  ): Promise<{ promptId: string; productionVersion: number; publishedAt: string }> {
+    const res = await api.post<{
+      status: string;
+      data: { promptId: string; productionVersion: number; publishedAt: string };
+    }>(`/workspaces/${workspaceId}/prompts/${promptId}/deploy/direct`, {
+      versionNumber,
+    });
+    return res.data.data;
+  },
+
+  async startCanary(
+    workspaceId: string,
+    promptId: string,
+    candidateVersion: number,
+    options?: { minRequests?: number; errorThreshold?: number },
+  ): Promise<PromptCanaryDeployment> {
+    const res = await api.post<{ status: string; data: PromptCanaryDeployment }>(
+      `/workspaces/${workspaceId}/prompts/${promptId}/deploy/canary/start`,
+      { candidateVersion, ...options },
+    );
+    return res.data.data;
+  },
+
+  async advanceCanary(
+    workspaceId: string,
+    promptId: string,
+  ): Promise<PromptCanaryDeployment> {
+    const res = await api.post<{ status: string; data: PromptCanaryDeployment }>(
+      `/workspaces/${workspaceId}/prompts/${promptId}/deploy/canary/advance`,
+    );
+    return res.data.data;
+  },
+
+  async pauseCanary(
+    workspaceId: string,
+    promptId: string,
+  ): Promise<PromptCanaryDeployment> {
+    const res = await api.post<{ status: string; data: PromptCanaryDeployment }>(
+      `/workspaces/${workspaceId}/prompts/${promptId}/deploy/canary/pause`,
+    );
+    return res.data.data;
+  },
+
+  async resumeCanary(
+    workspaceId: string,
+    promptId: string,
+  ): Promise<PromptCanaryDeployment> {
+    const res = await api.post<{ status: string; data: PromptCanaryDeployment }>(
+      `/workspaces/${workspaceId}/prompts/${promptId}/deploy/canary/resume`,
+    );
+    return res.data.data;
+  },
+
+  async rollbackCanary(
+    workspaceId: string,
+    promptId: string,
+    reason?: string,
+  ): Promise<PromptCanaryDeployment> {
+    const res = await api.post<{ status: string; data: PromptCanaryDeployment }>(
+      `/workspaces/${workspaceId}/prompts/${promptId}/deploy/canary/rollback`,
+      { reason },
+    );
+    return res.data.data;
+  },
+
+  async cancelCanary(
+    workspaceId: string,
+    promptId: string,
+    reason?: string,
+  ): Promise<PromptCanaryDeployment> {
+    const res = await api.post<{ status: string; data: PromptCanaryDeployment }>(
+      `/workspaces/${workspaceId}/prompts/${promptId}/deploy/canary/cancel`,
+      { reason },
+    );
+    return res.data.data;
+  },
+
+  async completeCanary(
+    workspaceId: string,
+    promptId: string,
+  ): Promise<PromptCanaryDeployment> {
+    const res = await api.post<{ status: string; data: PromptCanaryDeployment }>(
+      `/workspaces/${workspaceId}/prompts/${promptId}/deploy/canary/complete`,
+    );
+    return res.data.data;
+  },
+
+  async getCanaryDeployment(
+    workspaceId: string,
+    promptId: string,
+  ): Promise<PromptCanaryDeployment | null> {
+    const res = await api.get<{ status: string; data: PromptCanaryDeployment | null }>(
+      `/workspaces/${workspaceId}/prompts/${promptId}/deploy/canary`,
+    );
+    return res.data.data;
+  },
 };
 
 export interface PlaygroundRunPayload {
@@ -311,4 +495,3 @@ export interface PlaygroundRunResult {
     versionNumber?: number;
   };
 }
-

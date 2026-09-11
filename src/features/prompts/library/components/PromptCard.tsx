@@ -48,13 +48,18 @@ export const PromptCard: React.FC<PromptCardProps> = ({
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div className="space-y-1 min-w-0 flex-1">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 flex-wrap">
               <h3 className="text-sm font-bold text-olive-950 group-hover:text-olive-700 transition truncate">
                 {prompt.name}
               </h3>
               <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-olive-100 text-olive-800 border border-olive-200 shrink-0">
                 {prompt.version > 0 ? `v${prompt.version}` : "Draft"}
               </span>
+              {prompt.productionVersion && (
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
+                  Prod v{prompt.productionVersion}
+                </span>
+              )}
             </div>
             {prompt.description && (
               <p className="text-xs text-olive-600 line-clamp-1">

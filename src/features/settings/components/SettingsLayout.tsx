@@ -1,9 +1,10 @@
 import React from "react";
-import { UserCircle, Settings2, TimerReset, Sparkles, Smartphone } from "lucide-react";
+import { UserCircle, Settings2, TimerReset, Sparkles, Smartphone, Bot } from "lucide-react";
 import { ProfileSettings } from "./ProfileSettings";
 import { ChatGPTIntegrationSettings } from "./ChatGPTIntegrationSettings";
 import { CompanionDevicesList } from "./CompanionDevicesList";
 import { CompanionDeviceModal } from "./CompanionDeviceModal";
+import { McpIntegrationSettings } from "./McpIntegrationSettings";
 import { WorkspaceSettingsPanel } from "@/features/workspaces";
 import SectionCard from "@/components/SectionCard";
 import type { TaskPriority } from "@/types/task";
@@ -13,8 +14,8 @@ import type { Project } from "@/types/project";
 
 interface SettingsLayoutProps {
   user: AuthProfile | null;
-  activeTab: "profile" | "workspace" | "sla" | "chatgpt" | "companion";
-  setActiveTab: (tab: "profile" | "workspace" | "sla" | "chatgpt" | "companion") => void;
+  activeTab: "profile" | "workspace" | "sla" | "chatgpt" | "companion" | "mcp";
+  setActiveTab: (tab: "profile" | "workspace" | "sla" | "chatgpt" | "companion" | "mcp") => void;
   showKey: boolean;
   setShowKey: (show: boolean) => void;
   apiKeyCopied: boolean;
@@ -127,6 +128,18 @@ export const SettingsLayout: React.FC<SettingsLayoutProps> = ({
 
           <button
             type="button"
+            onClick={() => setActiveTab("mcp")}
+            className={`px-3 py-1.5 rounded transition flex items-center gap-2 cursor-pointer ${
+              activeTab === "mcp"
+                ? "bg-olive-800 text-white font-semibold shadow-xs"
+                : "text-olive-700 hover:bg-olive-100/70 hover:text-olive-950"
+            }`}
+          >
+            <Bot className="w-3.5 h-3.5 text-emerald-400" /> MCP Integration
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveTab("companion")}
             className={`px-3 py-1.5 rounded transition flex items-center gap-2 cursor-pointer ${
               activeTab === "companion"
@@ -195,6 +208,19 @@ export const SettingsLayout: React.FC<SettingsLayoutProps> = ({
           onCopySchema={onCopySchema}
           onCopyInstructions={onCopyInstructions}
           onNavigateToProfile={() => setActiveTab("profile")}
+        />
+      )}
+
+      {activeTab === "mcp" && (
+        <McpIntegrationSettings
+          companionDevices={companionDevices}
+          isLoadingCompanionDevices={isLoadingCompanionDevices}
+          onRevokeCompanionDevice={onRevokeCompanionDevice}
+          onNavigateToProfile={() => setActiveTab("profile")}
+          onOpenCompanionModal={() => {
+            setSelectedDeviceForRegen(null);
+            setIsCompanionModalOpen(true);
+          }}
         />
       )}
 
